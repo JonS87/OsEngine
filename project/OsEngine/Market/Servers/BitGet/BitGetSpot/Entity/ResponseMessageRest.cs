@@ -1,83 +1,110 @@
-﻿namespace OsEngine.Market.Servers.BitGet.BitGetSpot.Entity
+﻿using System.Collections.Generic;
+
+namespace OsEngine.Market.Servers.BitGet.BitGetSpot.Entity
 {
-    public class ResponseMessageRest<T>
+    public class ResponseRestMessage<T>
     {
         public string code;
         public string msg;
+        public string requestTime;
         public T data;
     }
 
-    public class ResponseAsset
+    public class RestMessageCandle
     {
-        public string coinId;
-        public string coinName;
-        public string available;
+        public List<List<string>> data { get; set; }
+    }
+
+    public class RestMessageSymbol
+    {
+        public string symbol;
+        public string quantityPrecision;
+        public string pricePrecision;
+        public string status;
+    }
+
+    public class RestMessageAccount
+    {
+        public string coin;
         public string frozen;
-        public string Lock;
-        public string utime;
+        public string available;
     }
 
-    public class ResposeSymbol
+    public class RestMessagePositions
     {
+        public string marginCoin;
         public string symbol;
-        public string symbolName;
-        public string baseCoin;
-        public string quoteCoin;
-        public string minTradeAmount;
-        public string maxTradeAmount;
-        public string takerFeeRate;
-        public string makerFeeRate;
-        public string priceScale;
-        public string quantityScale;
-        public string minTradeUSDT;
-        public string status;
-        public string buyLimitPriceRatio;
-        public string sellLimitPriceRatio;
-    }
-
-    public class ResponseCandle
-    {
-        public string open;
-        public string high;
-        public string low;
-        public string close;
-        public string quoteVol;
-        public string baseVol;
-        public string usdtVol;
-        public string ts;
-    }
-
-    public class ResponseMyTrade
-    {
-        public string accountId;
-        public string symbol;
-        public string orderId;
-        public string fillId;
-        public string orderType;
-        public string side;
-        public string fillPrice;
-        public string fillQuantity;
-        public string fillTotalAmount;
+        public string holdSide;
+        public string openDelegateCount;
+        public string margin;
+        public string available;
+        public string locked;
+        public string total;
+        public string leverage;
+        public string achievedProfits;
+        public string averageOpenPrice;
+        public string marginMode;
+        public string holdMode;
+        public string unrealizedPL;
+        public string liquidationPrice;
+        public string keepMarginRate;
+        public string marketPrice;
         public string cTime;
-        public string feeCcy;
-        public string fees;
     }
 
-    public class ResponseOrder
+    public class RestMessageOrders
     {
-        public string accountId;
         public string symbol;
         public string orderId;
-        public string clientOrderId;
+        public string clientOid;
+        public string priceAvg;
+        public string status;
+        public string side;
+        public string orderType;
+        public string leverage;
+        public string size;
+        public string cTime;
         public string price;
-        public string quantity;
-        public string orderType;
-        public string side;
+    }
+
+    public class DataOrderStatus
+    {
+        public string symbol;
+        public string size;
+        public string orderId;
+        public string clientOid;
+        public string price;
         public string status;
-        public string fillPrice;
-        public string fillQuantity;
-        public string fillTotalAmount;
-        public string enterPointSource;
+        public string side;
+        public string orderType;
         public string cTime;
+    }
+
+    public class RestMyTradesResponce
+    {
+        public string code;
+
+        public string msg;
+
+        public List<DataMyTrades> data;
+    }
+
+    public class DataMyTrades
+    {
+        public string tradeId;
+        public string symbol;
+        public string orderId;
+        public string price;
+        public string size;
+        public FeeDetail feeDetail;
+        public string side;
+        public string cTime;
+        public string priceAvg;
+    }
+
+    public class FeeDetail
+    {
+        public string feeCoin;
+        public string totalFee;
     }
 }

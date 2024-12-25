@@ -41,6 +41,7 @@ namespace OsEngine.Robots.Screeners
             _tabScreener.CandleFinishedEvent += _screenerTab_CandleFinishedEvent;
 
             _tabScreener.CreateCandleIndicator(1, "Bollinger", new List<string>() { "100" }, "Prime");
+
             _tabScreener.CreateCandleIndicator(2, "Momentum", new List<string>() { "15" }, "Second");
 
             Regime = CreateParameter("Regime", "Off", new[] { "Off", "On", "OnlyClosePosition" });
@@ -207,13 +208,13 @@ namespace OsEngine.Robots.Screeners
 
                     if (serverPermission != null &&
                         serverPermission.IsUseLotToCalculateProfit &&
-                    tab.Securiti.Lot != 0 &&
-                        tab.Securiti.Lot > 1)
+                    tab.Security.Lot != 0 &&
+                        tab.Security.Lot > 1)
                     {
-                        volume = Volume.ValueDecimal / (contractPrice * tab.Securiti.Lot);
+                        volume = Volume.ValueDecimal / (contractPrice * tab.Security.Lot);
                     }
 
-                    volume = Math.Round(volume, tab.Securiti.DecimalsVolume);
+                    volume = Math.Round(volume, tab.Security.DecimalsVolume);
                 }
                 else // Tester or Optimizer
                 {
@@ -262,11 +263,11 @@ namespace OsEngine.Robots.Screeners
 
                 decimal moneyOnPosition = portfolioPrimeAsset * (Volume.ValueDecimal / 100);
 
-                decimal qty = moneyOnPosition / tab.PriceBestAsk / tab.Securiti.Lot;
+                decimal qty = moneyOnPosition / tab.PriceBestAsk / tab.Security.Lot;
 
                 if (tab.StartProgram == StartProgram.IsOsTrader)
                 {
-                    qty = Math.Round(qty, tab.Securiti.DecimalsVolume);
+                    qty = Math.Round(qty, tab.Security.DecimalsVolume);
                 }
                 else
                 {

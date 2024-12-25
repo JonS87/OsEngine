@@ -1240,22 +1240,25 @@ namespace OsEngine.Market.Servers
                 return null;
             }
 
-            for (int i = 0; i < _frequentlyUsedSecurities.Count; i++)
+            if(string.IsNullOrEmpty(securityClass) == false)
             {
-                if (_frequentlyUsedSecurities[i].Name == securityName &&
-                    _frequentlyUsedSecurities[i].NameClass == securityClass)
+                for (int i = 0; i < _frequentlyUsedSecurities.Count; i++)
                 {
-                    return _frequentlyUsedSecurities[i];
+                    if (_frequentlyUsedSecurities[i].Name == securityName &&
+                        _frequentlyUsedSecurities[i].NameClass == securityClass)
+                    {
+                        return _frequentlyUsedSecurities[i];
+                    }
                 }
-            }
 
-            for (int i = 0; i < _securities.Count; i++)
-            {
-                if (_securities[i].Name == securityName &&
-                    _securities[i].NameClass == securityClass)
+                for (int i = 0; i < _securities.Count; i++)
                 {
-                    _frequentlyUsedSecurities.Add(_securities[i]);
-                    return _securities[i];
+                    if (_securities[i].Name == securityName &&
+                        _securities[i].NameClass == securityClass)
+                    {
+                        _frequentlyUsedSecurities.Add(_securities[i]);
+                        return _securities[i];
+                    }
                 }
             }
 
@@ -1328,7 +1331,8 @@ namespace OsEngine.Market.Servers
                     if (_securities.Find(s =>
                             s != null &&
                             s.NameId == securities[i].NameId &&
-                            s.Name == securities[i].Name) == null)
+                            s.Name == securities[i].Name &&
+                            s.NameClass == securities[i].NameClass) == null)
                     {
                         bool isInArray = false;
 
@@ -2315,14 +2319,14 @@ namespace OsEngine.Market.Servers
         {
             while (true)
             {
-                if (LastStartServerTime.AddSeconds(WaitTimeToTradeAfterFirstStart) > DateTime.Now)
-                {
-                    await Task.Delay(1000);
-                    continue;
-                }
-
                 try
                 {
+                    if (LastStartServerTime.AddSeconds(WaitTimeToTradeAfterFirstStart) > DateTime.Now)
+                    {
+                        await Task.Delay(1000);
+                        continue;
+                    }
+
                     if (_ordersToExecute.IsEmpty == true)
                     {
                         await Task.Delay(1);

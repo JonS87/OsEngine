@@ -1,19 +1,17 @@
 using OsEngine.Entity;
-using OsEngine.Indicators;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace CustomIndicators.Scripts
+namespace OsEngine.Indicators
 {
-    /// <summary>
-    /// индикатор волатильности свеч в %-ах
-    /// </summary>
+    [Indicator("VolatilityCandles")]
     public class VolatilityCandles : Aindicator
     {
-
-        private IndicatorParameterInt _length;              
-        private IndicatorParameterDecimal _koeff;           
+        private IndicatorParameterInt _length;         
+        
+        private IndicatorParameterDecimal _koeff;      
+        
         private IndicatorDataSeries _series;                
 
         public override void OnStateChange(IndicatorState state)

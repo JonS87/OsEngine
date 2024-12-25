@@ -1,22 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-namespace OsEngine.Indicators.indicator
+namespace OsEngine.Indicators
 {
-    //[IndicatorAttribute("NRTR")]
-    internal class NRTR : Aindicator
+    [Indicator("NRTR")]
+    public class NRTR : Aindicator
     {
         private IndicatorParameterInt _period;
+
         private IndicatorParameterDecimal _deviation;
 
         private IndicatorDataSeries _seriesUp;
+
         private IndicatorDataSeries _seriesDown;
+
         private IndicatorDataSeries _seriesCenter;
 
-        int direction;
+        private int _direction;
+
         public override void OnStateChange(IndicatorState state)
         {
             _period = CreateParameterInt("Length", 15);
@@ -68,11 +70,10 @@ namespace OsEngine.Indicators.indicator
             _seriesUp.Values[index] = maxHigh * (1 - _deviation.ValueDecimal / 100);
             _seriesDown.Values[index] = minLow * (1 + _deviation.ValueDecimal / 100);
 
+            _direction = (closePrice > _seriesUp.Values[index - 1]) ? 1 :
+                    (closePricePrew < _seriesDown.Values[index - 1]) ? -1 : _direction;
 
-            direction = (closePrice > _seriesUp.Values[index - 1]) ? 1 :
-                    (closePricePrew < _seriesDown.Values[index - 1]) ? -1 : direction;
-
-            _seriesCenter.Values[index] = direction == 1 ? _seriesDown.Values[index] : _seriesUp.Values[index];
+            _seriesCenter.Values[index] = _direction == 1 ? _seriesDown.Values[index] : _seriesUp.Values[index];
         }
     }
 }

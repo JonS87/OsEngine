@@ -2,15 +2,16 @@
 using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-
-namespace CustomIndicators.Scripts
+namespace OsEngine.Indicators
 {
+    [Indicator("Trix")]
     public class Trix:Aindicator
     {
         public IndicatorDataSeries _series;
+
         public IndicatorParameterInt _period;
+
         public IndicatorParameterString _candlePoint;
 
         public override void OnStateChange(IndicatorState state)
@@ -27,6 +28,7 @@ namespace CustomIndicators.Scripts
         {
             _series.Values[index] = GetValue(candles,index);
         }
+
         private decimal GetValue(List<Candle> candles, int index)
         {
             if (index == 1)
@@ -94,6 +96,7 @@ namespace CustomIndicators.Scripts
             }
             return Math.Round(result, 8);
         }
+
         private decimal GetEma2(int index, List<decimal> list)
         {
             decimal result = 0;
@@ -124,6 +127,7 @@ namespace CustomIndicators.Scripts
             }
             return Math.Round(result, 8);
         }
+
         private decimal GetEma3(int index, List<decimal> list)
         {
             decimal result = 0;

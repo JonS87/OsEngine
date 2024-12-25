@@ -80,7 +80,7 @@ namespace OsEngine.OsTrader
                 ServerMaster.ActivateAutoConnection();
             }
 
-            ServerMaster.LogMessageEvent += SendNewLogMessage;
+            //ServerMaster.LogMessageEvent += SendNewLogMessage;
 
             _tabBotTab = tabBotTab;
 
@@ -714,7 +714,7 @@ namespace OsEngine.OsTrader
 
                 if (tabsWithMySecInAllBots.Count > 0)
                 {
-                    sec = tabsWithMySecInAllBots[0].Securiti;
+                    sec = tabsWithMySecInAllBots[0].Security;
                 }
 
                 if(sec != null)
@@ -907,7 +907,7 @@ namespace OsEngine.OsTrader
 
             if (tabsWithMySecInAllBots.Count > 0)
             {
-                sec = tabsWithMySecInAllBots[0].Securiti;
+                sec = tabsWithMySecInAllBots[0].Security;
             }
 
 

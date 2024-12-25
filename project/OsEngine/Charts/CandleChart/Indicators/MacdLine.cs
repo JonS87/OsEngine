@@ -278,9 +278,48 @@ namespace OsEngine.Charts.CandleChart.Indicators
             }
             ProcessAll(_myCandles);
 
-            if (NeadToReloadEvent != null)
+            if (NeedToReloadEvent != null)
             {
-                NeadToReloadEvent(this);
+                NeedToReloadEvent(this);
+            }
+        }
+
+        public int SmaShortLen
+        {
+            set
+            {
+                _maShort.Length = value;
+                ProcessAll(_myCandles);
+            }
+            get 
+            {
+                return _maShort.Length; 
+            }
+        }
+
+        public int SmaLongLen
+        {
+            set
+            {
+                _maLong.Length = value;
+                ProcessAll(_myCandles);
+            }
+            get 
+            { 
+                return _maLong.Length; 
+            }
+        }
+
+        public int SmaSignalLen
+        {
+            set
+            {
+                _maSignal.Length = value;
+                ProcessAll(_myCandles);
+            }
+            get
+            {
+                return _maSignal.Length;
             }
         }
 
@@ -294,9 +333,9 @@ namespace OsEngine.Charts.CandleChart.Indicators
 
             ProcessAll(_myCandles);
 
-            if (NeadToReloadEvent != null)
+            if (NeedToReloadEvent != null)
             {
-                NeadToReloadEvent(this);
+                NeedToReloadEvent(this);
             }
         }
 
@@ -310,9 +349,9 @@ namespace OsEngine.Charts.CandleChart.Indicators
 
             ProcessAll(_myCandles);
 
-            if (NeadToReloadEvent != null)
+            if (NeedToReloadEvent != null)
             {
-                NeadToReloadEvent(this);
+                NeedToReloadEvent(this);
             }
         }
 
@@ -326,9 +365,9 @@ namespace OsEngine.Charts.CandleChart.Indicators
 
             ProcessAll(_myCandles);
 
-            if (NeadToReloadEvent != null)
+            if (NeedToReloadEvent != null)
             {
-                NeadToReloadEvent(this);
+                NeedToReloadEvent(this);
             }
         }
         // calculating
@@ -393,7 +432,7 @@ namespace OsEngine.Charts.CandleChart.Indicators
         /// indicator needs to be redrawn
         /// индикатор нужно перерисовать
         /// </summary>
-        public event Action<IIndicator> NeadToReloadEvent;
+        public event Action<IIndicator> NeedToReloadEvent;
 
         /// <summary>
         /// load only last candle

@@ -2,13 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-namespace CustomIndicators.Scripts
+namespace OsEngine.Indicators
 {
-    class ATR : Aindicator
+    [Indicator("ATR")]
+    public class ATR : Aindicator
     {
-
         private IndicatorParameterInt _length;
 
         private IndicatorParameterString _typeSeries;

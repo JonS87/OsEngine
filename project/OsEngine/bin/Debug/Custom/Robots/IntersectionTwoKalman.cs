@@ -87,8 +87,8 @@ namespace OsEngine.Robots.AO
             // Create indicator KalmanFilter Slow
             _KalmanSlow = IndicatorsFactory.CreateIndicatorByName("KalmanFilter", name + "KalmanFilter Slow", false);
             _KalmanSlow = (Aindicator)_tab.CreateCandleIndicator(_KalmanSlow, "Prime");
-            ((IndicatorParameterDecimal)_KalmanFast.Parameters[0]).ValueDecimal = SharpnessSlow.ValueDecimal;
-            ((IndicatorParameterDecimal)_KalmanFast.Parameters[1]).ValueDecimal = CoefKSlow.ValueDecimal;
+            ((IndicatorParameterDecimal)_KalmanSlow.Parameters[0]).ValueDecimal = SharpnessSlow.ValueDecimal;
+            ((IndicatorParameterDecimal)_KalmanSlow.Parameters[1]).ValueDecimal = CoefKSlow.ValueDecimal;
             _KalmanSlow.Save();
 
             // Exit
@@ -114,8 +114,9 @@ namespace OsEngine.Robots.AO
             ((IndicatorParameterDecimal)_KalmanFast.Parameters[1]).ValueDecimal = CoefKFast.ValueDecimal;
             _KalmanFast.Save();
             _KalmanFast.Reload();
-            ((IndicatorParameterDecimal)_KalmanFast.Parameters[0]).ValueDecimal = SharpnessSlow.ValueDecimal;
-            ((IndicatorParameterDecimal)_KalmanFast.Parameters[1]).ValueDecimal = CoefKSlow.ValueDecimal;
+
+            ((IndicatorParameterDecimal)_KalmanSlow.Parameters[0]).ValueDecimal = SharpnessSlow.ValueDecimal;
+            ((IndicatorParameterDecimal)_KalmanSlow.Parameters[1]).ValueDecimal = CoefKSlow.ValueDecimal;
             _KalmanSlow.Save();
             _KalmanSlow.Reload();
         }
@@ -231,21 +232,21 @@ namespace OsEngine.Robots.AO
 
             for (int i = 0; openPositions != null && i < openPositions.Count; i++)
             {
-                Position positions = openPositions[i];
+                Position position = openPositions[i];
 
-                if (positions.State != PositionStateType.Open)
+                if (position.State != PositionStateType.Open)
                 {
                     continue;
                 }
 
-                if (positions.Direction == Side.Buy) // If the direction of the position is purchase
+                if (position.Direction == Side.Buy) // If the direction of the position is purchase
                 {
                     decimal price = GetPriceStop(Side.Buy, candles, candles.Count - 1);
                     if (price == 0)
                     {
                         return;
                     }
-                    _tab.CloseAtTrailingStop(openPositions[0], price, price - _slippage);
+                    _tab.CloseAtTrailingStop(position, price, price - _slippage);
                 }
                 else // If the direction of the position is sale
                 {
@@ -254,7 +255,7 @@ namespace OsEngine.Robots.AO
                     {
                         return;
                     }
-                    _tab.CloseAtTrailingStop(openPositions[0], price, price + _slippage);
+                    _tab.CloseAtTrailingStop(position, price, price + _slippage);
                 }
             }
         }

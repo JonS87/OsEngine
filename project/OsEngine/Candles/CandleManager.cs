@@ -179,12 +179,16 @@ namespace OsEngine.Entity
                             if (series.CandleMarketDataType == CandleMarketDataType.MarketDepth)
                             {
                                 if (_activSeriesBasedOnMd != null)
+                                {
                                     _activSeriesBasedOnMd.Add(series);
+                                }
                             }
                             else if (series.CandleMarketDataType == CandleMarketDataType.Tick)
                             {
                                 if (_activSeriesBasedOnTrades != null)
+                                {
                                     _activSeriesBasedOnTrades.Add(series);
+                                }
                             }
 
                             continue;
@@ -247,27 +251,6 @@ namespace OsEngine.Entity
                                  serverType == ServerType.BitStamp
                             )
                         {
-                            series.IsStarted = true;
-                        }
-                        else if (serverType == ServerType.BitMex)
-                        {
-                            BitMexServer bitMex = (BitMexServer)_server;
-                            if (series.CandleCreateMethodType != "Simple" ||
-                                series.TimeFrameSpan.TotalMinutes < 1)
-                            {
-                                List<Trade> allTrades = _server.GetAllTradesToSecurity(series.Security);
-                                series.PreLoad(allTrades);
-                            }
-                            else
-                            {
-                                List<Candle> candles = bitMex.GetBitMexCandleHistory(series.Security.Name,
-                                    series.TimeFrameSpan);
-                                if (candles != null)
-                                {
-                                    series.CandlesAll = candles;
-                                }
-                            }
-                            series.UpdateAllCandles();
                             series.IsStarted = true;
                         }
                         else if (serverType == ServerType.Kraken)

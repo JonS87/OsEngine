@@ -2,19 +2,22 @@
 using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-namespace OsEngine.Charts.CandleChart.Indicators.Indicator
+namespace OsEngine.Indicators
 {
-    //[IndicatorAttribute("StochasticMomentumIndex")]
-    internal class StochasticMomentumIndex : Aindicator
+    [Indicator("StochasticMomentumIndex")]
+    public class StochasticMomentumIndex : Aindicator
     {
         public IndicatorParameterInt Period1;
+
         public IndicatorParameterInt Period2;
+
         public IndicatorParameterInt Period3;
+
         public IndicatorParameterInt Period4;
 
         public IndicatorDataSeries SeriesOne;
+
         public IndicatorDataSeries SeriesTwo;
 
         public override void OnStateChange(IndicatorState state)
@@ -48,29 +51,20 @@ namespace OsEngine.Charts.CandleChart.Indicators.Indicator
             }
         }
 
-
-        //Close- High + Low
         private List<decimal> _dm;
 
-        // High - Low
         private List<decimal> _diff;
 
-        // 1 сглаживание Close - High + Low
         private List<decimal> _dm1;
 
-        // 1 средняя для сглаживания High - low
         private List<decimal> _diff1;
 
-        // 2 сглаживание Close - High + Low
         private List<decimal> _dm2;
 
-        // 2 средняя для сглаживания High - low
         private List<decimal> _diff2;
 
-        // первая линия
         private List<decimal> _diffS;
 
-        //средняя для сглаживания _diffs
         private List<decimal> _diffS2;
 
         public override void OnProcess(List<Candle> candles, int index)
@@ -215,4 +209,3 @@ namespace OsEngine.Charts.CandleChart.Indicators.Indicator
         }
     }
 }
-

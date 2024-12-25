@@ -2,14 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-namespace CustomIndicators.Scripts
+namespace OsEngine.Indicators
 {
+    [Indicator("ParabolicSAR")]
     public class ParabolicSAR : Aindicator
     {
         private IndicatorParameterDecimal _maxAf;
+
         private IndicatorParameterDecimal _af;
+
         private IndicatorDataSeries _series;
 
         public override void OnStateChange(IndicatorState state)
@@ -55,8 +57,8 @@ namespace CustomIndicators.Scripts
                 if (MasAf != null)
                 MasAf.Clear();
 
-                if(psar != null)
-                psar.Clear();
+                if(Psar != null)
+                Psar.Clear();
             }
 
             Process(candles);
@@ -64,17 +66,21 @@ namespace CustomIndicators.Scripts
             _series.Values[index] = _values[index];
         }
 
-        // рассчёт индикатоа
-
         private List<decimal> _valuesUp = new List<decimal>();
+
         private List<decimal> _valuesDown = new List<decimal>();
+
         private List<decimal> _values = new List<decimal>();
 
         public List<decimal> MasTrend { get; set; }
+
         public List<decimal> MasHp { get; set; }
+
         public List<decimal> MasLp { get; set; }
+
         public List<decimal> MasAf { get; set; }
-        public List<decimal> psar { get; set; }
+
+        public List<decimal> Psar { get; set; }
 
         public void Process(List<Candle> candles)
         {
@@ -105,7 +111,7 @@ namespace CustomIndicators.Scripts
             if (MasHp == null) MasHp = new List<decimal>();
             if (MasLp == null) MasLp = new List<decimal>();
             if (MasAf == null) MasAf = new List<decimal>();
-            if (psar == null) psar = new List<decimal>();
+            if (Psar == null) Psar = new List<decimal>();
 
             if (_values == null) _values = new List<decimal>();
             if (_valuesUp == null) _valuesUp = new List<decimal>();

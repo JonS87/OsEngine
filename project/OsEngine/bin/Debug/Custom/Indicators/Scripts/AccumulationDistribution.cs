@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-namespace CustomIndicators.Scripts
+namespace OsEngine.Indicators
 {
+    [Indicator("AccumulationDistribution")]
     public class AccumulationDistribution : Aindicator
     {
         private IndicatorDataSeries _series;
-
 
         public override void OnStateChange(IndicatorState state)
         {
@@ -18,6 +17,7 @@ namespace CustomIndicators.Scripts
                 _series = CreateSeries("A D", Color.Aqua, IndicatorChartPaintType.Line, true);
             }
         }
+
         public override void OnProcess(List<Candle> candles, int index)
         {
             _series.Values[index] = GetValue(candles, index);

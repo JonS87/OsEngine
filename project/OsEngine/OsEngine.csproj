@@ -450,10 +450,17 @@
     <Compile Include="Entity\ProxyHolderAddUi.xaml.cs">
       <DependentUpon>ProxyHolderAddUi.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Indicators\IndicatorDataSeries.cs" />
+    <Compile Include="Indicators\Samples\Sample1Blank.cs" />
+    <Compile Include="Indicators\Samples\Sample2IndicatorParameters.cs" />
+    <Compile Include="Indicators\Samples\Sample3IndicatorDataSeries.cs" />
     <Compile Include="Logging\ServerTelegram.cs" />
     <Compile Include="Logging\ServerTelegramUi.xaml.cs">
       <DependentUpon>ServerTelegramUi.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Market\Servers\BitMex\BitMexEntity\BitMexAsset.cs" />
+    <Compile Include="Market\Servers\BitMex\BitMexEntity\BitMexCandle.cs" />
+    <Compile Include="Market\Servers\BitMex\BitMexServerPermission.cs" />
     <Compile Include="Market\Servers\ComparePositionsModule.cs" />
     <Compile Include="Market\Servers\AServerOrdersHub.cs" />
     <Compile Include="Market\Servers\AstsBridge\SecurityLevelOne.cs" />
@@ -615,8 +622,7 @@
     <Compile Include="Market\Servers\BitMax\BitMaxProClient.cs" />
     <Compile Include="Market\Servers\BitMax\BitMaxProServer.cs" />
     <Compile Include="Market\Servers\BitMax\BitMaxServerPermission.cs" />
-    <Compile Include="Market\Servers\BitMex\BitMexClient.cs" />
-    <Compile Include="Market\Servers\BitMex\BitMexEntity\BitMexMyOrders.cs" />
+    <Compile Include="Market\Servers\BitMex\BitMexEntity\BitMexMyTrade.cs" />
     <Compile Include="Market\Servers\BitMex\BitMexEntity\BitMexOrder.cs" />
     <Compile Include="Market\Servers\BitMex\BitMexEntity\BitMexPortfolio.cs" />
     <Compile Include="Market\Servers\BitMex\BitMexEntity\BitMexPosition.cs" />
@@ -645,11 +651,10 @@
     <Compile Include="Market\Servers\Entity\ServerParameter.cs" />
     <Compile Include="Market\Servers\ExMo\ExmoClient.cs" />
     <Compile Include="Market\Servers\ExMo\ExmoServer.cs" />
+    <Compile Include="Market\Servers\Finam\Entity\FinamDataSeries.cs" />
+    <Compile Include="Market\Servers\Finam\Entity\FinamSecurity.cs" />
     <Compile Include="Market\Servers\Finam\FinamServer.cs" />
     <Compile Include="Market\Servers\Finam\FinamServerPermission.cs" />
-    <Compile Include="Market\Servers\Finam\FinamServerUi.xaml.cs">
-      <DependentUpon>FinamServerUi.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Market\Servers\FixProtocolEntities\Field.cs" />
     <Compile Include="Market\Servers\FixProtocolEntities\FixEntity.cs" />
     <Compile Include="Market\Servers\FixProtocolEntities\FixMessage.cs" />
@@ -710,6 +715,11 @@
     <Compile Include="Market\Servers\IServerPermission.cs" />
     <Compile Include="Market\Servers\IServerRealization.cs" />
     <Compile Include="Market\Servers\Entity\RateGate.cs" />
+    <Compile Include="Market\Servers\KiteConnect\Json\DepthItem.cs" />
+    <Compile Include="Market\Servers\KiteConnect\Json\ResponseRestKite.cs" />
+    <Compile Include="Market\Servers\KiteConnect\Json\ResponseWebSocketKiteConnect.cs" />
+    <Compile Include="Market\Servers\KiteConnect\KiteConnectServer.cs" />
+    <Compile Include="Market\Servers\KiteConnect\KiteConnectServerPermission.cs" />
     <Compile Include="Market\Servers\Kraken\KrakenClient.cs" />
     <Compile Include="Market\Servers\Kraken\KrakenEntity\EnumerableExtensions.cs" />
     <Compile Include="Market\Servers\Kraken\KrakenEntity\KrakenOrder.cs" />
@@ -793,6 +803,15 @@
     <Compile Include="Market\Servers\Lmax\LmaxFixClient.cs" />
     <Compile Include="Market\Servers\Lmax\LmaxServer.cs" />
     <Compile Include="Market\Servers\Lmax\Tags.cs" />
+    <Compile Include="Market\Servers\Mexc\Entity\MexcClient.cs" />
+    <Compile Include="Market\Servers\Mexc\Entity\MexcOrdersRest.cs" />
+    <Compile Include="Market\Servers\Mexc\Entity\MexcPortfolioRest.cs" />
+    <Compile Include="Market\Servers\Mexc\Entity\MexcPortfolioSocket.cs" />
+    <Compile Include="Market\Servers\Mexc\Entity\MexcSecurityRest.cs" />
+    <Compile Include="Market\Servers\Mexc\Entity\MexcSecuritySocket.cs" />
+    <Compile Include="Market\Servers\Mexc\Entity\MexcSubscribleSocket.cs" />
+    <Compile Include="Market\Servers\Mexc\Mexc.cs" />
+    <Compile Include="Market\Servers\Mexc\MexcPermission.cs" />
     <Compile Include="Market\Servers\MFD\MfdServer.cs" />
     <Compile Include="Market\Servers\MFD\MfdServerPermission.cs" />
     <Compile Include="Market\Servers\MoexAlgopack\Entity\MoexAlgopackAuth.cs" />
@@ -847,18 +866,13 @@
     <Compile Include="Market\Servers\NinjaTrader\NinjaTraderClient.cs" />
     <Compile Include="Market\Servers\NinjaTrader\NinjaTraderServer.cs" />
     <Compile Include="Market\Servers\OKX\Entity\CandlesResponce.cs" />
-    <Compile Include="Market\Servers\OKX\Entity\DepthResponse.cs" />
     <Compile Include="Market\Servers\OKX\Entity\Encryptor.cs" />
-    <Compile Include="Market\Servers\OKX\Entity\ErrorMessage.cs" />
     <Compile Include="Market\Servers\OKX\Entity\HttpInterceptor.cs" />
-    <Compile Include="Market\Servers\OKX\Entity\InstIdOrdId.cs" />
-    <Compile Include="Market\Servers\OKX\Entity\ObjectChanel.cs" />
-    <Compile Include="Market\Servers\OKX\Entity\OrderRequest.cs" />
-    <Compile Include="Market\Servers\OKX\Entity\PorfolioResponse.cs" />
     <Compile Include="Market\Servers\OKX\Entity\RequestSubscribe.cs" />
+    <Compile Include="Market\Servers\OKX\Entity\ResponseRestMessage.cs" />
+    <Compile Include="Market\Servers\OKX\Entity\ResponseWsMessageAction.cs" />
     <Compile Include="Market\Servers\OKX\Entity\SecurityResponce.cs" />
     <Compile Include="Market\Servers\OKX\Entity\TradeDetailsResponce.cs" />
-    <Compile Include="Market\Servers\OKX\Entity\TradeResponse.cs" />
     <Compile Include="Market\Servers\OKX\OkxServer.cs" />
     <Compile Include="Market\Servers\OKX\OkxServerPermission.cs" />
     <Compile Include="Market\Servers\Optimizer\OptimizerServer.cs" />
@@ -941,6 +955,12 @@
     <Compile Include="Market\Servers\Miner\OsMinerServer.cs" />
     <Compile Include="Market\Servers\TinkoffInvestments\TinkoffServer.cs" />
     <Compile Include="Market\Servers\TinkoffInvestments\TinkoffServerPermission.cs" />
+    <Compile Include="Market\Servers\TraderNet\Entity\RequestCandle.cs" />
+    <Compile Include="Market\Servers\TraderNet\Entity\RequestSecurity.cs" />
+    <Compile Include="Market\Servers\TraderNet\Entity\ResponseRestMessage.cs" />
+    <Compile Include="Market\Servers\TraderNet\Entity\ResponseWebSocketMessageAction.cs" />
+    <Compile Include="Market\Servers\TraderNet\TraderNetServer.cs" />
+    <Compile Include="Market\Servers\TraderNet\TraderNetServerPermission.cs" />
     <Compile Include="Market\Servers\Transaq\ChangeTransaqPassword.xaml.cs">
       <DependentUpon>ChangeTransaqPassword.xaml</DependentUpon>
     </Compile>
@@ -1056,9 +1076,16 @@
     <Compile Include="OsData\OsDataSetUi.xaml.cs">
       <DependentUpon>OsDataSetUi.xaml</DependentUpon>
     </Compile>
+    <Compile Include="OsTrader\Gui\BlockInterface\BlockMaster.cs" />
+    <Compile Include="OsTrader\Gui\BlockInterface\RobotsUiLightUnblock.xaml.cs">
+      <DependentUpon>RobotsUiLightUnblock.xaml</DependentUpon>
+    </Compile>
     <Compile Include="OsTrader\Gui\BotTabsPainter.cs" />
     <Compile Include="OsTrader\Gui\RobotUiLight.xaml.cs">
       <DependentUpon>RobotUiLight.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OsTrader\Gui\BlockInterface\RobotUiLightBlock.xaml.cs">
+      <DependentUpon>RobotUiLightBlock.xaml</DependentUpon>
     </Compile>
     <Compile Include="OsTrader\Gui\TesterUiLight.xaml.cs">
       <DependentUpon>TesterUiLight.xaml</DependentUpon>
@@ -1136,6 +1163,24 @@
       <DependentUpon>BotCreateUi2.xaml</DependentUpon>
     </Compile>
     <Compile Include="Robots\BotFactory.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson1HelloWorld.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson2Bot1.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson2Bot2.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson3Bot1.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson3Bot2.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson3Bot3.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson4Bot1.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson5Bot1.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson5Bot2.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson6Bot1.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson7Bot1.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson8Bot1.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson8Bot2.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson9Bot1.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson9Bot2.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson9Bot3.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson9Bot4.cs" />
+    <Compile Include="Robots\BotsFromStartLessons\Lesson9Bot5.cs" />
     <Compile Include="Robots\CounterTrend\ClusterCountertrend.cs" />
     <Compile Include="Robots\MyDoubleEmaBot.cs" />
     <Compile Include="Robots\MyEmaScreenerOnIndexVolatility.cs" />
@@ -1213,12 +1258,6 @@
     <Compile Include="Robots\Trend\StrategyBillWilliams.cs" />
     <Compile Include="Robots\CounterTrend\StrategyBollingerUi.xaml.cs">
       <DependentUpon>StrategyBollingerUi.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Robots\Trend\MomentumMacdUi.xaml.cs">
-      <DependentUpon>MomentumMacdUi.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Robots\Trend\ParabolicSarTradeUi.xaml.cs">
-      <DependentUpon>ParabolicSarTradeUi.xaml</DependentUpon>
     </Compile>
     <Compile Include="Robots\Patterns\PivotPointsRobotUi.xaml.cs">
       <DependentUpon>PivotPointsRobotUi.xaml</DependentUpon>
@@ -1570,10 +1609,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Market\Servers\Finam\FinamServerUi.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="Market\Servers\InteractiveBrokers\IbContractStorageUi.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -1714,7 +1749,15 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="OsTrader\Gui\BlockInterface\RobotsUiLightUnblock.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="OsTrader\Gui\RobotUiLight.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="OsTrader\Gui\BlockInterface\RobotUiLightBlock.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -1779,14 +1822,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Robots\MarketMaker\PairTraderSimpleUi.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Robots\Trend\MomentumMacdUi.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Robots\Trend\ParabolicSarTradeUi.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -1973,6 +2008,10 @@
     <Resource Include="Images\MainWIndow\gear.png" />
   </ItemGroup>
   <ItemGroup>
+    <Resource Include="Images\padlockClosed.png" />
+    <Resource Include="Images\padlockOpened.png" />
+    <Resource Include="Images\eye.png" />
+    <Resource Include="Images\eyeBig.png" />
     <Content Include="lua\clibs64\5.1_MD\socket\core.dll" />
     <Content Include="lua\clibs64\5.1_MT\socket\core.dll" />
     <Content Include="lua\clibs64\53_MD\socket\core.dll" />

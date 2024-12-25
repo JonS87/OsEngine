@@ -1,24 +1,18 @@
 ﻿using OsEngine.Entity;
-using OsEngine.Indicators;
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace OsEngine.Charts.CandleChart.Indicators.Indicator
+namespace OsEngine.Indicators
 {
-    //[IndicatorAttribute("DPO_Detrended_Price_Oscillator")]
-    internal class DPO_Detrended_Price_Oscillator : Aindicator
+    [Indicator("DPO_Detrended_Price_Oscillator")]
+    public class DPO_Detrended_Price_Oscillator : Aindicator
     {
-        ///period for which the indicator is calculated
-        /// </summary>
         private IndicatorParameterInt _lengthSma;
-        /// <summary>
-        /// Type close price
-        /// </summary>
+
         private IndicatorParameterString _candlePoint;
-        /// <summary>
-        /// indicator data series
-        /// </summary>
+
         private IndicatorDataSeries _series;
+
         public override void OnStateChange(IndicatorState state)
         {
             if (state == IndicatorState.Configure)
@@ -28,6 +22,7 @@ namespace OsEngine.Charts.CandleChart.Indicators.Indicator
                 _series = CreateSeries("Ma", Color.DodgerBlue, IndicatorChartPaintType.Line, true);
             }
         }
+
         public override void OnProcess(List<Candle> candles, int index)
         {
             if (index < _lengthSma.ValueInt)

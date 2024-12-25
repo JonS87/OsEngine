@@ -816,19 +816,86 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// </summary>
         private void UpdateTabSettings(BotTabSimple tab)
         {
-            tab.Connector.PortfolioName = PortfolioName;
-            tab.Connector.ServerType = ServerType;
-            tab.Connector.EmulatorIsOn = _emulatorIsOn;
-            tab.Connector.CandleMarketDataType = CandleMarketDataType;
-            tab.Connector.CandleCreateMethodType = CandleCreateMethodType;
-            tab.Connector.TimeFrame = this.TimeFrame;
-            tab.Connector.TimeFrameBuilder.CandleSeriesRealization.SetSaveString(CandleSeriesRealization.GetSaveString());
-            tab.Connector.SaveTradesInCandles = SaveTradesInCandles;
-            tab.Connector.ComissionType = ComissionType;
-            tab.Connector.ComissionValue = ComissionValue;
-            tab.ComissionType = ComissionType;
-            tab.ComissionValue = ComissionValue;
+            bool haveNewSettings = false;
+
+            if(tab.Connector.PortfolioName != PortfolioName)
+            {
+                tab.Connector.PortfolioName = PortfolioName;
+                haveNewSettings = true;
+            }
+            
+            if (tab.Connector.ServerType != ServerType)
+            {
+                tab.Connector.ServerType = ServerType;
+                haveNewSettings = true;
+            }
+
+            if(tab.Connector.EmulatorIsOn != _emulatorIsOn)
+            {
+                tab.Connector.EmulatorIsOn = _emulatorIsOn;
+                haveNewSettings = true;
+            }
+            
+            if(tab.Connector.CandleMarketDataType != CandleMarketDataType)
+            {
+                tab.Connector.CandleMarketDataType = CandleMarketDataType;
+                haveNewSettings = true;
+            }
+            
+            if(tab.Connector.CandleCreateMethodType != CandleCreateMethodType)
+            {
+                tab.Connector.CandleCreateMethodType = CandleCreateMethodType;
+                haveNewSettings = true;
+            }
+            
+            if(tab.Connector.TimeFrame != this.TimeFrame)
+            {
+                tab.Connector.TimeFrame = this.TimeFrame;
+                haveNewSettings = true;
+            }
+            
+            if (tab.Connector.TimeFrameBuilder.CandleSeriesRealization.GetSaveString() != CandleSeriesRealization.GetSaveString())
+            {
+                tab.Connector.TimeFrameBuilder.CandleSeriesRealization.SetSaveString(CandleSeriesRealization.GetSaveString());
+                haveNewSettings = true;
+            }
+            
+            if (tab.Connector.SaveTradesInCandles != SaveTradesInCandles)
+            {
+                tab.Connector.SaveTradesInCandles = SaveTradesInCandles;
+                haveNewSettings = true;
+            }
+           
+            if(tab.Connector.CommissionType != ComissionType)
+            {
+                tab.Connector.CommissionType = ComissionType;
+                haveNewSettings = true;
+            }
+            
+            if(tab.Connector.CommissionValue != ComissionValue)
+            {
+                tab.Connector.CommissionValue = ComissionValue;
+                haveNewSettings = true;
+            }
+           
+            if(tab.CommissionType != ComissionType)
+            {
+                tab.CommissionType = ComissionType;
+                haveNewSettings = true;
+            }
+            
+            if(tab.CommissionValue != ComissionValue)
+            {
+                tab.CommissionValue = ComissionValue;
+                haveNewSettings = true;
+            }
+           
             tab.IsCreatedByScreener = true;
+
+            if(haveNewSettings)
+            {
+                tab.Connector.ReconnectHard();
+            }
         }
 
         /// <summary>
@@ -869,8 +936,8 @@ namespace OsEngine.OsTrader.Panels.Tab
             newTab.Connector.TimeFrameBuilder.CandleSeriesRealization.SetSaveString(CandleSeriesRealization.GetSaveString());
             newTab.Connector.TimeFrameBuilder.CandleSeriesRealization.OnStateChange(CandleSeriesState.ParametersChange);
             newTab.Connector.SaveTradesInCandles = SaveTradesInCandles;
-            newTab.ComissionType = ComissionType;
-            newTab.ComissionValue = ComissionValue;
+            newTab.CommissionType = ComissionType;
+            newTab.CommissionValue = ComissionValue;
             newTab.IsCreatedByScreener = true;
 
             curTabs.Add(newTab);
@@ -1624,25 +1691,28 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                 try
                 {
-                    if (ind.Params != null && ind.Params.Count != 0)
+                    if(ind.Params.Count == newIndicator.Parameters.Count)
                     {
-                        for (int i2 = 0; i2 < ind.Params.Count; i2++)
+                        if (ind.Params != null && ind.Params.Count != 0)
                         {
-                            if (newIndicator.Parameters[i2].Type == IndicatorParameterType.Int)
+                            for (int i2 = 0; i2 < ind.Params.Count; i2++)
                             {
-                                ((IndicatorParameterInt)newIndicator.Parameters[i2]).ValueInt = Convert.ToInt32(ind.Params[i2]);
-                            }
-                            if (newIndicator.Parameters[i2].Type == IndicatorParameterType.Decimal)
-                            {
-                                ((IndicatorParameterDecimal)newIndicator.Parameters[i2]).ValueDecimal = Convert.ToDecimal(ind.Params[i2]);
-                            }
-                            if (newIndicator.Parameters[i2].Type == IndicatorParameterType.Bool)
-                            {
-                                ((IndicatorParameterBool)newIndicator.Parameters[i2]).ValueBool = Convert.ToBoolean(ind.Params[i2]);
-                            }
-                            if (newIndicator.Parameters[i2].Type == IndicatorParameterType.String)
-                            {
-                                ((IndicatorParameterString)newIndicator.Parameters[i2]).ValueString = ind.Params[i2];
+                                if (newIndicator.Parameters[i2].Type == IndicatorParameterType.Int)
+                                {
+                                    ((IndicatorParameterInt)newIndicator.Parameters[i2]).ValueInt = Convert.ToInt32(ind.Params[i2]);
+                                }
+                                if (newIndicator.Parameters[i2].Type == IndicatorParameterType.Decimal)
+                                {
+                                    ((IndicatorParameterDecimal)newIndicator.Parameters[i2]).ValueDecimal = Convert.ToDecimal(ind.Params[i2]);
+                                }
+                                if (newIndicator.Parameters[i2].Type == IndicatorParameterType.Bool)
+                                {
+                                    ((IndicatorParameterBool)newIndicator.Parameters[i2]).ValueBool = Convert.ToBoolean(ind.Params[i2]);
+                                }
+                                if (newIndicator.Parameters[i2].Type == IndicatorParameterType.String)
+                                {
+                                    ((IndicatorParameterString)newIndicator.Parameters[i2]).ValueString = ind.Params[i2];
+                                }
                             }
                         }
                     }
@@ -1688,10 +1758,10 @@ namespace OsEngine.OsTrader.Panels.Tab
             second.ManualPositionSupport.SecondToClose = first.ManualPositionSupport.SecondToClose;
             second.ManualPositionSupport.SecondToOpen = first.ManualPositionSupport.SecondToOpen;
             second.ManualPositionSupport.DoubleExitIsOn = first.ManualPositionSupport.DoubleExitIsOn;
-            second.ManualPositionSupport.DoubleExitSlipage = first.ManualPositionSupport.DoubleExitSlipage;
+            second.ManualPositionSupport.DoubleExitSlippage = first.ManualPositionSupport.DoubleExitSlippage;
             second.ManualPositionSupport.ProfitDistance = first.ManualPositionSupport.ProfitDistance;
             second.ManualPositionSupport.ProfitIsOn = first.ManualPositionSupport.ProfitIsOn;
-            second.ManualPositionSupport.ProfitSlipage = first.ManualPositionSupport.ProfitSlipage;
+            second.ManualPositionSupport.ProfitSlippage = first.ManualPositionSupport.ProfitSlippage;
             second.ManualPositionSupport.SecondToCloseIsOn = first.ManualPositionSupport.SecondToCloseIsOn;
             second.ManualPositionSupport.SecondToOpenIsOn = first.ManualPositionSupport.SecondToOpenIsOn;
             second.ManualPositionSupport.SetbackToCloseIsOn = first.ManualPositionSupport.SetbackToCloseIsOn;
@@ -1700,7 +1770,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             second.ManualPositionSupport.SetbackToOpenPosition = first.ManualPositionSupport.SetbackToOpenPosition;
             second.ManualPositionSupport.StopDistance = first.ManualPositionSupport.StopDistance;
             second.ManualPositionSupport.StopIsOn = first.ManualPositionSupport.StopIsOn;
-            second.ManualPositionSupport.StopSlipage = first.ManualPositionSupport.StopSlipage;
+            second.ManualPositionSupport.StopSlippage = first.ManualPositionSupport.StopSlippage;
             second.ManualPositionSupport.TypeDoubleExitOrder = first.ManualPositionSupport.TypeDoubleExitOrder;
             second.ManualPositionSupport.ValuesType = first.ManualPositionSupport.ValuesType;
             second.ManualPositionSupport.OrderTypeTime = first.ManualPositionSupport.OrderTypeTime;

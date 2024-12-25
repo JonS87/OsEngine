@@ -15,7 +15,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
-using WebSocket4Net;
+using WebSocketSharp;
 
 namespace OsEngine.Market.Servers.Alor
 {
@@ -26,7 +26,7 @@ namespace OsEngine.Market.Servers.Alor
             AlorServerRealization realization = new AlorServerRealization();
             ServerRealization = realization;
 
-            CreateParameterString(OsLocalization.Market.ServerParamToken, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParamToken, ""); //
             CreateParameterString(OsLocalization.Market.Label112, "");
             CreateParameterString(OsLocalization.Market.Label113, "");
             CreateParameterString(OsLocalization.Market.Label114, "");
@@ -46,31 +46,34 @@ namespace OsEngine.Market.Servers.Alor
         public AlorServerRealization()
         {
             Thread worker = new Thread(ConnectionCheckThread);
-            worker.Name = "CheckAliveAlor";
+            worker.Name = "AlorCheckAlive";
             worker.Start();
 
             Thread worker2 = new Thread(DataMessageReader);
-            worker2.Name = "DataMessageReaderAlor";
+            worker2.Name = "AlorDataMessageReader";
             worker2.Start();
 
             Thread worker3 = new Thread(PortfolioMessageReader);
-            worker3.Name = "PortfolioMessageReaderAlor";
+            worker3.Name = "AlorPortfolioMessageReader";
             worker3.Start();
+
+            Thread worker4 = new Thread(KeepaliveUserDataStream);
+            worker4.Name = "AlorKeepaliveUserDataStream";
+            worker4.Start();
         }
 
         public void Connect()
         {
             try
             {
-                
                 _securities.Clear();
-                _myPortfolious.Clear();
+                _myPortfolios.Clear();
                 _subscribledSecurities.Clear();
                 _lastGetLiveTimeToketTime = DateTime.MinValue;
 
                 SendLogMessage("Start Alor Connection", LogMessageType.System);
 
-                _apiTokenRefresh = ((ServerParameterString)ServerParameters[0]).Value;
+                _apiTokenRefresh = ((ServerParameterPassword)ServerParameters[0]).Value;
                 _portfolioSpotId = ((ServerParameterString)ServerParameters[1]).Value;
                 _portfolioFutId = ((ServerParameterString)ServerParameters[2]).Value;
                 _portfolioCurrencyId = ((ServerParameterString)ServerParameters[3]).Value;
@@ -170,7 +173,7 @@ namespace OsEngine.Market.Servers.Alor
         public void Dispose()
         {
             _securities.Clear();
-            _myPortfolious.Clear();
+            _myPortfolios.Clear();
             _lastGetLiveTimeToketTime = DateTime.MinValue;
 
             DeleteWebSocketConnection();
@@ -583,7 +586,7 @@ namespace OsEngine.Market.Servers.Alor
 
         #region 4 Portfolios
 
-        private List<Portfolio> _myPortfolious = new List<Portfolio>();
+        private List<Portfolio> _myPortfolios = new List<Portfolio>();
 
         public void GetPortfolios()
         {
@@ -607,11 +610,11 @@ namespace OsEngine.Market.Servers.Alor
                 GetCurrentPortfolio(_portfolioSpareId, "SPARE");
             }
 
-            if(_myPortfolious.Count != 0)
+            if(_myPortfolios.Count != 0)
             {
                 if(PortfolioEvent != null)
                 {
-                    PortfolioEvent(_myPortfolious);
+                    PortfolioEvent(_myPortfolios);
                 }
             }
 
@@ -655,7 +658,7 @@ namespace OsEngine.Market.Servers.Alor
             Portfolio newPortfolio = new Portfolio();
             newPortfolio.Number = name + "_" + prefix;
             newPortfolio.ValueCurrent = portfolio.buyingPower.ToDecimal();
-            _myPortfolious.Add(newPortfolio);
+            _myPortfolios.Add(newPortfolio);
         }
 
         public event Action<List<Portfolio>> PortfolioEvent;
@@ -732,11 +735,16 @@ namespace OsEngine.Market.Servers.Alor
                 startTime = actualTime;
             }
 
+            DateTime requestedStartTime = startTime;
+
             List<Candle> candles = new List<Candle>();
 
             TimeSpan additionTime = TimeSpan.FromMinutes(timeFrameBuilder.TimeFrameTimeSpan.TotalMinutes * 2500);
 
             DateTime endTimeReal = startTime.Add(additionTime);
+
+            if (endTimeReal > endTime) 
+                endTimeReal = endTime;
 
             while (startTime < endTime)
             {
@@ -767,6 +775,9 @@ namespace OsEngine.Market.Servers.Alor
 
                 startTime = realStart;
                 endTimeReal = realStart.Add(additionTime);
+
+                if (endTimeReal > endTime)
+                    endTimeReal = endTime;
             }
 
             while (candles != null &&
@@ -774,6 +785,13 @@ namespace OsEngine.Market.Servers.Alor
                 candles[candles.Count - 1].TimeStart > endTime)
             {
                 candles.RemoveAt(candles.Count - 1);
+            }
+
+            while (candles != null &&
+                candles.Count != 0 && 
+                candles[0].TimeStart < requestedStartTime)
+            {
+                candles.RemoveAt(0);
             }
 
             return candles;
@@ -869,6 +887,7 @@ namespace OsEngine.Market.Servers.Alor
 
         public List<Trade> GetTickDataToSecurity(Security security, DateTime startTime, DateTime endTime, DateTime actualTime)
         {
+            return null; // так как указано, что данные не поддерживаются
 
             List<Trade> trades = new List<Trade>();
 
@@ -985,16 +1004,9 @@ namespace OsEngine.Market.Servers.Alor
 
         private string GetGuid()
         {
-            lock (_guidLocker)
-            {
-                iterator++;
-                return iterator.ToString();
-            }
+            Guid newUid = Guid.NewGuid();
+            return newUid.ToString();
         }
-
-        int iterator = 0;
-
-        string _guidLocker = "guidLocker";
 
         private void CreateWebSocketConnection()
         {
@@ -1017,30 +1029,27 @@ namespace OsEngine.Market.Servers.Alor
                     WebSocketPortfolioMessage = new ConcurrentQueue<string>();
 
                     _webSocketData = new WebSocket(_wsHost);
-                    _webSocketData.EnableAutoSendPing = true;
-                    _webSocketData.AutoSendPingInterval = 10;
-                    _webSocketData.Opened += WebSocketData_Opened;
-                    _webSocketData.Closed += WebSocketData_Closed;
-                    _webSocketData.MessageReceived += WebSocketData_MessageReceived;
-                    _webSocketData.Error += WebSocketData_Error;
-                    _webSocketData.Open();
-
+                    _webSocketData.EmitOnPing = true;
+                    _webSocketData.OnOpen += WebSocketData_Opened;
+                    _webSocketData.OnClose += WebSocketData_Closed;
+                    _webSocketData.OnMessage += WebSocketData_MessageReceived;
+                    _webSocketData.OnError += WebSocketData_Error;
+                    _webSocketData.Connect();
 
                     _webSocketPortfolio = new WebSocket(_wsHost);
-                    _webSocketPortfolio.EnableAutoSendPing = true;
-                    _webSocketPortfolio.AutoSendPingInterval = 10;
-                    _webSocketPortfolio.Opened += _webSocketPortfolio_Opened;
-                    _webSocketPortfolio.Closed += _webSocketPortfolio_Closed;
-                    _webSocketPortfolio.MessageReceived += _webSocketPortfolio_MessageReceived;
-                    _webSocketPortfolio.Error += _webSocketPortfolio_Error;
-                    _webSocketPortfolio.Open();
+                    _webSocketPortfolio.EmitOnPing = true;
+                    _webSocketPortfolio.OnOpen += _webSocketPortfolio_Opened;
+                    _webSocketPortfolio.OnClose += _webSocketPortfolio_Closed;
+                    _webSocketPortfolio.OnMessage += _webSocketPortfolio_MessageReceived;
+                    _webSocketPortfolio.OnError += _webSocketPortfolio_Error;
+                    _webSocketPortfolio.Connect();
 
                 }
 
             }
-            catch (Exception exeption)
+            catch (Exception exception)
             {
-                SendLogMessage(exeption.ToString(), LogMessageType.Error);
+                SendLogMessage(exception.ToString(), LogMessageType.Error);
             }
         }
 
@@ -1054,7 +1063,11 @@ namespace OsEngine.Market.Servers.Alor
                     {
                         try
                         {
-                            _webSocketData.Close();
+                            _webSocketData.OnOpen -= WebSocketData_Opened;
+                            _webSocketData.OnClose -= WebSocketData_Closed;
+                            _webSocketData.OnMessage -= WebSocketData_MessageReceived;
+                            _webSocketData.OnError -= WebSocketData_Error;
+                            _webSocketData.CloseAsync();
                         }
                         catch
                         {
@@ -1063,34 +1076,27 @@ namespace OsEngine.Market.Servers.Alor
 
                         try
                         {
-                            _webSocketPortfolio.Close();
+                            _webSocketPortfolio.OnOpen -= _webSocketPortfolio_Opened;
+                            _webSocketPortfolio.OnClose -= _webSocketPortfolio_Closed;
+                            _webSocketPortfolio.OnMessage -= _webSocketPortfolio_MessageReceived;
+                            _webSocketPortfolio.OnError -= _webSocketPortfolio_Error;
+                            _webSocketPortfolio.CloseAsync();
                         }
                         catch
                         {
                             // ignore
                         }
-
-                        _webSocketData.Opened -= WebSocketData_Opened;
-                        _webSocketData.Closed -= WebSocketData_Closed;
-                        _webSocketData.MessageReceived -= WebSocketData_MessageReceived;
-                        _webSocketData.Error -= WebSocketData_Error;
-                        _webSocketData = null;
-
-                        _webSocketPortfolio.Opened -= _webSocketPortfolio_Opened;
-                        _webSocketPortfolio.Closed -= _webSocketPortfolio_Closed;
-                        _webSocketPortfolio.MessageReceived -= _webSocketPortfolio_MessageReceived;
-                        _webSocketPortfolio.Error -= _webSocketPortfolio_Error;
-                        _webSocketPortfolio = null;
                     }
                 }
             }
-            catch (Exception exeption)
+            catch
             {
 
             }
             finally
             {
                 _webSocketData = null;
+                _webSocketPortfolio = null;
             }
         }
 
@@ -1260,7 +1266,7 @@ namespace OsEngine.Market.Servers.Alor
             }
         }
 
-        private void WebSocketData_Error(object sender, SuperSocket.ClientEngine.ErrorEventArgs e)
+        private void WebSocketData_Error(object sender, WebSocketSharp.ErrorEventArgs e)
         {
             try
             {
@@ -1277,7 +1283,7 @@ namespace OsEngine.Market.Servers.Alor
             }
         }
 
-        private void WebSocketData_MessageReceived(object sender, MessageReceivedEventArgs e)
+        private void WebSocketData_MessageReceived(object sender, MessageEventArgs e)
         {
             try
             {
@@ -1285,16 +1291,16 @@ namespace OsEngine.Market.Servers.Alor
                 {
                     return;
                 }
-                if (string.IsNullOrEmpty(e.Message))
+                if (string.IsNullOrEmpty(e.Data))
                 {
                     return;
                 }
-                if (e.Message.Length == 4)
+                if (e.Data.Length == 4)
                 { // pong message
                     return;
                 }
 
-                if (e.Message.StartsWith("{\"requestGuid"))
+                if (e.Data.StartsWith("{\"requestGuid"))
                 {
                     return;
                 }
@@ -1309,7 +1315,7 @@ namespace OsEngine.Market.Servers.Alor
                     return;
                 }
 
-                WebSocketDataMessage.Enqueue(e.Message);
+                WebSocketDataMessage.Enqueue(e.Data);
             }
             catch (Exception error)
             {
@@ -1342,7 +1348,7 @@ namespace OsEngine.Market.Servers.Alor
             }
         }
 
-        private void _webSocketPortfolio_Error(object sender, SuperSocket.ClientEngine.ErrorEventArgs e)
+        private void _webSocketPortfolio_Error(object sender, WebSocketSharp.ErrorEventArgs e)
         {
             try
             {
@@ -1359,7 +1365,7 @@ namespace OsEngine.Market.Servers.Alor
             }
         }
 
-        private void _webSocketPortfolio_MessageReceived(object sender, MessageReceivedEventArgs e)
+        private void _webSocketPortfolio_MessageReceived(object sender, MessageEventArgs e)
         {
             try
             {
@@ -1367,16 +1373,16 @@ namespace OsEngine.Market.Servers.Alor
                 {
                     return;
                 }
-                if (string.IsNullOrEmpty(e.Message))
+                if (string.IsNullOrEmpty(e.Data))
                 {
                     return;
                 }
-                if (e.Message.Length == 4)
+                if (e.Data.Length == 4)
                 { // pong message
                     return;
                 }
 
-                if (e.Message.StartsWith("{\"requestGuid"))
+                if (e.Data.StartsWith("{\"requestGuid"))
                 {
                     return;
                 }
@@ -1391,7 +1397,7 @@ namespace OsEngine.Market.Servers.Alor
                     return;
                 }
 
-                WebSocketPortfolioMessage.Enqueue(e.Message);
+                WebSocketPortfolioMessage.Enqueue(e.Data);
             }
             catch (Exception error)
             {
@@ -1401,9 +1407,40 @@ namespace OsEngine.Market.Servers.Alor
 
         #endregion
 
-        #region 8 WebSocket Security subscrible
+        #region 8 WebSocket check alive
 
-        private RateGate rateGateSubscrible = new RateGate(1, TimeSpan.FromMilliseconds(50));
+        private void KeepaliveUserDataStream()
+        {
+            while (true)
+            {
+                try
+                {
+                    Thread.Sleep(30000);
+
+                    if (ServerStatus == ServerConnectStatus.Disconnect)
+                    {
+                        continue;
+                    }
+
+                    if (_webSocketData.Ping() == false &&
+                        _webSocketPortfolio.Ping() == false)
+                    {
+                        SendLogMessage("Alor connector. WARNING. Sockets Ping Pong not work. No internet or the server ALOR is not available", LogMessageType.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    SendLogMessage(ex.ToString(), LogMessageType.Error);
+                    Thread.Sleep(5000);
+                }
+            }
+        }
+
+        #endregion
+
+        #region 9 WebSocket Security subscrible
+
+        private RateGate _rateGateSubscrible = new RateGate(1, TimeSpan.FromMilliseconds(50));
 
         List<Security> _subscribledSecurities = new List<Security>();
 
@@ -1419,7 +1456,7 @@ namespace OsEngine.Market.Servers.Alor
                     }
                 }
 
-                rateGateSubscrible.WaitToProceed();
+                _rateGateSubscrible.WaitToProceed();
 
                 _subscribledSecurities.Add(security);
 
@@ -1448,6 +1485,11 @@ namespace OsEngine.Market.Servers.Alor
                 subObjMarketDepth.guid = GetGuid();
                 subObjMarketDepth.token = _apiTokenReal;
 
+                if (((ServerParameterBool)ServerParameters[17]).Value == false)
+                {
+                    subObjMarketDepth.depth = "1";
+                }
+
                 AlorSocketSubscription mdSub = new AlorSocketSubscription();
                 mdSub.SubType = AlorSubType.MarketDepth;
                 mdSub.ServiceInfo = security.Name;
@@ -1459,15 +1501,15 @@ namespace OsEngine.Market.Servers.Alor
                 _webSocketData.Send(messageMdSub);
 
             }
-            catch (Exception exeption)
+            catch (Exception exception)
             {
-                SendLogMessage(exeption.ToString(),LogMessageType.Error);
+                SendLogMessage(exception.ToString(),LogMessageType.Error);
             }
         }
 
         #endregion
 
-        #region 9 WebSocket parsing the messages
+        #region 10 WebSocket parsing the messages
 
         private List<AlorSocketSubscription> _subscriptionsData = new List<AlorSocketSubscription>();
 
@@ -1533,9 +1575,9 @@ namespace OsEngine.Market.Servers.Alor
                         }
                     }
                 }
-                catch (Exception exeption)
+                catch (Exception exception)
                 {
-                    SendLogMessage(exeption.ToString(), LogMessageType.Error);
+                    SendLogMessage(exception.ToString(), LogMessageType.Error);
                     Thread.Sleep(5000);
                 }
             }
@@ -1697,9 +1739,9 @@ namespace OsEngine.Market.Servers.Alor
                         }
                     }
                 }
-                catch (Exception exeption)
+                catch (Exception exception)
                 {
-                    SendLogMessage(exeption.ToString(), LogMessageType.Error);
+                    SendLogMessage(exception.ToString(), LogMessageType.Error);
                     Thread.Sleep(5000);
                 }
             }
@@ -1757,12 +1799,12 @@ namespace OsEngine.Market.Servers.Alor
 
             Portfolio portf = null;
 
-            for (int i = 0; i < _myPortfolious.Count; i++)
+            for (int i = 0; i < _myPortfolios.Count; i++)
             {
-                string realPortfName = _myPortfolious[i].Number.Split('_')[0];
+                string realPortfName = _myPortfolios[i].Number.Split('_')[0];
                 if (realPortfName == portfolioName)
                 {
-                    portf = _myPortfolious[i];
+                    portf = _myPortfolios[i];
                     break;
                 }
             }
@@ -1780,7 +1822,7 @@ namespace OsEngine.Market.Servers.Alor
 
             if (PortfolioEvent != null)
             {
-                PortfolioEvent(_myPortfolious);
+                PortfolioEvent(_myPortfolios);
             }
         }
 
@@ -2046,12 +2088,12 @@ namespace OsEngine.Market.Servers.Alor
 
             Portfolio portf = null;
 
-            for(int i = 0;i < _myPortfolious.Count;i++)
+            for(int i = 0;i < _myPortfolios.Count;i++)
             {
-                string realPortfName = _myPortfolious[i].Number.Split('_')[0];
+                string realPortfName = _myPortfolios[i].Number.Split('_')[0];
                 if (realPortfName == portfolioName)
                 {
-                    portf = _myPortfolious[i];
+                    portf = _myPortfolios[i];
                     break;
                 }
             }
@@ -2074,7 +2116,7 @@ namespace OsEngine.Market.Servers.Alor
             
             if (PortfolioEvent != null)
             {
-                PortfolioEvent(_myPortfolious);
+                PortfolioEvent(_myPortfolios);
             }
         }
 
@@ -2084,15 +2126,15 @@ namespace OsEngine.Market.Servers.Alor
 
         #endregion
 
-        #region 10 Trade
+        #region 11 Trade
 
-        private RateGate rateGateSendOrder = new RateGate(1, TimeSpan.FromMilliseconds(350));
+        private RateGate _rateGateSendOrder = new RateGate(1, TimeSpan.FromMilliseconds(350));
 
-        private RateGate rateGateCancelOrder = new RateGate(1, TimeSpan.FromMilliseconds(350));
+        private RateGate _rateGateCancelOrder = new RateGate(1, TimeSpan.FromMilliseconds(350));
 
-        private RateGate rateGateChangePriceOrder = new RateGate(1, TimeSpan.FromMilliseconds(350));
+        private RateGate _rateGateChangePriceOrder = new RateGate(1, TimeSpan.FromMilliseconds(350));
 
-        private List<AlorSecuritiesAndPortfolious> _securitiesAndPortfolious = new List<AlorSecuritiesAndPortfolious>();
+        private List<AlorSecuritiesAndPortfolios> _securitiesAndPortfolios = new List<AlorSecuritiesAndPortfolios>();
 
         private List<Order> _sendOrders = new List<Order>();
 
@@ -2102,7 +2144,7 @@ namespace OsEngine.Market.Servers.Alor
 
         public void SendOrder(Order order)
         {
-            rateGateSendOrder.WaitToProceed();
+            _rateGateSendOrder.WaitToProceed();
 
             try
             {
@@ -2138,7 +2180,7 @@ namespace OsEngine.Market.Servers.Alor
 
                 RestRequest requestRest = new RestRequest(endPoint, Method.POST);
                 requestRest.AddHeader("Authorization", "Bearer " + _apiTokenReal);
-                requestRest.AddHeader("X-ALOR-REQID", order.NumberUser.ToString());
+                requestRest.AddHeader("X-REQID", order.NumberUser.ToString() + "|" + GetGuid());
                 requestRest.AddHeader("accept", "application/json");
 
                 if(order.TypeOrder == OrderPriceType.Market)
@@ -2159,9 +2201,9 @@ namespace OsEngine.Market.Servers.Alor
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
                     bool isInArray = false;
-                    for(int i = 0;i < _securitiesAndPortfolious.Count;i++)
+                    for(int i = 0;i < _securitiesAndPortfolios.Count;i++)
                     {
-                        if (_securitiesAndPortfolious[i].Security == order.SecurityNameCode)
+                        if (_securitiesAndPortfolios[i].Security == order.SecurityNameCode)
                         {
                             isInArray = true;
                             break;
@@ -2169,10 +2211,10 @@ namespace OsEngine.Market.Servers.Alor
                     }
                     if(isInArray == false)
                     {
-                        AlorSecuritiesAndPortfolious newValue = new AlorSecuritiesAndPortfolious();
+                        AlorSecuritiesAndPortfolios newValue = new AlorSecuritiesAndPortfolios();
                         newValue.Security = order.SecurityNameCode;
                         newValue.Portfolio = order.PortfolioNumber;
-                        _securitiesAndPortfolious.Add(newValue);
+                        _securitiesAndPortfolios.Add(newValue);
                     }
 
                     return;
@@ -2263,7 +2305,7 @@ namespace OsEngine.Market.Servers.Alor
         {
             try
             {
-                rateGateChangePriceOrder.WaitToProceed();
+                _rateGateChangePriceOrder.WaitToProceed();
 
                 if (order.TypeOrder == OrderPriceType.Market)
                 {
@@ -2277,7 +2319,7 @@ namespace OsEngine.Market.Servers.Alor
 
                 RestRequest requestRest = new RestRequest(endPoint, Method.PUT);
                 requestRest.AddHeader("Authorization", "Bearer " + _apiTokenReal);
-                requestRest.AddHeader("X-ALOR-REQID", order.NumberUser.ToString() + GetGuid()); ;
+                requestRest.AddHeader("X-REQID", order.NumberUser.ToString() + "|" + GetGuid()); ;
                 requestRest.AddHeader("accept", "application/json");
 
                 LimitOrderAlorRequest body = GetLimitRequestObj(order);
@@ -2288,7 +2330,7 @@ namespace OsEngine.Market.Servers.Alor
                 if(qty <= 0 ||
                     order.State != OrderStateType.Active)
                 {
-                    SendLogMessage("Can`t change price to order. It`s don`t in Activ state", LogMessageType.Error);
+                    SendLogMessage("Can`t change price to order. It's not in Activ state", LogMessageType.Error);
                     return;
                 }
 
@@ -2297,7 +2339,7 @@ namespace OsEngine.Market.Servers.Alor
                 RestClient client = new RestClient(_restApiHost);
 
                 AlorChangePriceOrder alorChangePriceOrder = new AlorChangePriceOrder();
-                alorChangePriceOrder.MarketId = order.NumberMarket.ToString();
+                alorChangePriceOrder.MarketId = order.NumberMarket;
                 alorChangePriceOrder.TimeChangePriceOrder = DateTime.Now;
 
                 lock(_changePriceOrdersArrayLocker)
@@ -2343,7 +2385,7 @@ namespace OsEngine.Market.Servers.Alor
 
         public void CancelOrder(Order order)
         {
-            rateGateCancelOrder.WaitToProceed();
+            _rateGateCancelOrder.WaitToProceed();
 
             //curl -X DELETE "/commandapi/warptrans/TRADE/v2/client/orders/93713183?portfolio=D39004&exchange=MOEX&stop=false&format=Simple" -H "accept: application/json"
 
@@ -2603,7 +2645,7 @@ namespace OsEngine.Market.Servers.Alor
 
         private List<Order> GetAllOrdersFromExchangeByPortfolio(string portfolio)
         {
-            rateGateSendOrder.WaitToProceed();
+            _rateGateSendOrder.WaitToProceed();
 
             try
             {
@@ -2757,7 +2799,7 @@ namespace OsEngine.Market.Servers.Alor
 
         #endregion
 
-        #region 11 Helpers
+        #region 12 Helpers
 
         public long ConvertToUnixTimestamp(DateTime date)
         {
@@ -2768,7 +2810,7 @@ namespace OsEngine.Market.Servers.Alor
 
         private DateTime ConvertToDateTimeFromUnixFromSeconds(string seconds)
         {
-            DateTime origin = new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            DateTime origin = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
             DateTime result = origin.AddSeconds(seconds.ToDouble()).ToLocalTime();
 
             return result;
@@ -2776,7 +2818,7 @@ namespace OsEngine.Market.Servers.Alor
 
         private DateTime ConvertToDateTimeFromUnixFromMilliseconds(string seconds)
         {
-            DateTime origin = new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            DateTime origin = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
             DateTime result = origin.AddMilliseconds(seconds.ToDouble());
 
             return result.ToLocalTime();
@@ -2821,7 +2863,7 @@ namespace OsEngine.Market.Servers.Alor
 
         #endregion
 
-        #region 12 Log
+        #region 13 Log
 
         private void SendLogMessage(string message, LogMessageType messageType)
         {
@@ -2855,7 +2897,7 @@ namespace OsEngine.Market.Servers.Alor
         public DateTime TimeChangePriceOrder;
     }
 
-    public class AlorSecuritiesAndPortfolious
+    public class AlorSecuritiesAndPortfolios
     {
        public string Security;
 

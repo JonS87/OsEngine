@@ -2,14 +2,16 @@
 using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-namespace CustomIndicators.Scripts
+namespace OsEngine.Indicators
 {
+    [Indicator("KalmanFilter")]
     public class KalmanFilter:Aindicator
     {
         private IndicatorDataSeries _series;
+
         private IndicatorParameterDecimal _sharpness;
+
         private IndicatorParameterDecimal K;
 
         public override void OnStateChange(IndicatorState state)

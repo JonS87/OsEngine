@@ -2,17 +2,20 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-namespace CustomIndicators.Scripts
+namespace OsEngine.Indicators
 {
+    [Indicator("Bollinger")]
     public class Bollinger : Aindicator
     {
         private IndicatorParameterInt _length;
+
         private IndicatorParameterDecimal _deviation;
 
         private IndicatorDataSeries _seriesUp;
+
         private IndicatorDataSeries _seriesDown;
+
         private IndicatorDataSeries _seriesCenter;
 
         private Aindicator _sma;

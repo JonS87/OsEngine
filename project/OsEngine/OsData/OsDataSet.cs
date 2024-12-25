@@ -20,35 +20,25 @@ using System.Globalization;
 namespace OsEngine.OsData
 {
     /// <summary>
-    /// data storage set/сет хранения данных
+    /// data storage set
     /// </summary>
     public class OsDataSet
     {
-        // регулируемые настройки
+        #region Service
 
-        /// <summary>
-        /// unique set name/уникальное имя сета
-        /// </summary>
         public string SetName;
 
         public SettingsToLoadSecurity BaseSettings = new SettingsToLoadSecurity();
 
-        // service/сервис
-        /// <summary>
-        /// constructor/конструктор
-        /// </summary>
-        public OsDataSet(string nameUniq)
+        public OsDataSet(string nameSet)
         {
-            SetName = nameUniq;
+            SetName = nameSet;
             Load();
 
             Task task = new Task(WorkerArea);
             task.Start();
         }
 
-        /// <summary>
-        /// save settings/сохранить настройки
-        /// </summary>
         public void Save()
         {
             try
@@ -68,8 +58,8 @@ namespace OsEngine.OsData
 
                     for (int i = 0; SecuritiesLoad != null && i < SecuritiesLoad.Count; i++)
                     {
-                        string securitie = SecuritiesLoad[i].GetSaveStr();
-                        writer.WriteLine(securitie);
+                        string security = SecuritiesLoad[i].GetSaveStr();
+                        writer.WriteLine(security);
                     }
 
                     writer.Close();
@@ -81,9 +71,6 @@ namespace OsEngine.OsData
             }
         }
 
-        /// <summary>
-        /// load settings/загрузить настройки
-        /// </summary>
         private void Load()
         {
             if (!File.Exists("Data\\" + SetName + @"\\Settings.txt"))
@@ -119,9 +106,6 @@ namespace OsEngine.OsData
             }
         }
 
-        /// <summary>
-        /// delete settings/удалить настройки
-        /// </summary>
         public void Delete()
         {
             _isDeleted = true;
@@ -158,11 +142,10 @@ namespace OsEngine.OsData
 
         private bool _isDeleted = false;
 
-        // control/управление
+        #endregion
 
-        /// <summary>
-        /// connect new Security/подключить новый инструмент
-        /// </summary>
+        #region Control
+
         public void AddNewSecurity()
         {
             if (ServerMaster.GetServers() == null)
@@ -240,14 +223,12 @@ namespace OsEngine.OsData
                         SecuritiesLoad.Add(record);
                     }
                 }
+
+                ui.SelectedSecurity = null;
             }
             Save();
         }
 
-        /// <summary>
-        /// remove Security/удалить инструмент для скачивания
-        /// </summary>
-        /// <param name="index">Security index in array/индекс инструмента в массиве</param>
         public void DeleteSecurity(int index)
         {
             if (SecuritiesLoad == null ||
@@ -263,9 +244,6 @@ namespace OsEngine.OsData
             Save();
         }
 
-        /// <summary>
-        /// изменить статус бумаги. Свёрнута ли или раскрыта
-        /// </summary>
         public void ChangeCollapsedStateBySecurity(int index)
         {
             if (SecuritiesLoad == null ||
@@ -274,7 +252,7 @@ namespace OsEngine.OsData
                 return;
             }
 
-            SecuritiesLoad[index].IsCollapced = !SecuritiesLoad[index].IsCollapced;
+            SecuritiesLoad[index].IsCollapsed = !SecuritiesLoad[index].IsCollapsed;
 
             Save();
         }
@@ -309,29 +287,9 @@ namespace OsEngine.OsData
             return Math.Round(result, 2);
         }
 
-        // сообщения в лог 
+        #endregion
 
-        /// <summary>
-        /// send a new message to the top/выслать новое сообщение на верх
-        /// </summary>
-        private void SendNewLogMessage(string message, LogMessageType type)
-        {
-            if (NewLogMessageEvent != null)
-            {
-                NewLogMessageEvent(message, type);
-            }
-            else
-            {
-                System.Windows.MessageBox.Show(message);
-            }
-        }
-
-        /// <summary>
-        /// send new message to log/выслать новое сообщение в лог
-        /// </summary>
-        public event Action<string, LogMessageType> NewLogMessageEvent;
-
-        // логика загрузки данных
+        #region Data loading
 
         public List<SecurityToLoad> SecuritiesLoad;
 
@@ -431,12 +389,31 @@ namespace OsEngine.OsData
             }
         }
 
-        // исходящие события
+        #endregion
 
+        #region Logging
+
+        private void SendNewLogMessage(string message, LogMessageType type)
+        {
+            if (NewLogMessageEvent != null)
+            {
+                NewLogMessageEvent(message, type);
+            }
+            else
+            {
+                System.Windows.MessageBox.Show(message);
+            }
+        }
+
+        public event Action<string, LogMessageType> NewLogMessageEvent;
+
+        #endregion
     }
 
     public class SecurityToLoad
     {
+        #region Service
+
         public SecurityToLoad()
         {
 
@@ -453,7 +430,7 @@ namespace OsEngine.OsData
 
         public string SecExchange = "";
 
-        public bool IsCollapced = false;
+        public bool IsCollapsed = false;
 
         public void CopySettingsFromParam(SettingsToLoadSecurity param)
         {
@@ -484,7 +461,7 @@ namespace OsEngine.OsData
             SettingsToLoadSecurities.TimeStart = param.TimeStart;
             SettingsToLoadSecurities.TimeEnd = param.TimeEnd;
             SettingsToLoadSecurities.MarketDepthDepth = param.MarketDepthDepth;
-            SettingsToLoadSecurities.NeadToUpdate = param.NeadToUpdate;
+            SettingsToLoadSecurities.NeedToUpdate = param.NeedToUpdate;
 
             ActivateLoaders();
 
@@ -524,7 +501,7 @@ namespace OsEngine.OsData
             SecName = saveArray[0];
             SecId = saveArray[1];
             SecClass = saveArray[2];
-            IsCollapced = Convert.ToBoolean(saveArray[3]);
+            IsCollapsed = Convert.ToBoolean(saveArray[3]);
             SecExchange = saveArray[4];
             SetName = saveArray[5];
             SettingsToLoadSecurities.Load(saveArray[6]);
@@ -536,7 +513,7 @@ namespace OsEngine.OsData
             string result = SecName + "~";
             result += SecId + "~";
             result += SecClass + "~";
-            result += IsCollapced + "~";
+            result += IsCollapsed + "~";
             result += SecExchange + "~";
             result += SetName + "~";
             result += SettingsToLoadSecurities.GetSaveStr();
@@ -562,11 +539,11 @@ namespace OsEngine.OsData
 
             for (int i = 0; i < SecLoaders.Count; i++)
             {
-                List<DataPie> pieses = SecLoaders[i].DataPies;
+                List<DataPie> pieces = SecLoaders[i].DataPies;
 
-                for (int i2 = 0; i2 < pieses.Count; i2++)
+                for (int i2 = 0; i2 < pieces.Count; i2++)
                 {
-                    if (pieses[i2].Status == DataPieStatus.Load)
+                    if (pieces[i2].Status == DataPieStatus.Load)
                     {
                         result += 1;
                     }
@@ -576,7 +553,9 @@ namespace OsEngine.OsData
             return result;
         }
 
-        // работа по созданию/удалению конечных хранилищ данных
+        #endregion
+
+        #region Work on creation/deletion of final data stores
 
         private void ActivateLoaders()
         {
@@ -827,9 +806,9 @@ namespace OsEngine.OsData
             }
         }
 
-        // обработка исходящих событий
+        #endregion
 
-        // сообщения в лог 
+        #region Logging
 
         private void SendNewLogMessage(string message, LogMessageType type)
         {
@@ -845,6 +824,7 @@ namespace OsEngine.OsData
 
         public event Action<string, LogMessageType> NewLogMessageEvent;
 
+        #endregion
     }
 
     public enum DataSetState
@@ -855,6 +835,8 @@ namespace OsEngine.OsData
 
     public class SecurityTfLoader
     {
+        #region Service
+
         private SecurityTfLoader()
         {
 
@@ -915,7 +897,7 @@ namespace OsEngine.OsData
 
 
 
-            _pathMyTempPieInTfFolder = _pathMyTfFolder + "\\Tepm";
+            _pathMyTempPieInTfFolder = _pathMyTfFolder + "\\Temp";
 
             if (!Directory.Exists(_pathMyTempPieInTfFolder))
             {
@@ -950,15 +932,15 @@ namespace OsEngine.OsData
                 DataPies.Clear();
             }
 
-            for (int i = 0; i < MdSourses.Count; i++)
+            for (int i = 0; i < MdSources.Count; i++)
             {
-                MdSourses[i].Delete();
-                MdSourses[i].NewLogMessageEvent -= SendNewLogMessage;
+                MdSources[i].Delete();
+                MdSources[i].NewLogMessageEvent -= SendNewLogMessage;
             }
 
-            if (MdSourses != null)
+            if (MdSources != null)
             {
-                MdSourses = null;
+                MdSources = null;
             }
         }
 
@@ -976,6 +958,10 @@ namespace OsEngine.OsData
 
         private string _pathMyTxtFile;
 
+        #endregion
+
+        #region Information about the loader
+
         public TimeFrame TimeFrame;
 
         public string SecName = "";
@@ -989,8 +975,6 @@ namespace OsEngine.OsData
         public DateTime TimeStart;
 
         public DateTime TimeEnd;
-
-        // предоставления информации о загрузчике
 
         public DateTime TimeStartInReal;
 
@@ -1081,11 +1065,11 @@ namespace OsEngine.OsData
         {
             int result = 0;
 
-            List<DataPie> pieses = DataPies;
+            List<DataPie> pieces = DataPies;
 
-            for (int i2 = 0; i2 < pieses.Count; i2++)
+            for (int i2 = 0; i2 < pieces.Count; i2++)
             {
-                if (pieses[i2].Status == DataPieStatus.Load)
+                if (pieces[i2].Status == DataPieStatus.Load)
                 {
                     result += 1;
                 }
@@ -1098,17 +1082,19 @@ namespace OsEngine.OsData
         {
             int result = 0;
 
-            List<DataPie> pieses = DataPies;
+            List<DataPie> pieces = DataPies;
 
-            for (int i2 = 0; i2 < pieses.Count; i2++)
+            for (int i2 = 0; i2 < pieces.Count; i2++)
             {
-                result += pieses[i2].ObjectCount;
+                result += pieces[i2].ObjectCount;
             }
 
             return result;
         }
 
-        // загрузка данных 
+        #endregion
+
+        #region Data loading 
 
         public void Process(IServer server, SettingsToLoadSecurity param)
         {
@@ -1120,7 +1106,7 @@ namespace OsEngine.OsData
                 }
                 else if (TimeFrame == TimeFrame.MarketDepth)
                 {
-                    ProcessMarketDepth(server, param);
+                    ProcessMarketDepth(param);
                 }
                 else if (TimeFrame == TimeFrame.Sec1
                     || TimeFrame == TimeFrame.Sec2
@@ -1214,7 +1200,7 @@ namespace OsEngine.OsData
                 interval = new TimeSpan(180, 0, 0, 0);
             }
 
-            // цилк создания кусков данных
+            // цикл создания кусков данных
 
             DateTime timeStart = TimeStart;
             DateTime timeNow = timeStart.Add(interval);
@@ -1224,6 +1210,12 @@ namespace OsEngine.OsData
                 DataPie newPie = new DataPie(_pathMyTempPieInTfFolder);
                 newPie.Start = timeStart;
                 newPie.End = timeNow;
+
+                if(newPie.End > TimeEnd)
+                {
+                    newPie.End = TimeEnd;
+                }
+
                 newPie.LoadPieSettings();
 
                 if (newPie.End > DateTime.Now.AddDays(1))
@@ -1290,6 +1282,8 @@ namespace OsEngine.OsData
 
         private string _saveStrCandleCount;
 
+        #endregion
+
         #region Candles
 
         private void ProcessCandles(IServer server, SettingsToLoadSecurity param)
@@ -1299,7 +1293,8 @@ namespace OsEngine.OsData
                 return;
             }
 
-            // пропуем создавать куски данных нужные для выгрузки
+            // пробуем создавать куски данных нужные для выгрузки
+
             if (DataPies == null
                 || DataPies.Count == 0)
             {
@@ -1329,7 +1324,7 @@ namespace OsEngine.OsData
 
                 if (DataPies[i].Status == DataPieStatus.Load &&
                     i + 1 == DataPies.Count &&
-                   param.NeadToUpdate == false)
+                   param.NeedToUpdate == false)
                 {
                     continue;
                 }
@@ -1342,7 +1337,7 @@ namespace OsEngine.OsData
 
                 if (DataPies[i].CountTriesToLoadSet >= 3 &&
                    i + 1 == DataPies.Count &&
-                   param.NeadToUpdate == false)
+                   param.NeedToUpdate == false)
                 {
                     continue;
                 }
@@ -1391,7 +1386,7 @@ namespace OsEngine.OsData
                 id = SecName;
             }
 
-            SendNewLogMessage("Try load sec: " + id + " , tf: " + TimeFrame +
+            SendNewLogMessage("Try load sec: " + id + " " + SecName + " , tf: " + TimeFrame +
                 " , start: " + pie.Start.ToShortDateString() + " , end: " + pie.End.ToShortDateString(), LogMessageType.System);
 
             List<Candle> candles =
@@ -1402,7 +1397,7 @@ namespace OsEngine.OsData
             if (candles == null ||
                 candles.Count == 0)
             {
-                SendNewLogMessage("Error. No candles. sec: " + id + " , tf: " + TimeFrame +
+                SendNewLogMessage("Error. No candles. sec: " + id + " " + SecName + " , tf: " + TimeFrame +
     " , start: " + pie.Start.ToShortDateString() + " , end: " + pie.End.ToString(), LogMessageType.System);
 
                 return;
@@ -1410,7 +1405,7 @@ namespace OsEngine.OsData
 
             pie.SetNewCandlesInPie(candles);
 
-            SendNewLogMessage("Candles Load Successfully. sec: " + id + " , tf: " + TimeFrame +
+            SendNewLogMessage("Candles Load Successfully. sec: " + id + " " + SecName + " , tf: " + TimeFrame +
 " , start: " + pie.Start.ToShortDateString() + " , end: " + pie.End.ToString(), LogMessageType.System);
             pie.Status = DataPieStatus.Load;
         }
@@ -1513,7 +1508,7 @@ namespace OsEngine.OsData
         {
             if (_isDeleted) { return; }
 
-            // пропуем создавать куски данных нужные для выгрузки
+            // пробуем создавать куски данных нужные для выгрузки
             if (DataPies == null
                 || DataPies.Count == 0)
             {
@@ -1543,7 +1538,7 @@ namespace OsEngine.OsData
 
                 if (DataPies[i].Status == DataPieStatus.Load &&
                     i + 1 == DataPies.Count &&
-                   param.NeadToUpdate == false)
+                   param.NeedToUpdate == false)
                 {
                     continue;
                 }
@@ -1556,7 +1551,7 @@ namespace OsEngine.OsData
 
                 if (DataPies[i].CountTriesToLoadSet >= 3 &&
                    i + 1 == DataPies.Count &&
-                   param.NeadToUpdate == false)
+                   param.NeedToUpdate == false)
                 {
                     continue;
                 }
@@ -1584,7 +1579,7 @@ namespace OsEngine.OsData
 
             if (needToSave)
             {
-                SaveTradeDataExitFile(DataPies);
+                SaveTradeDataExitFile();
             }
         }
 
@@ -1603,24 +1598,17 @@ namespace OsEngine.OsData
                 id = SecName;
             }
 
-            SendNewLogMessage("Try load sec: " + id + " , tf: " + TimeFrame +
+            SendNewLogMessage("Try load sec: " + id + " " + SecName + " , tf: " + TimeFrame +
                 " , start: " + pie.Start.ToShortDateString() + " , end: " + pie.End.ToShortDateString(), LogMessageType.System);
 
             List<Trade> trades =
                 server.GetTickDataToSecurity(
                     id, SecClass, pie.Start, pie.End.AddDays(1), pie.Start, false);
 
-            /*  tradesIsLoad =
-      _myServer.GetTickDataToSecurity(loadSec.Id, loadSec.Class,
-      TimeStart, TimeEnd,
-      GetActualTimeToTrade("Data\\" + SetName + "\\" + loadSec.Name.RemoveExcessFromSecurityName() + "\\Tick"), NeadToUpdate);
-              */
-
-
             if (trades == null ||
                 trades.Count == 0)
             {
-                SendNewLogMessage("Error. No trades. sec: " + id + " , tf: " + TimeFrame +
+                SendNewLogMessage("Error. No trades. sec: " + id + " " + SecName + " , tf: " + TimeFrame +
     " , start: " + pie.Start.ToShortDateString() + " , end: " + pie.End.ToShortDateString(), LogMessageType.System);
 
                 return;
@@ -1628,12 +1616,12 @@ namespace OsEngine.OsData
 
             pie.SetNewTradesInPie(trades);
 
-            SendNewLogMessage("Trades Load Successfully. sec: " + id + " , tf: " + TimeFrame +
+            SendNewLogMessage("Trades Load Successfully. sec: " + id + " " + SecName + " , tf: " + TimeFrame +
 " , start: " + pie.Start.ToShortDateString() + " , end: " + pie.End.ToShortDateString(), LogMessageType.System);
             pie.Status = DataPieStatus.Load;
         }
 
-        private List<Trade> GetTradexAllHistory()
+        private List<Trade> GetTradesAllHistory()
         {
             if (_isDeleted) { return null; }
 
@@ -1667,7 +1655,7 @@ namespace OsEngine.OsData
             return extTrades;
         }
 
-        private void SaveTradeDataExitFile(List<DataPie> dataPies)
+        private void SaveTradeDataExitFile()
         {
             if (_isDeleted) { return; }
 
@@ -1685,7 +1673,7 @@ namespace OsEngine.OsData
 
             _saveStrCandleCount = curSaveStrObjectsCount;
 
-            List<Trade> extTrades = GetTradexAllHistory();
+            List<Trade> extTrades = GetTradesAllHistory();
 
             if (extTrades.Count == 0)
             {
@@ -1722,9 +1710,9 @@ namespace OsEngine.OsData
 
         #region Market Depth
 
-        List<MarketDepthLoader> MdSourses = new List<MarketDepthLoader>();
+        List<MarketDepthLoader> MdSources = new List<MarketDepthLoader>();
 
-        private void ProcessMarketDepth(IServer server, SettingsToLoadSecurity param)
+        private void ProcessMarketDepth(SettingsToLoadSecurity param)
         {
             if (_isDeleted)
             {
@@ -1738,13 +1726,13 @@ namespace OsEngine.OsData
 
             MarketDepthLoader loader = null;
 
-            for (int i = 0; i < MdSourses.Count; i++)
+            for (int i = 0; i < MdSources.Count; i++)
             {
-                if (MdSourses[i].SecName == SecName
-                    && MdSourses[i].SecClass == SecClass
-                    && MdSourses[i].Depth == param.MarketDepthDepth)
+                if (MdSources[i].SecName == SecName
+                    && MdSources[i].SecClass == SecClass
+                    && MdSources[i].Depth == param.MarketDepthDepth)
                 {
-                    loader = MdSourses[i];
+                    loader = MdSources[i];
                     break;
                 }
             }
@@ -1753,7 +1741,7 @@ namespace OsEngine.OsData
             {
                 loader = new MarketDepthLoader(SecName, SecClass, param.Source, param.MarketDepthDepth);
                 loader.NewLogMessageEvent += SendNewLogMessage;
-                MdSourses.Add(loader);
+                MdSources.Add(loader);
             }
 
             TrySaveMd(loader);
@@ -1851,7 +1839,7 @@ namespace OsEngine.OsData
 
         public List<Candle> GetExtCandlesFromTrades()
         {
-            List<Trade> trades = GetTradexAllHistory();
+            List<Trade> trades = GetTradesAllHistory();
 
             if (trades == null
                 || trades.Count == 0)
@@ -1923,7 +1911,9 @@ namespace OsEngine.OsData
 
         #endregion
 
-        private void SendNewLogMessage(string message, LogMessageType type)
+        #region Logging
+
+        public void SendNewLogMessage(string message, LogMessageType type)
         {
             if (_isDeleted) { return; }
 
@@ -1939,6 +1929,7 @@ namespace OsEngine.OsData
 
         public event Action<string, LogMessageType> NewLogMessageEvent;
 
+        #endregion
     }
 
     public class MarketDepthLoader
@@ -2100,7 +2091,7 @@ namespace OsEngine.OsData
             }
 
             MarketDepthDepth = Convert.ToInt32(saveArray[22]);
-            NeadToUpdate = Convert.ToBoolean(saveArray[23]);
+            NeedToUpdate = Convert.ToBoolean(saveArray[23]);
 
             try
             {
@@ -2142,7 +2133,7 @@ namespace OsEngine.OsData
             result += TimeStart.ToString(CultureInfo.InvariantCulture) + "%";
             result += TimeEnd.ToString(CultureInfo.InvariantCulture) + "%";
             result += MarketDepthDepth + "%";
-            result += NeadToUpdate + "%";
+            result += NeedToUpdate + "%";
             result += TfDayIsOn + "%";
 
             return result;
@@ -2174,7 +2165,7 @@ namespace OsEngine.OsData
         public bool TfTickIsOn;
         public bool TfMarketDepthIsOn;
         public int MarketDepthDepth;
-        public bool NeadToUpdate;
+        public bool NeedToUpdate;
     }
 
     public class DataPie
@@ -2236,7 +2227,9 @@ namespace OsEngine.OsData
             // 1 Актуальное время старта
             CandlePieStatusInfo CandlesInfo = null;
 
-            if (_pathMyTempPieInTfFolder.Contains("Tick") == false)
+            if (_pathMyTempPieInTfFolder.Contains("Tick") == false
+                &&
+                _pathMyTempPieInTfFolder.Contains("Sec") == false)
             {
                 CandlesInfo = LoadCandlesPieStatus();
             }
@@ -2245,7 +2238,9 @@ namespace OsEngine.OsData
 
             if ((CandlesInfo == null
                 || CandlesInfo.FirstCandle == null)
-                && _pathMyTempPieInTfFolder.Contains("Tick") == true)
+                && 
+                (_pathMyTempPieInTfFolder.Contains("Tick") == true
+                || _pathMyTempPieInTfFolder.Contains("Sec") == true))
             {
                 TradesInfo = LoadTradesPieStatus();
             }
@@ -2367,7 +2362,7 @@ namespace OsEngine.OsData
             }
         }
 
-        // свечи
+        #region Candles
 
         public void SetNewCandlesInPie(List<Candle> candles)
         {
@@ -2497,7 +2492,9 @@ namespace OsEngine.OsData
             }
         }
 
-        // трейды
+        #endregion
+
+        #region Trades
 
         public TradePieStatusInfo LoadTradesPieStatus()
         {
@@ -2629,6 +2626,7 @@ namespace OsEngine.OsData
             }
         }
 
+        #endregion
     }
 
     public enum SecurityLoadStatus

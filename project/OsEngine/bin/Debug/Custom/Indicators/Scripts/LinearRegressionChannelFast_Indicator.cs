@@ -2,19 +2,24 @@
 using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-namespace OsEngine.Robots.FoundBots.Indicators
+namespace OsEngine.Indicators
 {
+    [Indicator("LinearRegressionChannelFast_Indicator")]
     public class LinearRegressionChannelFast_Indicator : Aindicator
     {
         private IndicatorParameterInt _period;
+
         private IndicatorParameterDecimal _upDeviation;
+
         private IndicatorParameterDecimal _downDeviation;
 
         private IndicatorDataSeries _seriesCentralLine;
-        private IndicatorDataSeries _seriesUpperband;
-        private IndicatorDataSeries _seriesLowerband;
+
+        private IndicatorDataSeries _seriesUpperBand;
+
+        private IndicatorDataSeries _seriesLowerBand;
+
         private IndicatorParameterString _candlePoint;
 
         public override void OnStateChange(IndicatorState state)
@@ -27,17 +32,17 @@ namespace OsEngine.Robots.FoundBots.Indicators
                 _upDeviation = CreateParameterDecimal("Up channel deviation", 2);
                 _downDeviation = CreateParameterDecimal("Down channel deviation", 2);
 
-                _seriesUpperband = CreateSeries("Up channel", Color.Aqua,
+                _seriesUpperBand = CreateSeries("Up channel", Color.Aqua,
                     IndicatorChartPaintType.Line, true);
-                _seriesUpperband.CanReBuildHistoricalValues = false;
+                _seriesUpperBand.CanReBuildHistoricalValues = false;
 
                 _seriesCentralLine = CreateSeries("Regression Line ", Color.Gold,
                     IndicatorChartPaintType.Line, false);
                 _seriesCentralLine.CanReBuildHistoricalValues = false;
 
-                _seriesLowerband = CreateSeries("Down channel", Color.OrangeRed,
+                _seriesLowerBand = CreateSeries("Down channel", Color.OrangeRed,
                     IndicatorChartPaintType.Line, true);
-                _seriesLowerband.CanReBuildHistoricalValues = false;
+                _seriesLowerBand.CanReBuildHistoricalValues = false;
             }
         }
 
@@ -112,10 +117,10 @@ namespace OsEngine.Robots.FoundBots.Indicators
 
                 standartError = standartError / _period.ValueInt;
 
-                _seriesUpperband.Values[index] = _seriesCentralLine.Values[index] +
+                _seriesUpperBand.Values[index] = _seriesCentralLine.Values[index] +
                                                  (standartError * _upDeviation.ValueDecimal);
 
-                _seriesLowerband.Values[index] = _seriesCentralLine.Values[index] -
+                _seriesLowerBand.Values[index] = _seriesCentralLine.Values[index] -
                                                  (standartError * _downDeviation.ValueDecimal);
             }
             catch

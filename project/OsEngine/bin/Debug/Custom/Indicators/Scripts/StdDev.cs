@@ -2,14 +2,16 @@
 using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-namespace CustomIndicators.Scripts
+namespace OsEngine.Indicators
 {
+    [Indicator("StdDev")]
     public class StdDev: Aindicator
     {
         private IndicatorDataSeries _series;
+
         private IndicatorParameterInt _period;
+
         private IndicatorParameterString _candlePoint;
 
         public override void OnStateChange(IndicatorState state)

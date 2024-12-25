@@ -68,10 +68,30 @@ namespace OsEngine.Market.SupportTable
             };
             supportList.Add(fixFast);
 
+            SupportConnection fixFastCur = new SupportConnection()
+            {
+                ServerType = ServerType.MoexFixFastCurrency,
+                SupportType = SupportServerType.Prime,
+                LinqToLogo = "\\Images\\Connections\\Moex\\FixFast.png",
+                LingSiteUrl = "",
+                Discount = 0
+            };
+            supportList.Add(fixFastCur);
+
+            SupportConnection fixFastForts = new SupportConnection()
+            {
+                ServerType = ServerType.MoexFixFastTwimeFutures,
+                SupportType = SupportServerType.Prime,
+                LinqToLogo = "\\Images\\Connections\\Moex\\FixFast.png",
+                LingSiteUrl = "",
+                Discount = 0
+            };
+            supportList.Add(fixFastForts);
+
             SupportConnection plaza = new SupportConnection()
             {
                 ServerType = ServerType.Plaza,
-                SupportType = SupportServerType.No,
+                SupportType = SupportServerType.Prime,
                 LinqToLogo = "\\Images\\Connections\\Moex\\Plaza2.png",
                 LingSiteUrl = "",
                 Discount = 0
@@ -105,6 +125,16 @@ namespace OsEngine.Market.SupportTable
             };
             supportList.Add(ib);
 
+            SupportConnection traderNet = new SupportConnection()
+            {
+                ServerType = ServerType.TraderNet,
+                SupportType = SupportServerType.Prime,
+                LinqToLogo = "\\Images\\Connections\\International\\Tradernet.png",
+                LingSiteUrl = "",
+                Discount = 0
+            };
+            supportList.Add(traderNet);
+
             SupportConnection ninja = new SupportConnection()
             {
                 ServerType = ServerType.NinjaTrader,
@@ -131,6 +161,16 @@ namespace OsEngine.Market.SupportTable
         public static List<SupportConnection> GetCryptoSupportList()
         {
             List<SupportConnection> supportList = new List<SupportConnection>();
+
+            SupportConnection bybit = new SupportConnection()
+            {
+                ServerType = ServerType.Bybit,
+                SupportType = SupportServerType.Prime,
+                LinqToLogo = "\\Images\\Connections\\Crypto\\Bybit.png",
+                LingSiteUrl = "https://partner.bybit.com/b/osengine",
+                Discount = 20
+            };
+            supportList.Add(bybit);
 
             SupportConnection binance = new SupportConnection()
             {
@@ -232,16 +272,6 @@ namespace OsEngine.Market.SupportTable
                 Discount = 10
             };
             supportList.Add(deribit);
-
-            SupportConnection bybit = new SupportConnection()
-            {
-                ServerType = ServerType.Bybit,
-                SupportType = SupportServerType.Prime,
-                LinqToLogo = "\\Images\\Connections\\Crypto\\Bybit.png",
-                LingSiteUrl = "https://partner.bybit.com/b/osengine",
-                Discount = 20
-            };
-            supportList.Add(bybit);
 
             SupportConnection xt = new SupportConnection()
             {

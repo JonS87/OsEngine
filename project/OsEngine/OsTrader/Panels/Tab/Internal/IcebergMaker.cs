@@ -7,6 +7,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OsEngine.Entity;
+using System.Threading;
+using OsEngine.Market;
 
 namespace OsEngine.OsTrader.Panels.Tab.Internal
 {
@@ -29,20 +31,20 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
         /// <param name="volume">volume</param>
         /// <param name="bot">bot</param>
         public void MakeNewIceberg(decimal price, TimeSpan lifeTime, int ordersCount, 
-            Position position, IcebergType type, decimal volume, BotTabSimple bot)
+            Position position, IcebergType type, decimal volume, BotTabSimple bot, OrderPriceType priceType, int minMillisecondsDistanceMarketOrders)
         {
             if (_icebergOrders == null)
             {
                 _icebergOrders = new List<Iceberg>();
             }
 
-            Iceberg newIceberg  = new Iceberg(price, lifeTime, ordersCount, position, bot, type, volume);
+            Iceberg newIceberg  = new Iceberg(price, lifeTime, ordersCount, position, 
+                bot, type, volume, priceType, minMillisecondsDistanceMarketOrders);
 
             newIceberg.NewOrderNeedToCancel += newIceberg_newOrderNeedToCancel;
             newIceberg.NewOrderNeedToExecute += newIceberg_newOrderNeedToExecute;
-
             _icebergOrders.Add(newIceberg);
-            newIceberg.Check();
+
         }
 
         /// <summary>
@@ -80,7 +82,6 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
             for (int i = 0; i < _icebergOrders.Count; i++)
             {
                 _icebergOrders[i].SetNewOrder(order);
-                _icebergOrders[i].Check();
             }
         }
 
@@ -136,7 +137,8 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
         /// <param name="type">iceberg type</param>
         /// <param name="volume">sum volume</param>
         public Iceberg(decimal price, TimeSpan lifeTime, int ordersCount, 
-            Position position, BotTabSimple bot, IcebergType type, decimal volume)
+            Position position, BotTabSimple bot, IcebergType type, 
+            decimal volume, OrderPriceType priceType, int minMillisecondsDistanceMarketOrders)
         {        
             _bot = bot;
             _price = price;
@@ -145,6 +147,8 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
             _ordersCount = ordersCount;
             _type = type;
             _volume = volume;
+            _priceType = priceType;
+            _minMillisecondsDistanceMarketOrders = minMillisecondsDistanceMarketOrders;
 
             if (type == IcebergType.Open)
             {
@@ -162,11 +166,21 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
             {
                 CreateModifyOrdersSell();
             }
+
+            Thread worker = new Thread(WorkerPlace);
+            worker.Start();
         }
+
+        private OrderPriceType _priceType;
 
         /// <summary>
         /// Life time
         private TimeSpan _lifeTime;
+
+        /// <summary>
+        /// Minimum time interval between orders in milliseconds
+        /// </summary>
+        private int _minMillisecondsDistanceMarketOrders;
 
         /// <summary>
         /// Position
@@ -198,6 +212,8 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
         /// </summary>
         private Order _ordersInSystem;
 
+        private OrderStateType _lastOrderState;
+
         /// <summary>
         /// Orders that must be placed
         /// </summary>
@@ -215,41 +231,26 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
         {
             Side side = _position.Direction;
 
-            int realCountOrders = _ordersCount;
+            List<decimal> volumes = GetVolumesArray(_volume, _ordersCount);
 
-            if (realCountOrders > _volume)
+            List<Order> orders = new List<Order>();
+
+            for (int i = 0; i < volumes.Count; i++)
             {
-                realCountOrders = Convert.ToInt32(_volume);
-            }
-
-            Order[] orders = new Order[realCountOrders];
-
-            for (int i = 0; i < orders.Length; i++)
-            {
-                orders[i] = new Order();
+                orders.Add(new Order());
                 orders[i].Side = side;
                 orders[i].LifeTime = _lifeTime;
-                orders[i].Volume = Convert.ToInt32(Math.Round(Convert.ToDecimal(_volume) / Convert.ToDecimal(realCountOrders)));
+                orders[i].Volume = volumes[i];
                 orders[i].Price = _price;
                 orders[i].PortfolioNumber = _bot.Portfolio.Number;
-                orders[i].SecurityNameCode = _bot.Securiti.Name;
-                orders[i].SecurityClassCode = _bot.Securiti.NameClass;
+                orders[i].SecurityNameCode = _bot.Security.Name;
+                orders[i].SecurityClassCode = _bot.Security.NameClass;
                 orders[i].OrderTypeTime = _bot.ManualPositionSupport.OrderTypeTime;
                 orders[i].NumberUser = NumberGen.GetNumberOrder(_bot.StartProgram);
-  
-                if (i + 1 == orders.Length)
-                {
-                    decimal realVolume = 0;
+                orders[i].TypeOrder = _priceType;
+              }
 
-                    for (int i2 = 0; i2 < orders.Length - 1; i2++)
-                    {
-                        realVolume += orders[i2].Volume;
-                    }
-                    orders[i].Volume = _volume - realVolume;
-                }
-            }
-
-            _ordersNeedToCreate = orders.ToList();
+            _ordersNeedToCreate = orders;
         }
 
         /// <summary>
@@ -258,6 +259,7 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
         private void CreateCloseOrders()
         {
             Side side;
+
             if (_position.Direction == Side.Buy)
             {
                  side = Side.Sell;
@@ -266,43 +268,28 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
             {
                 side = Side.Buy;
             }
-           
 
-            int realCountOrders = _ordersCount;
+            List<decimal> volumes = GetVolumesArray(_volume, _ordersCount);
 
-            if (realCountOrders > _volume)
+            List<Order> orders = new List<Order>();
+
+            for (int i = 0; i < volumes.Count; i++)
             {
-                realCountOrders = Convert.ToInt32(_volume);
-            }
-
-            Order[] orders = new Order[realCountOrders];
-
-            for (int i = 0; i < orders.Length; i++)
-            {
-                orders[i] = new Order();
+                orders.Add(new Order());
                 orders[i].Side = side;
                 orders[i].LifeTime = _lifeTime;
-                orders[i].Volume = Convert.ToInt32(Math.Round(Convert.ToDecimal(_volume) / Convert.ToDecimal(realCountOrders)));
+                orders[i].Volume = volumes[i];
                 orders[i].Price = _price;
                 orders[i].PortfolioNumber = _bot.Portfolio.Number;
-                orders[i].SecurityNameCode = _bot.Securiti.Name;
-                orders[i].SecurityClassCode = _bot.Securiti.NameClass;
+                orders[i].SecurityNameCode = _bot.Security.Name;
+                orders[i].SecurityClassCode = _bot.Security.NameClass;
                 orders[i].OrderTypeTime = _bot.ManualPositionSupport.OrderTypeTime;
                 orders[i].NumberUser = NumberGen.GetNumberOrder(_bot.StartProgram);
-
-                if (i + 1 == orders.Length)
-                {
-                    decimal realVolume = 0;
-
-                    for (int i2 = 0; i2 < orders.Length - 1; i2++)
-                    {
-                        realVolume += orders[i2].Volume;
-                    }
-                    orders[i].Volume = _volume - realVolume;
-                }
+                orders[i].TypeOrder = _priceType;
             }
 
-            _ordersNeedToCreate = orders.ToList();
+            _ordersNeedToCreate = orders;
+
         }
 
         /// <summary>
@@ -312,40 +299,26 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
         {
             Side side = Side.Buy;
 
-            int realCountOrders = _ordersCount;
+            List<decimal> volumes = GetVolumesArray(_volume, _ordersCount);
 
-            if (realCountOrders > _volume)
+            List<Order> orders = new List<Order>();
+
+            for (int i = 0; i < volumes.Count; i++)
             {
-                realCountOrders = Convert.ToInt32(_volume);
-            }
-
-            Order[] orders = new Order[realCountOrders];
-
-            for (int i = 0; i < orders.Length; i++)
-            {
-                orders[i] = new Order();
+                orders.Add(new Order());
                 orders[i].Side = side;
                 orders[i].LifeTime = _lifeTime;
-                orders[i].Volume = Convert.ToInt32(Math.Round(Convert.ToDecimal(_volume) / Convert.ToDecimal(realCountOrders)));
+                orders[i].Volume = volumes[i];
                 orders[i].Price = _price;
                 orders[i].PortfolioNumber = _bot.Portfolio.Number;
-                orders[i].SecurityNameCode = _bot.Securiti.Name;
+                orders[i].SecurityNameCode = _bot.Security.Name;
+                orders[i].SecurityClassCode = _bot.Security.NameClass;
                 orders[i].OrderTypeTime = _bot.ManualPositionSupport.OrderTypeTime;
                 orders[i].NumberUser = NumberGen.GetNumberOrder(_bot.StartProgram);
-
-                if (i + 1 == orders.Length)
-                {
-                    decimal realVolume = 0;
-
-                    for (int i2 = 0; i2 < orders.Length - 1; i2++)
-                    {
-                        realVolume += orders[i2].Volume;
-                    }
-                    orders[i].Volume = _volume - realVolume;
-                }
+                orders[i].TypeOrder = _priceType;
             }
 
-            _ordersNeedToCreate = orders.ToList();
+            _ordersNeedToCreate = orders;
         }
 
         /// <summary>
@@ -355,40 +328,59 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
         {
             Side side = Side.Sell;
 
-            int realCountOrders = _ordersCount;
+            List<decimal> volumes = GetVolumesArray(_volume, _ordersCount);
 
-            if (realCountOrders > _volume)
+            List<Order> orders = new List<Order>();
+
+            for (int i = 0; i < volumes.Count; i++)
             {
-                realCountOrders = Convert.ToInt32(_volume);
-            }
-
-            Order[] orders = new Order[realCountOrders];
-
-            for (int i = 0; i < orders.Length; i++)
-            {
-                orders[i] = new Order();
+                orders.Add(new Order());
                 orders[i].Side = side;
                 orders[i].LifeTime = _lifeTime;
-                orders[i].Volume = Convert.ToInt32(Math.Round(Convert.ToDecimal(_volume) / Convert.ToDecimal(realCountOrders)));
+                orders[i].Volume = volumes[i];
                 orders[i].Price = _price;
                 orders[i].PortfolioNumber = _bot.Portfolio.Number;
-                orders[i].SecurityNameCode = _bot.Securiti.Name;
+                orders[i].SecurityNameCode = _bot.Security.Name;
+                orders[i].SecurityClassCode = _bot.Security.NameClass;
                 orders[i].OrderTypeTime = _bot.ManualPositionSupport.OrderTypeTime;
                 orders[i].NumberUser = NumberGen.GetNumberOrder(_bot.StartProgram);
+                orders[i].TypeOrder = _priceType;
+            }
 
-                if (i + 1 == orders.Length)
+            _ordersNeedToCreate = orders;
+        }
+
+        private List<decimal> GetVolumesArray(decimal volume, decimal ordersCount)
+        {
+            List<decimal> volumes = new List<decimal>();
+
+            decimal allVolumeInArray = 0;
+
+            for (int i = 0; i < ordersCount; i++)
+            {
+                decimal curVolume = volume / ordersCount;
+                curVolume = Math.Round(curVolume, _bot.Security.DecimalsVolume);
+
+                if(curVolume > 0)
                 {
-                    decimal realVolume = 0;
-
-                    for (int i2 = 0; i2 < orders.Length - 1; i2++)
-                    {
-                        realVolume += orders[i2].Volume;
-                    }
-                    orders[i].Volume = _volume - realVolume;
+                    allVolumeInArray += curVolume;
+                    volumes.Add(curVolume);
                 }
             }
 
-            _ordersNeedToCreate = orders.ToList();
+            if (allVolumeInArray != volume)
+            {
+                decimal residue = volume - allVolumeInArray;
+
+                if(volumes.Count == 0)
+                {
+                    volumes.Add(0);
+                }
+
+                volumes[0] = Math.Round(volumes[0] + residue, _bot.Security.DecimalsVolume);
+            }
+
+            return volumes;
         }
 
         /// <summary>
@@ -403,7 +395,12 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
 
             if (_ordersInSystem.NumberMarket == order.NumberMarket)
             {
-                _ordersInSystem = order;
+                _ordersInSystem.State = order.State;
+
+                if(_lastOrderState != OrderStateType.Done)
+                {
+                    _lastOrderState = order.State;
+                }
             }
         }
 
@@ -436,6 +433,29 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
             _position = null;
         }
 
+        private void WorkerPlace()
+        {
+            while(true)
+            {
+                try
+                {
+                    Thread.Sleep(50);
+                    Check();
+
+                    if (_ordersNeedToCreate == null ||
+                        _ordersNeedToCreate.Count == 0)
+                    {
+                        return;
+                    }
+                }
+                catch(Exception e)
+                {
+                    ServerMaster.SendNewLogMessage("Iceberg internal error!!! " + e.ToString(), Logging.LogMessageType.Error);
+                    return;
+                }
+            }
+        }
+
         /// <summary>
         /// Check whether it is time to send a new order
         /// </summary>
@@ -448,10 +468,24 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
             }
 
             if (_ordersInSystem == null ||
-                _ordersInSystem.State == OrderStateType.Done)
+               _lastOrderState == OrderStateType.Done)
             {
                 _ordersInSystem = _ordersNeedToCreate[0];
-                _ordersNeedToCreate.Remove(_ordersInSystem);
+                
+
+                if (_ordersInSystem.TypeOrder == OrderPriceType.Market 
+                    && _lastSendOrderTime != DateTime.MinValue &&
+                    _minMillisecondsDistanceMarketOrders != 0)
+                {
+                    if(_lastSendOrderTime.AddMilliseconds(_minMillisecondsDistanceMarketOrders) > DateTime.Now)
+                    {
+                        return;
+                    }
+                }
+
+                _lastOrderState = OrderStateType.None;
+
+                _ordersNeedToCreate.RemoveAt(0);
 
                 if (_type == IcebergType.Open)
                 {
@@ -463,8 +497,9 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
                 }
                 else if (_type == IcebergType.ModifyBuy)
                 {
-                    if (_position.Direction == Side.Buy && _ordersInSystem.Side == Side.Buy||
-                        _position.Direction == Side.Sell && _ordersInSystem.Side == Side.Sell)
+                    if ((_position.Direction == Side.Buy && _ordersInSystem.Side == Side.Buy)
+                        ||
+                        (_position.Direction == Side.Sell && _ordersInSystem.Side == Side.Sell))
                     {
                         _position.AddNewOpenOrder(_ordersInSystem);
                     }
@@ -475,8 +510,9 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
                 }
                 else if (_type == IcebergType.ModifySell)
                 {
-                    if (_position.Direction == Side.Buy && _ordersInSystem.Side == Side.Buy ||
-                        _position.Direction == Side.Sell && _ordersInSystem.Side == Side.Sell)
+                    if ((_position.Direction == Side.Buy && _ordersInSystem.Side == Side.Buy)
+                        ||
+                        (_position.Direction == Side.Sell && _ordersInSystem.Side == Side.Sell))
                     {
                         _position.AddNewOpenOrder(_ordersInSystem);
                     }
@@ -490,8 +526,12 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
                 {
                     NewOrderNeedToExecute(_ordersInSystem);
                 }
+
+                _lastSendOrderTime = DateTime.Now;
             }
         }
+
+        private DateTime _lastSendOrderTime;
 
         /// <summary>
         /// Order must be executed

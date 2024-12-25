@@ -1,16 +1,18 @@
 using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-namespace CustomIndicators.Scripts
+namespace OsEngine.Indicators
 {
+    [Indicator("PriceChannel")]
     public class PriceChannel : Aindicator
     {
         private IndicatorParameterInt _lengthUp;
+
         private IndicatorParameterInt _lengthDown;
 
         private IndicatorDataSeries _seriesUp;
+
         private IndicatorDataSeries _seriesDown;
 
         public override void OnStateChange(IndicatorState state)

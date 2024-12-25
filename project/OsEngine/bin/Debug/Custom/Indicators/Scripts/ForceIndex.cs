@@ -2,14 +2,16 @@
 using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-namespace CustomIndicators.Scripts
+namespace OsEngine.Indicators
 {
+    [Indicator("ForceIndex")]
     public class ForceIndex:Aindicator
     {
         private IndicatorParameterInt _period;
+
         private IndicatorDataSeries _series;
+
         private IndicatorParameterString _candlePoint;
 
         public override void OnStateChange(IndicatorState state)
@@ -112,6 +114,7 @@ namespace CustomIndicators.Scripts
         }
 
         private List<decimal> _movingAverage = new List<decimal>();
+
         private List<decimal> _range = new List<decimal>();
 
     }

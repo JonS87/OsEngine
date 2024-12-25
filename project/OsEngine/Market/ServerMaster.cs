@@ -63,6 +63,9 @@ using OsEngine.Market.Servers.BitMart;
 using OsEngine.Market.Servers.BitMartFutures;
 using OsEngine.Market.Servers.MoexFixFastCurrency;
 using OsEngine.Market.Servers.MoexFixFastTwimeFutures;
+using OsEngine.Market.Servers.TraderNet;
+using OsEngine.Market.Servers.Mexc;
+using OsEngine.Market.Servers.KiteConnect;
 
 namespace OsEngine.Market
 {
@@ -211,7 +214,9 @@ namespace OsEngine.Market
                 serverTypes.Add(ServerType.BitMartFutures);
                 serverTypes.Add(ServerType.MoexFixFastCurrency);
                 serverTypes.Add(ServerType.MoexFixFastTwimeFutures);
-                
+                serverTypes.Add(ServerType.TraderNet);
+                serverTypes.Add(ServerType.Mexc);
+                serverTypes.Add(ServerType.KiteConnect);
                 serverTypes.Add(ServerType.AstsBridge);
 
 
@@ -310,6 +315,10 @@ namespace OsEngine.Market
                 serverTypes.Add(ServerType.Bybit);
                 serverTypes.Add(ServerType.OKX);
                 serverTypes.Add(ServerType.Woo);
+                serverTypes.Add(ServerType.BitGetSpot);
+                serverTypes.Add(ServerType.BitGetFutures);
+                serverTypes.Add(ServerType.TraderNet);
+                serverTypes.Add(ServerType.KiteConnect);
 
                 return serverTypes;
             }
@@ -367,6 +376,8 @@ namespace OsEngine.Market
             }
         }
 
+        private static List<ServerType> _alreadyCreatedServers = new List<ServerType>(); 
+
         /// <summary>
         /// create server
         /// </summary>
@@ -385,6 +396,16 @@ namespace OsEngine.Market
                 {
                     return;
                 }
+
+                for(int i = 0;i < _alreadyCreatedServers.Count;i++)
+                {
+                    if (_alreadyCreatedServers[i] == type)
+                    {
+                        return;
+                    }
+                }
+
+                _alreadyCreatedServers.Add(type);  
 
                 SaveMostPopularServers(type);
 
@@ -582,6 +603,18 @@ namespace OsEngine.Market
                 else if (type == ServerType.BitMartFutures)
                 {
                     newServer = new BitMartFuturesServer();
+                }
+                else if (type == ServerType.TraderNet)
+                {
+                    newServer = new TraderNetServer();
+                }
+                else if (type == ServerType.Mexc)
+                {
+                    newServer = new MexcServer();
+                }
+                else if (type == ServerType.KiteConnect)
+                {
+                    newServer = new KiteConnectServer();
                 }
 
                 if (newServer == null)
@@ -997,6 +1030,10 @@ namespace OsEngine.Market
         {
             for(int i = 0;i < _serversPermissions.Count;i++)
             {
+                if (_serversPermissions[i] == null)
+                {
+                    continue;
+                }
                 if (_serversPermissions[i].ServerType == type)
                 {
                     return _serversPermissions[i];
@@ -1015,6 +1052,10 @@ namespace OsEngine.Market
             {
                 for (int i = 0; i < _serversPermissions.Count; i++)
                 {
+                    if (_serversPermissions[i] == null)
+                    {
+                        continue;
+                    }
                     if (_serversPermissions[i].ServerType == type)
                     {
                         return _serversPermissions[i];
@@ -1179,7 +1220,22 @@ namespace OsEngine.Market
                 {
                     serverPermission = new MoexFixFastTwimeFuturesServerPermission();
                 }
-
+                else if (type == ServerType.BitMex)
+                {
+                    serverPermission = new BitMexServerPermission();
+                }
+                else if (type == ServerType.TraderNet)
+                {
+                    serverPermission = new TraderNetServerPermission();
+                }
+                else if (type == ServerType.Mexc)
+                {
+                    serverPermission = new MexcServerPermission();
+                }
+                else if (type == ServerType.KiteConnect)
+                {
+                    serverPermission = new KiteConnectServerPermission();
+                }
 
                 if (serverPermission != null)
                 {
@@ -1623,5 +1679,20 @@ namespace OsEngine.Market
         /// FIX/FAST/TWIME for MOEX Futures
         /// </summary>
         MoexFixFastTwimeFutures,
+
+        /// <summary>
+        /// TraderNet
+        /// </summary>
+        TraderNet,
+
+        /// <summary>
+        /// Mexc Spot
+        /// </summary>
+        Mexc,
+
+        /// <summary>
+        /// Mexc Spot
+        /// </summary>
+        KiteConnect,
     }
 }

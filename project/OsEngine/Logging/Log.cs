@@ -665,7 +665,7 @@ namespace OsEngine.Logging
 
                 if(_grid != null 
                     && _grid.Rows != null
-                    && _grid.Rows.Count > 5000)
+                    && _grid.Rows.Count > 15000)
                 {
                     return;
                 }
@@ -994,7 +994,6 @@ namespace OsEngine.Logging
                 _errorLogShutDown = true;
                 return;
             }
-
 
             DataGridViewRow row = new DataGridViewRow();
             row.Cells.Add(new DataGridViewTextBoxCell());

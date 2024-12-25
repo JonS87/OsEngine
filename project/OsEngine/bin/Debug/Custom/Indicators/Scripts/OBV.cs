@@ -2,13 +2,14 @@
 using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-namespace CustomIndicators.Scripts
+namespace OsEngine.Indicators
 {
+    [Indicator("OBV")]
     public class OBV:Aindicator
     {
         private IndicatorDataSeries _series;
+
         public override void OnStateChange(IndicatorState state)
         {
             if (state == IndicatorState.Configure)
@@ -23,6 +24,7 @@ namespace CustomIndicators.Scripts
                 }
             }
         }
+
         public override void OnProcess(List<Candle> candles, int index)
         {
             _series.Values[index] = GetValue(candles, index);

@@ -1,18 +1,20 @@
 using System.Collections.Generic;
 using System.Drawing;
 using OsEngine.Entity;
-using OsEngine.Indicators;
 
-
-namespace CustomIndicators.Scripts
+namespace OsEngine.Indicators
 {
+    [Indicator("ChaikinOsc")]
     public class ChaikinOsc : Aindicator
     {
         private IndicatorDataSeries _seriesLine;
+
         private IndicatorDataSeries _seriesVi;
+
         private IndicatorDataSeries _seriesAccDistr;
 
         private IndicatorParameterInt _longPeriod;
+
         private IndicatorParameterInt _shortPeriod;
 
         public override void OnStateChange(IndicatorState state)

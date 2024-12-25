@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Forms;
 using OsEngine.Entity;
 using OsEngine.Language;
+using OsEngine.Market;
 using MessageBox = System.Windows.MessageBox;
 
 namespace OsEngine.Indicators
@@ -39,15 +40,54 @@ namespace OsEngine.Indicators
 
             this.Activate();
             this.Focus();
+
+            Closed += AIndicatorUi_Closed;
+        }
+
+        private void AIndicatorUi_Closed(object sender, EventArgs e)
+        {
+            try
+            {
+                _gridParam.DataError -= _gridParam_DataError;
+                HostParameters.Child = null;
+                DataGridFactory.ClearLinks(_gridParam);
+                _gridParam = null;
+
+                _gridVisual.Click -= _gridVisual_Click;
+                _gridVisual.DataError -= _gridParam_DataError;
+                HostVisual.Child = null;
+                DataGridFactory.ClearLinks(_gridVisual);
+                _gridVisual = null;
+
+                _gridIndicators.Click -= _gridIndicators_Click;
+                _gridIndicators.DataError -= _gridParam_DataError;
+                HostIndicators.Child = null;
+                DataGridFactory.ClearLinks(_gridIndicators);
+                _gridIndicators = null;
+
+                _indicator = null;
+            }
+            catch
+            {
+                // ignore
+            }
         }
 
         private void ButtonAccept_Click(object sender, RoutedEventArgs e)
         {
-            SaveParam();
-            SaveVisual();
+            try
+            {
+                SaveParam();
+                SaveVisual();
 
-            IsAccepted = true;
-            Close();
+                IsAccepted = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                ServerMaster.SendNewLogMessage("Indicator parameters UI error: " + ex.ToString(), Logging.LogMessageType.Error);
+                return;
+            }
         }
 
         public bool IsAccepted;
@@ -82,7 +122,12 @@ namespace OsEngine.Indicators
             _gridParam.Rows.Add(null, null);
 
             HostParameters.Child = _gridParam;
+            _gridParam.DataError += _gridParam_DataError;
+        }
 
+        private void _gridParam_DataError(object sender, DataGridViewDataErrorEventArgs e)
+        {
+           ServerMaster.SendNewLogMessage(e.ToString(),Logging.LogMessageType.Error);
         }
 
         private void UpdateGridParam()
@@ -151,10 +196,11 @@ namespace OsEngine.Indicators
 
         private void SaveParam()
         {
-            for (int i = 0; i < _indicator.Parameters.Count; i++)
+            try
             {
-                try
+                for (int i = 0; i < _indicator.Parameters.Count; i++)
                 {
+
                     if (_indicator.Parameters[i].Type == IndicatorParameterType.String)
                     {
                         ((IndicatorParameterString)_indicator.Parameters[i]).ValueString = _gridParam.Rows[i].Cells[1].EditedFormattedValue.ToString();
@@ -171,13 +217,13 @@ namespace OsEngine.Indicators
                     {
                         ((IndicatorParameterDecimal)_indicator.Parameters[i]).ValueDecimal = _gridParam.Rows[i].Cells[1].EditedFormattedValue.ToString().ToDecimal();
                     }
-                }
-                catch
-                {
-                    System.Windows.Forms.MessageBox.Show("Error. One of field have note valid param");
-                    return;
-                }
 
+                }
+            }
+            catch(Exception ex) 
+            {
+                ServerMaster.SendNewLogMessage("Indicator parameters UI error: " + ex.ToString(), Logging.LogMessageType.Error);
+                return;
             }
         }
 
@@ -228,42 +274,52 @@ namespace OsEngine.Indicators
 
             HostVisual.Child = _gridVisual;
             _gridVisual.Click += _gridVisual_Click;
+
+            _gridVisual.DataError += _gridParam_DataError;
         }
 
         private void UpdateGridVisual()
         {
-            _gridVisual.Rows.Clear();
-
-            for (int i = 0; i < _indicator.DataSeries.Count; i++)
+            try
             {
-                DataGridViewRow row = new DataGridViewRow();
+                _gridVisual.Rows.Clear();
 
-                row.Cells.Add(new DataGridViewTextBoxCell());
-                row.Cells[0].Value = _indicator.DataSeries[i].Name;
+                for (int i = 0; i < _indicator.DataSeries.Count; i++)
+                {
+                    DataGridViewRow row = new DataGridViewRow();
 
-                //_series = CreateSeries("Ma", Color.DodgerBlue, IndicatorChartPaintType.Line, false);
+                    row.Cells.Add(new DataGridViewTextBoxCell());
+                    row.Cells[0].Value = _indicator.DataSeries[i].Name;
 
-                DataGridViewButtonCell buttonColor = new DataGridViewButtonCell();
-                row.Cells.Add(buttonColor);
-                buttonColor.Value = "Color";
-                buttonColor.Style.ForeColor = _indicator.DataSeries[i].Color;
-                buttonColor.Style.SelectionForeColor = _indicator.DataSeries[i].Color;
+                    //_series = CreateSeries("Ma", Color.DodgerBlue, IndicatorChartPaintType.Line, false);
 
-                DataGridViewComboBoxCell cell = new DataGridViewComboBoxCell();
-                cell.Items.Add(IndicatorChartPaintType.Line.ToString());
-                cell.Items.Add(IndicatorChartPaintType.Point.ToString());
-                cell.Items.Add(IndicatorChartPaintType.Column.ToString());
-                cell.Value = _indicator.DataSeries[i].ChartPaintType.ToString();
-                row.Cells.Add(cell);
+                    DataGridViewButtonCell buttonColor = new DataGridViewButtonCell();
+                    row.Cells.Add(buttonColor);
+                    buttonColor.Value = "Color";
+                    buttonColor.Style.ForeColor = _indicator.DataSeries[i].Color;
+                    buttonColor.Style.SelectionForeColor = _indicator.DataSeries[i].Color;
 
-                DataGridViewComboBoxCell cell2 = new DataGridViewComboBoxCell();
+                    DataGridViewComboBoxCell cell = new DataGridViewComboBoxCell();
+                    cell.Items.Add(IndicatorChartPaintType.Line.ToString());
+                    cell.Items.Add(IndicatorChartPaintType.Point.ToString());
+                    cell.Items.Add(IndicatorChartPaintType.Column.ToString());
+                    cell.Value = _indicator.DataSeries[i].ChartPaintType.ToString();
+                    row.Cells.Add(cell);
 
-                cell2.Items.Add("False");
-                cell2.Items.Add("True");
-                cell2.Value = _indicator.DataSeries[i].IsPaint.ToString();
-                row.Cells.Add(cell2);
+                    DataGridViewComboBoxCell cell2 = new DataGridViewComboBoxCell();
 
-                _gridVisual.Rows.Add(row);
+                    cell2.Items.Add("False");
+                    cell2.Items.Add("True");
+                    cell2.Value = _indicator.DataSeries[i].IsPaint.ToString();
+                    row.Cells.Add(cell2);
+
+                    _gridVisual.Rows.Add(row);
+                }
+            }
+            catch (Exception ex)
+            {
+                ServerMaster.SendNewLogMessage("Indicator parameters UI error: " + ex.ToString(), Logging.LogMessageType.Error);
+                return;
             }
         }
 
@@ -284,9 +340,10 @@ namespace OsEngine.Indicators
                     _gridVisual.Rows[rowIndex].Cells[1].Style.SelectionForeColor = dialog.Color;
                 }
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-
+                ServerMaster.SendNewLogMessage("Indicator parameters UI error: " + ex.ToString(), Logging.LogMessageType.Error);
+                return;
             }
         }
 
@@ -302,10 +359,10 @@ namespace OsEngine.Indicators
                 }
                 catch
                 {
-                    System.Windows.Forms.MessageBox.Show("Error. One of field have note valid param");
+                    ServerMaster.SendNewLogMessage("Error save parameters in DataSeries indicator. Parameter: " 
+                        + _indicator.DataSeries[i].Name, Logging.LogMessageType.Error);
                     return;
                 }
-
             }
         }
 
@@ -348,27 +405,37 @@ namespace OsEngine.Indicators
 
             HostIndicators.Child = _gridIndicators;
             _gridIndicators.Click += _gridIndicators_Click;
+
+            _gridIndicators.DataError += _gridParam_DataError;
         }
 
         private void UpdateGridIndicators()
         {
-            _gridIndicators.Rows.Clear();
-
-            for (int i = 0; i < _indicator.IncludeIndicators.Count; i++)
+            try
             {
-                DataGridViewRow row = new DataGridViewRow();
+                _gridIndicators.Rows.Clear();
 
-                row.Cells.Add(new DataGridViewTextBoxCell());
-                row.Cells[0].Value = _indicator.IncludeIndicatorsName[i];
+                for (int i = 0; i < _indicator.IncludeIndicators.Count; i++)
+                {
+                    DataGridViewRow row = new DataGridViewRow();
 
-                row.Cells.Add(new DataGridViewTextBoxCell());
-                row.Cells[1].Value = _indicator.IncludeIndicators[i].GetType().Name;
+                    row.Cells.Add(new DataGridViewTextBoxCell());
+                    row.Cells[0].Value = _indicator.IncludeIndicatorsName[i];
 
-                DataGridViewButtonCell buttonColor = new DataGridViewButtonCell();
-                row.Cells.Add(buttonColor);
-                buttonColor.Value = "Settings";
+                    row.Cells.Add(new DataGridViewTextBoxCell());
+                    row.Cells[1].Value = _indicator.IncludeIndicators[i].GetType().Name;
 
-                _gridIndicators.Rows.Add(row);
+                    DataGridViewButtonCell buttonColor = new DataGridViewButtonCell();
+                    row.Cells.Add(buttonColor);
+                    buttonColor.Value = "Settings";
+
+                    _gridIndicators.Rows.Add(row);
+                }
+            }
+            catch (Exception ex)
+            {
+                ServerMaster.SendNewLogMessage("Indicator parameters UI error: " + ex.ToString(), Logging.LogMessageType.Error);
+                return;
             }
         }
 
@@ -392,19 +459,28 @@ namespace OsEngine.Indicators
                     UpdateGridParam();
                 }
             }
-            catch (Exception error)
+            catch (Exception ex)
             {
-                MessageBox.Show(error.ToString());
+                ServerMaster.SendNewLogMessage("Indicator parameters UI error: " + ex.ToString(), Logging.LogMessageType.Error);
+                return;
             }
         }
 
         private void ButtonDefault_Click(object sender, RoutedEventArgs e)
         {
-            for (int i = 0; i < _indicator.Parameters.Count; i++)
+            try
             {
-                _indicator.Parameters[i].DoDefault();
+                for (int i = 0; i < _indicator.Parameters.Count; i++)
+                {
+                    _indicator.Parameters[i].DoDefault();
+                }
+                UpdateGridParam();
             }
-            UpdateGridParam();
+            catch (Exception ex)
+            {
+                ServerMaster.SendNewLogMessage("Indicator parameters UI error: " + ex.ToString(), Logging.LogMessageType.Error);
+                return;
+            }
         }
     }
 }

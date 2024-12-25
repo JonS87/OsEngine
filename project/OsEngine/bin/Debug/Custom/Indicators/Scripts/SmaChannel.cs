@@ -1,19 +1,21 @@
 ﻿using OsEngine.Entity;
-using OsEngine.Indicators;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace OsEngine.Charts.CandleChart.Indicators.Indicator
+namespace OsEngine.Indicators
 {
-   // [IndicatorAttribute("SmaChannel")]
-    internal class SmaChannel : Aindicator
+    [Indicator("SmaChannel")]
+    public class SmaChannel : Aindicator
     {
         private IndicatorParameterInt _length;
+
         private IndicatorParameterDecimal _deviation;
 
         private IndicatorDataSeries _seriesUp;
+
         private IndicatorDataSeries _seriesDown;
+
         private IndicatorDataSeries _seriesCenter;
 
         private Aindicator _sma;
