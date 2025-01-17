@@ -77,13 +77,29 @@ namespace OsEngine.Journal
 
             LabelVolumeShowNumbers.Content = OsLocalization.Journal.Label16;
 
+            ComboBoxClosePosesOnPage.Items.Add(OsLocalization.Journal.Label18);
+            ComboBoxClosePosesOnPage.Items.Add(OsLocalization.Journal.Label19);
+            ComboBoxClosePosesOnPage.Items.Add(OsLocalization.Journal.Label20);
+            ComboBoxClosePosesOnPage.SelectedItem = OsLocalization.Journal.Label18;
+            ComboBoxClosePosesOnPage.SelectionChanged += ComboBoxClosePosesOnPage_SelectionChanged;
+            ComboBoxClosePosesShowNumbers.SelectionChanged += ComboBoxClosePosesShowNumbers_SelectionChanged;
+
+            ComboBoxOpenPosesOnPage.Items.Add(OsLocalization.Journal.Label18);
+            ComboBoxOpenPosesOnPage.Items.Add(OsLocalization.Journal.Label19);
+            ComboBoxOpenPosesOnPage.Items.Add(OsLocalization.Journal.Label20);
+            ComboBoxOpenPosesOnPage.SelectedItem = OsLocalization.Journal.Label18;
+            ComboBoxOpenPosesOnPage.SelectionChanged += ComboBoxOpenPosesOnPage_SelectionChanged;
+            ComboBoxOpenPosesShowNumbers.SelectionChanged += ComboBoxOpenPosesShowNumbers_SelectionChanged;
+
             ButtonAutoReload.Click += ButtonAutoReload_Click;
             ButtonAutoReload.IsChecked = false;
 
             LabelEqutyCharteType.Content = OsLocalization.Journal.Label8;
             
-
             CreatePositionsLists();
+
+            SelectOpenPosesPages();
+            SelectCLosePosesPages();
 
             Closing += JournalUi_Closing;
 
@@ -126,6 +142,8 @@ namespace OsEngine.Journal
             CheckBoxShowDontOpenPoses.Content = OsLocalization.Journal.Label17;
 
             GlobalGUILayout.Listen(this, JournalName);
+
+            RePaint();
         }
 
         private void JournalUi_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -206,8 +224,12 @@ namespace OsEngine.Journal
                     _openPositionGrid.Click -= _openPositionGrid_Click;
                     _openPositionGrid.DoubleClick -= _openPositionGrid_DoubleClick;
                     _openPositionGrid = null;
-                    HostOpenPosition.Child.Hide();
-                    HostOpenPosition.Child = null;
+                    if (HostOpenPosition.Child != null)
+                    {
+                        HostOpenPosition.Child.Hide();
+                        HostOpenPosition.Child = null;
+                    }
+
                     HostOpenPosition = null;
                 }
 
@@ -218,8 +240,12 @@ namespace OsEngine.Journal
                     _closePositionGrid.Click -= _closePositionGrid_Click;
                     _closePositionGrid.DoubleClick -= _closePositionGrid_DoubleClick;
                     _closePositionGrid = null;
-                    HostClosePosition.Child.Hide();
-                    HostClosePosition.Child = null;
+                    if(HostClosePosition.Child != null)
+                    {
+                        HostClosePosition.Child.Hide();
+                        HostClosePosition.Child = null;
+                    }
+
                     HostClosePosition = null;
                 }
 
@@ -367,11 +393,11 @@ namespace OsEngine.Journal
                     shortPositions.Add(_shortPositions[i]);
                 }
 
-
                 lock (_paintLocker)
                 {
 
-                    if (TabControlPrime.SelectedIndex == 0)
+                    if (TabControlPrime.SelectedIndex == -1 ||
+                        TabControlPrime.SelectedIndex == 0)
                     {
                         PaintProfitOnChart(allSortPoses);
                     }
@@ -1926,27 +1952,51 @@ namespace OsEngine.Journal
                 {
                     CreateOpenPositionTable();
                 }
-                _openPositionGrid.Rows.Clear();
 
-                if (positionsAll == null
-                    || positionsAll.Count == 0)
-                {
-                    return;
-                }
+                List<Position> openPositions = new List<Position>();
 
-                for (int i = 0; i < positionsAll.Count; i++)
+                for (int i = 0; i < positionsAll.Count;i++)
                 {
                     if (positionsAll[i].State != PositionStateType.Done &&
                         positionsAll[i].State != PositionStateType.OpeningFail)
                     {
-                        _openPositionGrid.Rows.Insert(0, GetRow(positionsAll[i]));
+                        openPositions.Add(positionsAll[i]);
                     }
+                }
+
+                HostOpenPosition.Child = null;
+
+                _openPositionGrid.Rows.Clear();
+
+                if (openPositions == null
+                    || openPositions.Count == 0)
+                {
+                    HostOpenPosition.Child = _openPositionGrid;
+                    return;
+                }
+
+                int startNum = 0;
+                int endNum = openPositions.Count;
+
+                if (ComboBoxOpenPosesShowNumbers.SelectedItem != null)
+                {
+                    string selectNum = ComboBoxOpenPosesShowNumbers.SelectedItem.ToString().Replace(" ", "");
+
+                    startNum = Convert.ToInt32(selectNum.Split('>')[0]);
+                    endNum = Convert.ToInt32(selectNum.Split('>')[1]);
+                }
+
+                for (int i = startNum; i < endNum && i < openPositions.Count; i++)
+                {
+                    _openPositionGrid.Rows.Insert(0, GetRow(openPositions[i]));
                 }
             }
             catch( Exception ex)
             {
                 SendNewLogMessage(ex.ToString(), LogMessageType.Error); 
             }
+
+            HostOpenPosition.Child = _openPositionGrid;
         }
 
         private DataGridView CreateNewTable()
@@ -2183,7 +2233,7 @@ namespace OsEngine.Journal
             }
 
             DeletePosition(number);
-
+            SelectOpenPosesPages();
             RePaint();
         }
 
@@ -2215,6 +2265,7 @@ namespace OsEngine.Journal
             {
                 DeletePosition(numbers[i]);
             }
+            SelectOpenPosesPages();
             RePaint();
         }
 
@@ -2244,6 +2295,88 @@ namespace OsEngine.Journal
             catch(Exception ex)
             {
                 SendNewLogMessage(ex.ToString(),LogMessageType.Error);
+            }
+        }
+
+        private void ComboBoxOpenPosesOnPage_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            SelectOpenPosesPages();
+            RePaint();
+        }
+
+        private void SelectOpenPosesPages()
+        {
+            _volumeControlUpdated = true;
+            ComboBoxOpenPosesShowNumbers.SelectionChanged -= ComboBoxOpenPosesShowNumbers_SelectionChanged;
+            ComboBoxOpenPosesShowNumbers.Items.Clear();
+
+            string selectedPosesOnPage = ComboBoxOpenPosesOnPage.SelectedItem.ToString();
+
+            int countPosOnPage = 0;
+
+            if (selectedPosesOnPage == OsLocalization.Journal.Label18)
+            {
+                countPosOnPage = 100;
+            }
+            else if (selectedPosesOnPage == OsLocalization.Journal.Label19)
+            {
+                countPosOnPage = 500;
+            }
+            else if (selectedPosesOnPage == OsLocalization.Journal.Label20)
+            {
+                countPosOnPage = 1000;
+            }
+
+            List<Position> allSortPoses = new List<Position>();
+
+            for (int i = 0; _allPositions != null && i < _allPositions.Count; i++)
+            {
+                if (_allPositions[i] == null)
+                {
+                    continue;
+                }
+                if (_allPositions[i].TimeCreate < _startTime
+                    || _allPositions[i].TimeCreate > _endTime)
+                {
+                    continue;
+                }
+                if (_allPositions[i].State != PositionStateType.Done &&
+                    _allPositions[i].State != PositionStateType.OpeningFail)
+                {
+                    allSortPoses.Add(_allPositions[i]);
+                }
+            }
+
+            if (allSortPoses.Count == 0)
+            {
+                return;
+            }
+
+            int curPositionNum = 0;
+
+            while (curPositionNum < allSortPoses.Count)
+            {
+                ComboBoxOpenPosesShowNumbers.Items.Add(curPositionNum + " > " + (curPositionNum + countPosOnPage));
+                curPositionNum += countPosOnPage;
+            }
+
+            _volumeControlUpdated = true;
+            ComboBoxOpenPosesShowNumbers.SelectedIndex = ComboBoxOpenPosesShowNumbers.Items.Count - 1;
+            ComboBoxOpenPosesShowNumbers.SelectionChanged += ComboBoxOpenPosesShowNumbers_SelectionChanged;
+
+            _volumeControlUpdated = true;
+        }
+
+        private void ComboBoxOpenPosesShowNumbers_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                _volumeControlUpdated = true;
+                RePaint();
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
             }
         }
 
@@ -2278,82 +2411,35 @@ namespace OsEngine.Journal
                     CreateClosePositionTable();
                 }
 
+                HostClosePosition.Child = null;
+
                 _closePositionGrid.Rows.Clear();
                 _closePositionGrid.ClearSelection();
 
-                List<Journal> myJournals = GetActiveJournals();
-
-                if (myJournals == null
-                    || myJournals.Count == 0)
+                if(ComboBoxClosePosesShowNumbers.Items == null ||
+                    ComboBoxClosePosesShowNumbers.Items.Count == 0)
                 {
                     return;
                 }
 
-                List<Position> positionsAll = new List<Position>();
+                string selectNums = ComboBoxClosePosesShowNumbers.SelectedItem.ToString().Replace(" ", "");
 
-                for (int i = 0; i < myJournals.Count; i++)
-                {
-                    if (myJournals[i].AllPosition != null) positionsAll.AddRange(myJournals[i].AllPosition);
-                }
+                int startNum = Convert.ToInt32(selectNums.Split('>')[0]);
+                int endNum = Convert.ToInt32(selectNums.Split('>')[1]);
 
-                if (positionsAll == null
-                    || positionsAll.Count == 0)
+                List<Position> closePositions = GetClosePositions();
+
+                if(closePositions == null ||
+                    closePositions.Count == 0)
                 {
+                    HostClosePosition.Child = _openPositionGrid;
                     return;
-                }
-
-                List<Position> closePositions = new List<Position>();
-
-                for (int i = 0; i < positionsAll.Count; i++)
-                {
-                    if (positionsAll[i].State == PositionStateType.Done ||
-                        positionsAll[i].State == PositionStateType.OpeningFail)
-                    {
-                        closePositions.Add(positionsAll[i]);
-                    }
-                }
-
-                if (closePositions.Count == 0)
-                {
-                    return;
-                }
-
-                for (int i = 0; i < closePositions.Count; i++)
-                {
-                    for (int i2 = i; i2 < closePositions.Count; i2++)
-                    {
-                        if (closePositions[i].TimeClose > closePositions[i2].TimeClose)
-                        {
-                            Position pos = closePositions[i2];
-                            closePositions[i2] = closePositions[i];
-                            closePositions[i] = pos;
-                        }
-                    }
-                }
-
-                bool showDontOpenPositions = false;
-                
-                if(CheckBoxShowDontOpenPoses.IsChecked.HasValue)
-                {
-                    showDontOpenPositions = CheckBoxShowDontOpenPoses.IsChecked.Value;
                 }
 
                 List<DataGridViewRow> rows = new List<DataGridViewRow>();
 
-                for (int i = 0; i < closePositions.Count; i++)
+                for (int i = startNum; i < endNum + 1 && i < closePositions.Count; i++)
                 {
-                    if (closePositions[i].TimeCreate < _startTime
-                       || closePositions[i].TimeCreate > _endTime)
-                    {
-                        continue;
-                    }
-
-                    if(showDontOpenPositions == false &&
-                        closePositions[i].State == PositionStateType.OpeningFail)
-                    {
-                        continue;
-                    }
-
                     rows.Insert(0, GetRow(closePositions[i]));
                 }
 
@@ -2362,12 +2448,87 @@ namespace OsEngine.Journal
                     HostClosePosition.Child = null;
                     _closePositionGrid.Rows.AddRange(rows.ToArray());
                     HostClosePosition.Child = _closePositionGrid;
+                    return;
                 }
             }
             catch(Exception ex )
             {
                 SendNewLogMessage(ex.ToString(),LogMessageType.Error);
             }
+            HostClosePosition.Child = _openPositionGrid;
+        }
+
+        private List<Position> GetClosePositions()
+        {
+            List<Journal> myJournals = GetActiveJournals();
+
+            if (myJournals == null
+                || myJournals.Count == 0)
+            {
+                return null;
+            }
+
+            List<Position> positionsAll = new List<Position>();
+
+            for (int i = 0; i < myJournals.Count; i++)
+            {
+                if (myJournals[i].AllPosition != null) positionsAll.AddRange(myJournals[i].AllPosition);
+            }
+
+            if (positionsAll == null
+                || positionsAll.Count == 0)
+            {
+                return null;
+            }
+
+            bool showDontOpenPositions = false;
+
+            if (CheckBoxShowDontOpenPoses.IsChecked.HasValue)
+            {
+                showDontOpenPositions = CheckBoxShowDontOpenPoses.IsChecked.Value;
+            }
+
+            List<Position> closePositions = new List<Position>();
+
+            for (int i = 0; i < positionsAll.Count; i++)
+            {
+                if ((_startTime != DateTime.MinValue && positionsAll[i].TimeCreate < _startTime)
+                   ||
+                   (_endTime != DateTime.MinValue && positionsAll[i].TimeCreate > _endTime))
+                {
+                    continue;
+                }
+
+                if (positionsAll[i].State == PositionStateType.Done)
+                {
+                    closePositions.Add(positionsAll[i]);
+                }
+                else if(positionsAll[i].State == PositionStateType.OpeningFail 
+                    && showDontOpenPositions == true)
+                {
+                    closePositions.Add(positionsAll[i]);
+                }
+            }
+
+            if (closePositions.Count == 0)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < closePositions.Count; i++)
+            {
+                for (int i2 = i; i2 < closePositions.Count; i2++)
+                {
+                    if (closePositions[i].TimeClose > closePositions[i2].TimeClose)
+                    {
+                        Position pos = closePositions[i2];
+                        closePositions[i2] = closePositions[i];
+                        closePositions[i] = pos;
+                    }
+                }
+            }
+
+            return closePositions;
         }
 
         private void CheckBoxShowDontOpenPoses_Click(object sender, RoutedEventArgs e)
@@ -2559,7 +2720,7 @@ namespace OsEngine.Journal
                 }
 
                 DeletePosition(number);
-
+                SelectCLosePosesPages();
                 RePaint();
             }
             catch(Exception error)
@@ -2612,11 +2773,83 @@ namespace OsEngine.Journal
                 {
                     DeletePosition(numbers[i]);
                 }
+                SelectCLosePosesPages();
                 RePaint();
             }
             catch(Exception error )
             {
                 SendNewLogMessage(error.ToString(),LogMessageType.Error);
+            }
+        }
+
+        private void ComboBoxClosePosesOnPage_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                SelectCLosePosesPages();
+                RePaint();
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private void SelectCLosePosesPages()
+        {
+            _volumeControlUpdated = true;
+            ComboBoxClosePosesShowNumbers.SelectionChanged -= ComboBoxClosePosesShowNumbers_SelectionChanged;
+            ComboBoxClosePosesShowNumbers.Items.Clear();
+
+            string selectedPosesOnPage = ComboBoxClosePosesOnPage.SelectedItem.ToString();
+
+            int countPosOnPage = 0;
+
+            if (selectedPosesOnPage == OsLocalization.Journal.Label18)
+            {
+                countPosOnPage = 100;
+            }
+            else if (selectedPosesOnPage == OsLocalization.Journal.Label19)
+            {
+                countPosOnPage = 500;
+            }
+            else if (selectedPosesOnPage == OsLocalization.Journal.Label20)
+            {
+                countPosOnPage = 1000;
+            }
+
+            List<Position> closePositions = GetClosePositions();
+
+            if(closePositions == null
+                || closePositions.Count == 0)
+            {
+                return;
+            }
+
+            int curPositionNum = 0;
+
+            while(curPositionNum < closePositions.Count)
+            {
+                ComboBoxClosePosesShowNumbers.Items.Add(curPositionNum + " > " + (curPositionNum + countPosOnPage));
+                curPositionNum += countPosOnPage;
+            }
+            _volumeControlUpdated = true;
+            ComboBoxClosePosesShowNumbers.SelectedIndex = ComboBoxClosePosesShowNumbers.Items.Count-1;
+            ComboBoxClosePosesShowNumbers.SelectionChanged += ComboBoxClosePosesShowNumbers_SelectionChanged;
+
+            _volumeControlUpdated = true;
+        }
+
+        private void ComboBoxClosePosesShowNumbers_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                _volumeControlUpdated = true;
+                RePaint();
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
             }
         }
 
@@ -3725,7 +3958,16 @@ namespace OsEngine.Journal
 
         private void ButtonReload_Click(object sender, RoutedEventArgs e)
         {
-            RePaint();
+            try
+            {
+                SelectOpenPosesPages();
+                SelectCLosePosesPages();
+                RePaint();
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
         }
 
         #endregion
