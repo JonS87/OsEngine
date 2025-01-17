@@ -39,6 +39,7 @@ namespace OsEngine.Robots
         public Aindicator atr;
         //public StrategyParameterBool AtrFilterIsOn;
         public StrategyParameterInt AtrLength;
+        public StrategyParameterDecimal MinAtrValue;
         //public StrategyParameterDecimal AtrGrowPercent;
         //public StrategyParameterInt AtrGrowLookBack;
 
@@ -83,6 +84,8 @@ namespace OsEngine.Robots
             drawndownPercent = CreateParameter("drawndown percent from lastEmaShort", 0.002m, 0.001m, 0.1m, 0.001m);
             
             AtrLength = CreateParameter("Atr length", 15, 10, 80, 3);
+            MinAtrValue = CreateParameter("Min ATR Value", 0.5m, 0.1m, 5.0m, 0.01m);
+
             //AtrFilterIsOn = CreateParameter("Atr filter is on", false);
             //AtrGrowPercent = CreateParameter("Atr grow percent", 3, 1.0m, 50, 4);
             //AtrGrowLookBack = CreateParameter("Atr grow look back", 20, 1, 50, 4);
@@ -275,30 +278,35 @@ namespace OsEngine.Robots
                 return;
             }
 
+            if (atr.DataSeries[0].Last < MinAtrValue.ValueDecimal)
+            {
+                return; // Не открываем позицию, если ATR ниже минимального значения
+            }
+
             //if (AtrFilterIsOn.ValueBool == true)
             //{
-                //if (atr.DataSeries[0].Values.Count - 1 - AtrGrowLookBack.ValueInt <= 0)
-                //{
-                //    //checker = 1;
-                //    return;
-                //}
-                //decimal atrLast = atr.DataSeries[0].Values[atr.DataSeries[0].Values.Count - 1];
-                //decimal atrLookBack =
-                //atr.DataSeries[0].Values[atr.DataSeries[0].Values.Count - 1 - AtrGrowLookBack.ValueInt];
-                //if (atrLast == 0
-                //    || atrLookBack == 0)
-                //{
-                //    //checker = 1;
-                //    return;
-                //}
+            //if (atr.DataSeries[0].Values.Count - 1 - AtrGrowLookBack.ValueInt <= 0)
+            //{
+            //    //checker = 1;
+            //    return;
+            //}
+            //decimal atrLast = atr.DataSeries[0].Values[atr.DataSeries[0].Values.Count - 1];
+            //decimal atrLookBack =
+            //atr.DataSeries[0].Values[atr.DataSeries[0].Values.Count - 1 - AtrGrowLookBack.ValueInt];
+            //if (atrLast == 0
+            //    || atrLookBack == 0)
+            //{
+            //    //checker = 1;
+            //    return;
+            //}
 
-                //decimal atrGrowPercent = atrLast / (atrLookBack / 100) - 100;
+            //decimal atrGrowPercent = atrLast / (atrLookBack / 100) - 100;
 
-                //if (atrGrowPercent < AtrGrowPercent.ValueDecimal)
-                //{
-                //    checker = 1;
-                //    //return;
-                //}
+            //if (atrGrowPercent < AtrGrowPercent.ValueDecimal)
+            //{
+            //    checker = 1;
+            //    //return;
+            //}
             //}
 
             if (lastEmaShort > lastEmaLong
