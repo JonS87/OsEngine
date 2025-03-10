@@ -10,8 +10,8 @@ using OsEngine.OsTrader.Panels.Tab;
 //using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 //using OsEngine.Market.Servers.Transaq.TransaqEntity;
 using Candle = OsEngine.Entity.Candle;
-using Tinkoff.InvestApi.V1;
-using Google.Protobuf.WellKnownTypes;
+//using Tinkoff.InvestApi.V1;
+//using Google.Protobuf.WellKnownTypes;
 //using System.Linq;
 //using System.Text;
 //using System.Threading.Tasks;
@@ -35,13 +35,7 @@ namespace OsEngine.Robots
         public List<Position> openPoces;
         private StrategyParameterTimeOfDay TimeStart;
         private StrategyParameterTimeOfDay TimeEnd;
-
-        public Aindicator atr;
-        //public StrategyParameterBool AtrFilterIsOn;
-        public StrategyParameterInt AtrLength;
-        public StrategyParameterDecimal MinAtrValue;
-        //public StrategyParameterDecimal AtrGrowPercent;
-        //public StrategyParameterInt AtrGrowLookBack;
+        public StrategyParameterBool EmaIncline;
 
         //decimal prePreLastEmaShort = 0;
         //decimal prePreLastEmaLong = 0;
@@ -56,6 +50,7 @@ namespace OsEngine.Robots
         decimal lastEmaLong = 0;
         decimal drawndownPercentDec;
         decimal lastCandleClose;
+        decimal lastCandleOpen;
 
         public MyDoubleEmaBot(string name, StartProgram startProgram)
             : base(name, startProgram)
@@ -69,10 +64,11 @@ namespace OsEngine.Robots
             EmaLong = IndicatorsFactory.CreateIndicatorByName(nameClass: "Ema", name: name + "emalong", canDelete: false);
             EmaLong = (Aindicator)TabToTrade.CreateCandleIndicator(EmaLong, "Prime");
 
-            atr = IndicatorsFactory.CreateIndicatorByName(nameClass: "ATRChannel", name: name + "atr", canDelete: false);
-            atr = (Aindicator)TabToTrade.CreateCandleIndicator(atr, "NewArea");
+            TabToTrade.CandleUpdateEvent += TabToTrade_CandleUpdateEvent;
 
-            TabToTrade.CandleFinishedEvent += TabToTrade_CandleFinishedEvent;
+            //TabToTrade.CandleFinishedEvent += TabToTrade_CandleFinishedEvent;
+
+            
 
             Regime = CreateParameter("Regime", "Off", new[] { "Off", "On", "OnlyLong", "OnlyShort", "OnlyClosePosition" });
             VolumeType = CreateParameter("Volume type", "Deposit percent", new[] { "Contracts", "Contract currency", "Deposit percent" });
@@ -82,13 +78,7 @@ namespace OsEngine.Robots
             Slippage = CreateParameter("Slippage %", 5, 0, 20, 1m);
             TradeAssetInPortfolio = CreateParameter("Asset in portfolio", "Prime");
             drawndownPercent = CreateParameter("drawndown percent from lastEmaShort", 0.002m, 0.001m, 0.1m, 0.001m);
-            
-            AtrLength = CreateParameter("Atr length", 15, 10, 80, 3);
-            MinAtrValue = CreateParameter("Min ATR Value", 0.5m, 0.1m, 5.0m, 0.01m);
-
-            //AtrFilterIsOn = CreateParameter("Atr filter is on", false);
-            //AtrGrowPercent = CreateParameter("Atr grow percent", 3, 1.0m, 50, 4);
-            //AtrGrowLookBack = CreateParameter("Atr grow look back", 20, 1, 50, 4);
+            EmaIncline = CreateParameter("Ema Incline Regime", true);
 
             TimeStart = CreateParameterTimeOfDay("Start Trade Time", 10, 32, 0, 0);
             TimeEnd = CreateParameterTimeOfDay("End Trade Time", 18, 25, 0, 0);
@@ -97,22 +87,25 @@ namespace OsEngine.Robots
             EmaShort.Save();
             EmaLong.ParametersDigit[0].Value = EmaLongLen.ValueInt;
             EmaLong.Save();
-            atr.ParametersDigit[0].Value = AtrLength.ValueInt;
-            atr.Save();
+
             drawndownPercentDec = drawndownPercent.ValueDecimal;
 
             ParametrsChangeByUser += MyDoubleEmaBot_ParametrsChangeByUser;
+        }
+
+        private void TabToTrade_CandleUpdateEvent(List<Candle> candles)
+        {
+            lastCandleOpen = candles[candles.Count - 1].Open;
         }
 
         private void MyDoubleEmaBot_ParametrsChangeByUser()
         {
             EmaShort.ParametersDigit[0].Value = EmaShortLen.ValueInt;
             EmaShort.Save();
+            EmaShort.Reload();
             EmaLong.ParametersDigit[0].Value = EmaLongLen.ValueInt;
             EmaLong.Save();
-            atr.ParametersDigit[0].Value = AtrLength.ValueInt;
-            atr.Save();
-            atr.Reload();
+            EmaLong.Reload();
             drawndownPercentDec = drawndownPercent.ValueDecimal;
         }
 
@@ -219,13 +212,7 @@ namespace OsEngine.Robots
                 return;
             }
 
-            if (candles.Count < AtrLength.ValueInt)
-            {
-                return;
-            }
-
-            if (atr.DataSeries[0].Values.Count == 0 ||
-                atr.DataSeries[0].Last == 0)
+            if (candles.Count < 10)
             {
                 return;
             }
@@ -278,42 +265,25 @@ namespace OsEngine.Robots
                 return;
             }
 
-            if (atr.DataSeries[0].Last < MinAtrValue.ValueDecimal)
+            if (preLastEmaLong <= 0 ||
+                prePreLastEmaLong <= 0)
             {
-                return; // Не открываем позицию, если ATR ниже минимального значения
+                return;
             }
 
-            //if (AtrFilterIsOn.ValueBool == true)
-            //{
-            //if (atr.DataSeries[0].Values.Count - 1 - AtrGrowLookBack.ValueInt <= 0)
-            //{
-            //    //checker = 1;
-            //    return;
-            //}
-            //decimal atrLast = atr.DataSeries[0].Values[atr.DataSeries[0].Values.Count - 1];
-            //decimal atrLookBack =
-            //atr.DataSeries[0].Values[atr.DataSeries[0].Values.Count - 1 - AtrGrowLookBack.ValueInt];
-            //if (atrLast == 0
-            //    || atrLookBack == 0)
-            //{
-            //    //checker = 1;
-            //    return;
-            //}
-
-            //decimal atrGrowPercent = atrLast / (atrLookBack / 100) - 100;
-
-            //if (atrGrowPercent < AtrGrowPercent.ValueDecimal)
-            //{
-            //    checker = 1;
-            //    //return;
-            //}
-            //}
-
             if (lastEmaShort > lastEmaLong
-                && ((preLastEmaShort <= preLastEmaLong && preLastEmaLong > 0)
-                    || (prePreLastEmaShort <= prePreLastEmaLong && prePreLastEmaLong > 0))
+                && (preLastEmaShort <= preLastEmaLong
+                    || prePreLastEmaShort <= prePreLastEmaLong)
                 && Regime.ValueString != "OnlyShort")
             {
+                if (EmaIncline.ValueBool)
+                {
+                    if (preLastEmaShort >= lastEmaShort)
+                    {
+                        return;
+                    }
+                }
+
                 decimal quantity = GetVolume();
 
                 TabToTrade.BuyAtLimit(quantity, lastCandleClose + lastCandleClose * (Slippage.ValueDecimal / 100));
@@ -322,11 +292,19 @@ namespace OsEngine.Robots
             }
 
             if (lastEmaShort < lastEmaLong
-                && ((preLastEmaShort >= preLastEmaLong && preLastEmaLong > 0)
-                    || (prePreLastEmaShort >= prePreLastEmaLong && prePreLastEmaLong > 0))
+                && (preLastEmaShort >= preLastEmaLong
+                    || prePreLastEmaShort >= prePreLastEmaLong)
                 && Regime.ValueString != "OnlyLong") // Вход в шорт
             {
 
+                if (EmaIncline.ValueBool)
+                {
+                    if (preLastEmaShort <= lastEmaShort)
+                    {
+                        return;
+                    }
+                }
+                
                 decimal quantity = GetVolume();
 
                 TabToTrade.SellAtLimit(quantity, lastCandleClose - lastCandleClose * (Slippage.ValueDecimal / 100));
