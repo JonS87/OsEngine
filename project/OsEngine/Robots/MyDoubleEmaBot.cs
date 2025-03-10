@@ -64,9 +64,9 @@ namespace OsEngine.Robots
             EmaLong = IndicatorsFactory.CreateIndicatorByName(nameClass: "Ema", name: name + "emalong", canDelete: false);
             EmaLong = (Aindicator)TabToTrade.CreateCandleIndicator(EmaLong, "Prime");
 
-            TabToTrade.CandleUpdateEvent += TabToTrade_CandleUpdateEvent;
+            //TabToTrade.CandleUpdateEvent += TabToTrade_CandleUpdateEvent;
 
-            //TabToTrade.CandleFinishedEvent += TabToTrade_CandleFinishedEvent;
+            TabToTrade.CandleFinishedEvent += TabToTrade_CandleFinishedEvent;
 
             
 
