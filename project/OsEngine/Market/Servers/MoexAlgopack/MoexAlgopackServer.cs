@@ -49,7 +49,7 @@ namespace OsEngine.Market.Servers.MoexAlgopack
 
             private bool _isAuthorized = false;
 
-            public void Connect()
+            public void Connect(WebProxy proxy)
             {
                 _username = ((ServerParameterString)ServerParameters[0]).Value;
                 _password = ((ServerParameterPassword)ServerParameters[1]).Value;
@@ -128,6 +128,8 @@ namespace OsEngine.Market.Servers.MoexAlgopack
             public event Action<MarketDepth> MarketDepthEvent;
 
             public event Action<Trade> NewTradesEvent;
+
+            public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
             #endregion
 
@@ -715,6 +717,13 @@ namespace OsEngine.Market.Servers.MoexAlgopack
                     SendLogMessage(exception.ToString(), LogMessageType.Error);
                 }
             }
+
+            public bool SubscribeNews()
+            {
+                return false;
+            }
+
+            public event Action<News> NewsEvent;
 
             #endregion
 

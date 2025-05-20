@@ -663,7 +663,7 @@ namespace OsEngine.Indicators
 
             for (int i = 0; i < IncludeIndicators.Count; i++)
             {
-                IncludeIndicators[i].Process(candles);
+                IncludeIndicators[i].ProcessNew(candles,index);
             }
 
             if (IsOn == false)
@@ -687,6 +687,14 @@ namespace OsEngine.Indicators
             //}
 
             if (NeedToReloadEvent != null)
+            {
+                NeedToReloadEvent(this);
+            }
+        }
+
+        public void RePaint()
+        {
+            if(NeedToReloadEvent != null)
             {
                 NeedToReloadEvent(this);
             }

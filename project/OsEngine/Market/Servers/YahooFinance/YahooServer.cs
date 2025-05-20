@@ -8,6 +8,7 @@ using OsEngine.Market.Servers.Entity;
 using System.IO;
 using RestSharp;
 using BytesRoad.Net.Ftp;
+using System.Net;
 
 namespace OsEngine.Market.Servers.YahooFinance
 {
@@ -40,7 +41,7 @@ namespace OsEngine.Market.Servers.YahooFinance
 
         public DateTime ServerTime { get; set; }
 
-        public void Connect()
+        public void Connect(WebProxy proxy)
         {
             try
             {
@@ -477,6 +478,13 @@ namespace OsEngine.Market.Servers.YahooFinance
 
         public void ChangeOrderPrice(Order order, decimal newPrice) { }
 
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
+
         public event Action<Order> MyOrderEvent;
 
         public event Action<MyTrade> MyTradeEvent;
@@ -486,6 +494,8 @@ namespace OsEngine.Market.Servers.YahooFinance
         public event Action<Trade> NewTradesEvent;
 
         public event Action<List<Portfolio>> PortfolioEvent;
+
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         #endregion
     }

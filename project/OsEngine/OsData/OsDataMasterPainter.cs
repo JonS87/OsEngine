@@ -12,7 +12,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Forms.Integration;
 using ContextMenu = System.Windows.Forms.ContextMenu;
@@ -666,7 +665,7 @@ namespace OsEngine.OsData
                 AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Data.Label9);
                 ui.ShowDialog();
 
-                if (ui.UserAcceptActioin == false)
+                if (ui.UserAcceptAction == false)
                 {
                     return;
                 }

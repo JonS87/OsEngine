@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Net;
 using System.Threading.Tasks;
 using OsEngine.Entity;
 using OsEngine.Language;
@@ -17,7 +18,7 @@ namespace OsEngine.Market.Servers.Hitbtc
             ServerRealization = realization;
 
             CreateParameterString(OsLocalization.Market.ServerParamPublicKey, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamSecretKey, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterSecretKey, "");
 
 
         }
@@ -73,7 +74,6 @@ namespace OsEngine.Market.Servers.Hitbtc
 
         #endregion
 
-
         #region Request / Запросы
 
         /// <summary>
@@ -113,7 +113,7 @@ namespace OsEngine.Market.Servers.Hitbtc
         /// connect to API
         /// подсоединиться к апи
         /// </summary>
-        public void Connect()
+        public void Connect(WebProxy proxy)
         {
             if (_client == null)
             {
@@ -173,7 +173,6 @@ namespace OsEngine.Market.Servers.Hitbtc
         }
 
         #endregion
-
 
         #region work with orders / работа с ордерами
 
@@ -784,7 +783,6 @@ namespace OsEngine.Market.Servers.Hitbtc
 
         #endregion
 
-
         #region Реализовать по возможности
         public List<Candle> GetCandleDataToSecurity(Security security, TimeFrameBuilder timeFrameBuilder, DateTime startTime, DateTime endTime,
             DateTime actualTime)
@@ -801,6 +799,13 @@ namespace OsEngine.Market.Servers.Hitbtc
         {
             throw new NotImplementedException();
         }
+
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
         #endregion
 
         #region events / события
@@ -813,7 +818,7 @@ namespace OsEngine.Market.Servers.Hitbtc
         public event Action<List<Security>> SecurityEvent;
         public event Action ConnectEvent;
         public event Action DisconnectEvent;
-
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         #endregion
 

@@ -46,6 +46,8 @@ namespace OsEngine
             get { return _window.Dispatcher; }
         }
 
+        public static bool DebuggerIsWork;
+
         /// <summary>
         ///  is application running
         /// работает ли приложение или закрывается
@@ -103,12 +105,17 @@ namespace OsEngine
                 Close();
             }
 
+            if(Debugger.IsAttached)
+            {
+                DebuggerIsWork = true;
+            }
+
             AlertMessageManager.TextBoxFromStaThread = new TextBox();
 
             ProccesIsWorked = true;
             _window = this;
 
-            ServerMaster.ActivateLogging();
+            ServerMaster.Activate();
 
             Thread.CurrentThread.CurrentCulture = OsLocalization.CurCulture;
 
@@ -139,6 +146,8 @@ namespace OsEngine
             {
                 UnblockInterface();
             }
+
+            ChangeText();
         }
 
         #region Block and Unblock interface
@@ -443,7 +452,7 @@ namespace OsEngine
 
                 int osEngineCount = 0;
 
-                string myProgrammPath = myDirectory + "\\OsEngine.exe";
+                string myProgramPath = myDirectory + "\\OsEngine.exe";
 
                 for (int i = 0; i < process.Count; i++)
                 {
@@ -456,7 +465,7 @@ namespace OsEngine
                             continue;
                         }
 
-                        if (p.Modules[j].FileName.EndsWith(myProgrammPath))
+                        if (p.Modules[j].FileName.EndsWith(myProgramPath))
                         {
                             osEngineCount++;
                         }

@@ -265,18 +265,18 @@ namespace OsEngine.Charts.CandleChart
                 }
                
                 _timePoints.Clear();
-                bool neadToBackChild = false;
+                bool needToBackChild = false;
 
                 if (_host != null && _host.Child != null)
                 {
                     _host.Child = null;
-                    neadToBackChild = true;
+                    needToBackChild = true;
                 }
 
-                Series oldcandleSeries = FindSeriesByNameSafe("SeriesCandle");
-                if (oldcandleSeries.Points.Count != 0)
+                Series oldCandleSeries = FindSeriesByNameSafe("SeriesCandle");
+                if (oldCandleSeries.Points.Count != 0)
                 {
-                    oldcandleSeries.Points.ClearFast();
+                    oldCandleSeries.Points.ClearFast();
                 }
                     
                 //_chartElements = new List<IChartElement>();
@@ -310,7 +310,7 @@ namespace OsEngine.Charts.CandleChart
                 ClearZoom();
                 _myCandles = null;
 
-                if (neadToBackChild)
+                if (needToBackChild)
                 {
                     _host.Child = _chart;
                 }
@@ -1262,10 +1262,10 @@ namespace OsEngine.Charts.CandleChart
                         }
                     }
 
-                    if (_neadMoveChartToTheRigth)
+                    if (_needMoveChartToTheRight)
                     {
-                        _neadMoveChartToTheRigth = false;
-                        MoveChartToTheRigthLogic(_scaleSizeToMoveChartToTheRight);
+                        _needMoveChartToTheRight = false;
+                        MoveChartToTheRightLogic(_scaleSizeToMoveChartToTheRight);
                         _scaleSizeToMoveChartToTheRight = 0;
                     }
 
@@ -1780,11 +1780,22 @@ namespace OsEngine.Charts.CandleChart
                     buySellSeries.MarkerSize = 9;
                 }
 
-                if (_colorKeeper.PointType == PointType.Cross)
+                if(_colorKeeper.PointType == PointType.Auto)
+                {
+                    if(MainWindow.DebuggerIsWork)
+                    {
+                        buySellSeries.MarkerStyle = MarkerStyle.Cross;
+                    }
+                    else
+                    {
+                        buySellSeries.MarkerStyle = MarkerStyle.Triangle;
+                    }
+                }
+                else if (_colorKeeper.PointType == PointType.Cross)
                 {
                     buySellSeries.MarkerStyle = MarkerStyle.Cross;
                 }
-                if (_colorKeeper.PointType == PointType.Circle)
+                else if (_colorKeeper.PointType == PointType.Circle)
                 {
                     buySellSeries.MarkerStyle = MarkerStyle.Circle;
                 }
@@ -1802,7 +1813,10 @@ namespace OsEngine.Charts.CandleChart
                 {
                     TimeAxisXPoint firstChartTP = _timePoints.Find(tp => tp.PositionXPoint > 0);
 
-                    if (_myCandles != null && _myCandles.Count > 1 && firstChartTP != null &&
+                    if (_myCandles != null 
+                        && _myCandles.Count > 1 
+                        && firstChartTP != null 
+                        &&
                         (firstChartTP.PositionXPoint > _myCandles.Count - 1
                          || firstChartTP.PositionTime < _myCandles[firstChartTP.PositionXPoint].TimeStart
                          || (_myCandles.Count - 1 > firstChartTP.PositionXPoint &&
@@ -1818,31 +1832,52 @@ namespace OsEngine.Charts.CandleChart
 
                     for (int indTrades = 0; indTrades < trades.Count; indTrades++)
                     {
-                        if (trades[indTrades] == null)
+                        MyTrade curTrade = trades[indTrades];
+
+                        if (curTrade == null)
                         {
                             continue;
                         }
 
-                        DateTime timePoint = trades[indTrades].Time;
+                        DateTime timePoint = curTrade.Time;
 
                         if (timePoint == DateTime.MinValue)
                         {
                             continue;
                         }
-                        int xIndexPoint = GetTimeIndex(timePoint, trades[indTrades].Price);
+
+                        int xIndexPoint = 0;
+
+                        if(_startProgram == StartProgram.IsTester
+                            || _startProgram == StartProgram.IsOsOptimizer)
+                        {
+                            xIndexPoint = curTrade.NumberCandleInTester;
+
+                            if(xIndexPoint > _myCandles.Count)
+                            {
+                                curTrade.NumberCandleInTester = 0;
+                                xIndexPoint = 0;
+                            }
+                        }
+
+                        if(xIndexPoint == 0)
+                        {
+                            xIndexPoint = GetTimeIndex(timePoint, curTrade.Price);
+                        }
+
                         if (xIndexPoint == 0)
                         {
                             continue;
                         }
 
-                        buySellSeries.Points.AddXY(xIndexPoint, trades[indTrades].Price);
+                        buySellSeries.Points.AddXY(xIndexPoint, curTrade.Price);
 
                         if (_startProgram == StartProgram.IsOsTrader)
                         {
-                            buySellSeries.Points[buySellSeries.Points.Count - 1].ToolTip = trades[indTrades].ToolTip;
+                            buySellSeries.Points[buySellSeries.Points.Count - 1].ToolTip = curTrade.ToolTip;
                         }
 
-                        if (_colorKeeper.PointType == PointType.TriAngle)
+                        if (buySellSeries.MarkerStyle == MarkerStyle.Triangle)
                         {
                             // drawing pictures
                             // прорисовываем картинки
@@ -1852,7 +1887,7 @@ namespace OsEngine.Charts.CandleChart
                             {
                                 openViewSize = _chart.ChartAreas[0].AxisX.ScaleView.Size;
                             }
-                            if (trades[indTrades].Side == Side.Buy)
+                            if (curTrade.Side == Side.Buy)
                             {
                                 if (_colorKeeper.PointsSize == ChartPositionTradeSize.Size4)
                                 {
@@ -1900,10 +1935,10 @@ namespace OsEngine.Charts.CandleChart
                             }
                         }
 
-                        if (trades[indTrades].Side == Side.Buy)
+                        if (curTrade.Side == Side.Buy)
                         {
                             if (deals[i].CloseOrders != null
-                                && deals[i].CloseOrders.FindAll(x => x.NumberMarket == trades[indTrades].NumberOrderParent).Count > 0)
+                                && deals[i].CloseOrders.FindAll(x => x.NumberMarket == curTrade.NumberOrderParent).Count > 0)
                             {
                                 buySellSeries.Points[buySellSeries.Points.Count - 1].Color = Color.BlueViolet;
                             }
@@ -1915,7 +1950,7 @@ namespace OsEngine.Charts.CandleChart
                         else
                         {
                             if (deals[i].CloseOrders != null
-                                && deals[i].CloseOrders.FindAll(x => x.NumberMarket == trades[indTrades].NumberOrderParent).Count > 0)
+                                && deals[i].CloseOrders.FindAll(x => x.NumberMarket == curTrade.NumberOrderParent).Count > 0)
                             {
                                 buySellSeries.Points[buySellSeries.Points.Count - 1].Color = Color.Yellow;
                             }
@@ -2052,7 +2087,7 @@ namespace OsEngine.Charts.CandleChart
                         || deals[i].State == PositionStateType.Opening
                         || deals[i].State == PositionStateType.Open) 
                         &&
-                        deals[i].StopOrderIsActiv)
+                        deals[i].StopOrderIsActive)
                     {
                         Series lineSeries = new Series("Stop_" + deals[i].Number);
                         lineSeries.ChartType = SeriesChartType.StepLine;
@@ -2101,7 +2136,7 @@ namespace OsEngine.Charts.CandleChart
                         || deals[i].State == PositionStateType.Opening
                         || deals[i].State == PositionStateType.Open) 
                         &&
-                        deals[i].ProfitOrderIsActiv)
+                        deals[i].ProfitOrderIsActive)
                     {
                         Series lineSeries = new Series("Profit_" + deals[i].Number);
                         lineSeries.ChartType = SeriesChartType.Line;
@@ -2417,27 +2452,30 @@ namespace OsEngine.Charts.CandleChart
                             i--;
                         }
 
-                        if (price <= candles[i].High
-                            && price >= candles[i].Low)
+                        if(_timeFrame == TimeFrame.Sec1)
                         {
-                            return i;
-                        }
-                        else if (price <= candles[i - 1].High
-                                && price >= candles[i - 1].Low)
-                        {
-                            return i-1;
-                        }
-                        else if (i > 3 &&
-                            price <= candles[i - 2].High
-                         && price >= candles[i - 2].Low)
-                        {
-                            return i-2;
-                        }
-                        else if (i + 1 != end &&
-                           price <= candles[i + 1].High
-                           && price >= candles[i + 1].Low)
-                        {
-                            return i + 1;
+                            if (price <= candles[i].High
+                                && price >= candles[i].Low)
+                            {
+                                return i;
+                            }
+                            else if (price <= candles[i - 1].High
+                                    && price >= candles[i - 1].Low)
+                            {
+                                return i - 1;
+                            }
+                            else if (i > 3 &&
+                                price <= candles[i - 2].High
+                             && price >= candles[i - 2].Low)
+                            {
+                                return i - 2;
+                            }
+                            else if (i + 1 != end &&
+                               price <= candles[i + 1].High
+                               && price >= candles[i + 1].Low)
+                            {
+                                return i + 1;
+                            }
                         }
 
                         return i;
@@ -2457,8 +2495,14 @@ namespace OsEngine.Charts.CandleChart
                     }
                 }
 
-
-                return end-1;
+                if (_timeFrame == TimeFrame.Sec1)
+                {
+                    return end - 1;
+                }
+                else
+                {
+                    return end;
+                }
             }
 
             if (candles[start + (end - start)/2].TimeStart > time)
@@ -2532,7 +2576,9 @@ namespace OsEngine.Charts.CandleChart
                 // going through stop order
                 // проходим СТОП ОРДЕРА
 
-                Series lineSeries = new Series("StopLimit_" + stopLimits[i].Number);
+                PositionOpenerToStopLimit curStop = stopLimits[i];
+
+                Series lineSeries = new Series("StopLimit_" + curStop.Number);
                 lineSeries.ChartType = SeriesChartType.StepLine;
                 lineSeries.YAxisType = AxisType.Secondary;
                 lineSeries.XAxisType = AxisType.Secondary;
@@ -2540,10 +2586,10 @@ namespace OsEngine.Charts.CandleChart
                 lineSeries.ShadowOffset = 1;
                 lineSeries.YValuesPerPoint = 1;
 
-                lineSeries.Points.AddXY(0, stopLimits[i].PriceRedLine);
-                lineSeries.Points.AddXY(_myCandles.Count + 500, stopLimits[i].PriceRedLine);
+                lineSeries.Points.AddXY(0, curStop.PriceRedLine);
+                lineSeries.Points.AddXY(_myCandles.Count + 500, curStop.PriceRedLine);
 
-                if (stopLimits[i].Side == Side.Buy)
+                if (curStop.Side == Side.Buy)
                 {
                     lineSeries.Color = Color.DarkCyan;
                 }
@@ -2618,7 +2664,7 @@ namespace OsEngine.Charts.CandleChart
                 }
                 if (element.TypeName() == "LineHorisontal")
                 {
-                    PaintHorisiontalLineOnArea((LineHorisontal)element);
+                    PaintHorizontalLineOnArea((LineHorisontal)element);
                 }
                 if (element.TypeName() == "Circle")
                 {
@@ -2706,6 +2752,11 @@ namespace OsEngine.Charts.CandleChart
                     }
 
                     Series mySeriesPoint = FindSeriesByNameSafe(element.UniqName + "Point");
+
+                    if(mySeriesPoint == null)
+                    {
+                        mySeriesPoint = FindSeriesByNameSafe(element.UniqName + "Points");
+                    }
 
                     if (mySeriesPoint != null)
                     {
@@ -2869,7 +2920,7 @@ namespace OsEngine.Charts.CandleChart
         /// прорисовать горизонтальную линию через весь чарт
         /// </summary>
         /// <param name="lineElement">line/линия</param>
-        public void PaintHorisiontalLineOnArea(LineHorisontal lineElement)
+        public void PaintHorizontalLineOnArea(LineHorisontal lineElement)
         {
             if (lineElement.Value == 0)
             {
@@ -2885,7 +2936,7 @@ namespace OsEngine.Charts.CandleChart
             }
             if (_chart.InvokeRequired)
             {
-                _chart.Invoke(new Action<LineHorisontal>(PaintHorisiontalLineOnArea), lineElement);
+                _chart.Invoke(new Action<LineHorisontal>(PaintHorizontalLineOnArea), lineElement);
                 return;
             }
 
@@ -6231,17 +6282,14 @@ namespace OsEngine.Charts.CandleChart
             decimal minPriceStep = decimal.MaxValue;
             int countFive = 0;
 
-            CultureInfo culture = new CultureInfo("ru-RU");
-
-            for (int i = 0; i < candles.Count && i < 20; i++)
+            for (int i = 0; i < candles.Count && i < 50; i++)
             {
                 Candle candleN = candles[i];
 
-
-                decimal open = (decimal)Convert.ToDouble(candleN.Open);
-                decimal high = (decimal)Convert.ToDouble(candleN.High);
-                decimal low = (decimal)Convert.ToDouble(candleN.Low);
-                decimal close = (decimal)Convert.ToDouble(candleN.Close);
+                decimal open = candleN.Open;
+                decimal high = candleN.High;
+                decimal low = candleN.Low;
+                decimal close = candleN.Close;
 
                 if (open == 0 &&
                     high == 0 &&
@@ -6251,37 +6299,47 @@ namespace OsEngine.Charts.CandleChart
                     continue;
                 }
 
-                if (open.ToString(culture).Split(',').Length > 1 ||
-                    high.ToString(culture).Split(',').Length > 1 ||
-                    low.ToString(culture).Split(',').Length > 1 ||
-                    close.ToString(culture).Split(',').Length > 1)
+                string openS = open.ToStringWithNoEndZero();
+                string highS = high.ToStringWithNoEndZero();
+                string lowS = low.ToStringWithNoEndZero();
+                string closeS = close.ToStringWithNoEndZero();
+
+                openS = openS.Replace(".", ",");
+                highS = highS.Replace(".", ",");
+                lowS = lowS.Replace(".", ",");
+                closeS = closeS.Replace(".", ",");
+
+                if (openS.Split(',').Length > 1 ||
+                    highS.Split(',').Length > 1 ||
+                    lowS.Split(',').Length > 1 ||
+                    closeS.Split(',').Length > 1)
                 {
                     // if there's a physical part
                     // если имеет место вещественная часть
                     int length = 1;
 
-                    if (open.ToString(culture).Split(',').Length > 1 &&
-                        open.ToString(culture).Split(',')[1].Length > length)
+                    if (openS.Split(',').Length > 1 &&
+                        openS.Split(',')[1].Length > length)
                     {
-                        length = open.ToString(culture).Split(',')[1].Length;
+                        length = openS.Split(',')[1].Length;
                     }
 
-                    if (high.ToString(culture).Split(',').Length > 1 &&
-                        high.ToString(culture).Split(',')[1].Length > length)
+                    if (highS.Split(',').Length > 1 &&
+                        highS.Split(',')[1].Length > length)
                     {
-                        length = high.ToString(culture).Split(',')[1].Length;
+                        length = highS.Split(',')[1].Length;
                     }
 
-                    if (low.ToString(culture).Split(',').Length > 1 &&
-                        low.ToString(culture).Split(',')[1].Length > length)
+                    if (lowS.Split(',').Length > 1 &&
+                        lowS.Split(',')[1].Length > length)
                     {
-                        length = low.ToString(culture).Split(',')[1].Length;
+                        length = lowS.Split(',')[1].Length;
                     }
 
-                    if (close.ToString(culture).Split(',').Length > 1 &&
-                        close.ToString(culture).Split(',')[1].Length > length)
+                    if (closeS.Split(',').Length > 1 &&
+                        closeS.Split(',')[1].Length > length)
                     {
-                        length = close.ToString(culture).Split(',')[1].Length;
+                        length = closeS.Split(',')[1].Length;
                     }
 
                     if (length == 1 && minPriceStep > 0.1m)
@@ -6328,6 +6386,10 @@ namespace OsEngine.Charts.CandleChart
                     {
                         minPriceStep = 0.00000000001m;
                     }
+                    if (length == 12 && minPriceStep > 0.000000000001m)
+                    {
+                        minPriceStep = 0.000000000001m;
+                    }
                 }
                 else
                 {
@@ -6337,7 +6399,7 @@ namespace OsEngine.Charts.CandleChart
 
                     try
                     {
-                        for (int i3 = open.ToString(culture).Length - 1; open.ToString(culture)[i3] == '0'; i3--)
+                        for (int i3 = openS.Length - 1; openS[i3] == '0'; i3--)
                         {
                             length = length * 10;
                         }
@@ -6349,7 +6411,7 @@ namespace OsEngine.Charts.CandleChart
 
                     int lengthLow = 1;
 
-                    for (int i3 = low.ToString(culture).Length - 1; low.ToString(culture)[i3] == '0'; i3--)
+                    for (int i3 = lowS.Length - 1; lowS[i3] == '0'; i3--)
                     {
                         lengthLow = lengthLow * 10;
 
@@ -6361,7 +6423,7 @@ namespace OsEngine.Charts.CandleChart
 
                     int lengthHigh = 1;
 
-                    for (int i3 = high.ToString(culture).Length - 1; high.ToString(culture)[i3] == '0'; i3--)
+                    for (int i3 = highS.Length - 1; highS[i3] == '0'; i3--)
                     {
                         lengthHigh = lengthHigh * 10;
 
@@ -6373,7 +6435,7 @@ namespace OsEngine.Charts.CandleChart
 
                     int lengthClose = 1;
 
-                    for (int i3 = close.ToString(culture).Length - 1; close.ToString(culture)[i3] == '0'; i3--)
+                    for (int i3 = closeS.Length - 1; closeS[i3] == '0'; i3--)
                     {
                         lengthClose = lengthClose * 10;
 
@@ -6396,7 +6458,6 @@ namespace OsEngine.Charts.CandleChart
                 }
             }
 
-
             if (minPriceStep == 1 &&
                 countFive == 20)
             {
@@ -6409,13 +6470,7 @@ namespace OsEngine.Charts.CandleChart
 
             try
             {
-                string[] valueMin2 =
-                    minPriceStep.ToString(new CultureInfo("ru-RU")).Split(',');
-
-                if (valueMin2.Length > 1 && valueMin2[1].Length > countZnak)
-                {
-                    countZnak = valueMin2[1].Length;
-                }
+                countZnak = minPriceStep.ToStringWithNoEndZero().DecimalsCount();
             }
             catch (Exception)
             {
@@ -6900,7 +6955,9 @@ namespace OsEngine.Charts.CandleChart
                 int firstX = 0; //first displayed candle/ первая отображаемая свеча
                 int lastX = candleSeries.Points.Count; //last displayed candle/ последняя отображаемая свеча
 
-                if (_chart.ChartAreas[0].AxisX.ScrollBar.IsVisible)
+                if (_chart.ChartAreas[0].AxisX.ScrollBar != null
+                    && double.IsNaN(candleArea.AxisX.ScaleView.Position) == false
+                    && double.IsNaN(candleArea.AxisX.ScaleView.Size) == false)
                 {
                     // If a range has already been selected, assign first and last one based on this range
                     // если уже выбран какой-то диапазон, назначаем первую и последнюю исходя из этого диапазона
@@ -7498,20 +7555,20 @@ namespace OsEngine.Charts.CandleChart
       _startProgram == StartProgram.IsOsMiner) &&
      _host != null)
             {
-                MoveChartToTheRigthLogic(scaleSize);
+                MoveChartToTheRightLogic(scaleSize);
             }
             else
             {
-                _neadMoveChartToTheRigth = true;
+                _needMoveChartToTheRight = true;
                 _scaleSizeToMoveChartToTheRight = scaleSize;
             }
         }
 
-        private bool _neadMoveChartToTheRigth;
+        private bool _needMoveChartToTheRight;
 
         private int _scaleSizeToMoveChartToTheRight;
 
-        private void MoveChartToTheRigthLogic(int scaleSize)
+        private void MoveChartToTheRightLogic(int scaleSize)
         {
             if (_chart == null)
             {
@@ -7519,7 +7576,7 @@ namespace OsEngine.Charts.CandleChart
             }
             if (_chart.InvokeRequired)
             {
-                _chart.Invoke(new Action<int>(MoveChartToTheRigthLogic), scaleSize);
+                _chart.Invoke(new Action<int>(MoveChartToTheRightLogic), scaleSize);
 
                 return;
             }

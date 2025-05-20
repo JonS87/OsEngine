@@ -4,6 +4,7 @@
 */
 
 using System.Windows.Forms;
+using OsEngine.Entity;
 using OsEngine.Language;
 
 namespace OsEngine.Logging
@@ -20,9 +21,25 @@ namespace OsEngine.Logging
             OsEngine.Layout.StickyBorders.Listen(this);
             HostLog.Child = gridErrorLog;
             Title = OsLocalization.Logging.TitleExtraLog;
-
+            Title = Title + " " + OsEngine.PrimeSettings.PrimeSettingsMaster.LabelInHeaderBotStation;
+            
             this.Activate();
             this.Focus();
+
+            ButtonClear.Content = OsLocalization.Logging.ButtonClearExtraLog;
+        }
+
+        private void ButtonClear_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Logging.Label30);
+            ui.ShowDialog();
+
+            if (ui.UserAcceptAction == false)
+            {
+                return;
+            }
+
+            Log.ClearErrorLog();
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Net;
 using OsEngine.Entity;
 using OsEngine.Language;
 using OsEngine.Logging;
@@ -22,7 +23,7 @@ namespace OsEngine.Market.Servers.BitStamp
 
             CreateParameterString(OsLocalization.Market.ServerParamId, "");
             CreateParameterString(OsLocalization.Market.ServerParamPublicKey, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamSecretKey, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterSecretKey, "");
         }
     }
     
@@ -96,7 +97,7 @@ namespace OsEngine.Market.Servers.BitStamp
         /// connect to API
         /// подсоединиться к апи
         /// </summary>
-        public void Connect()
+        public void Connect(WebProxy proxy = null)
         {
             if (_client == null)
             {
@@ -398,6 +399,13 @@ namespace OsEngine.Market.Servers.BitStamp
             }
         }
 
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
+
         // outgoing events
         // исходящие события
 
@@ -448,6 +456,8 @@ namespace OsEngine.Market.Servers.BitStamp
         /// соединение с API разорвано
         /// </summary>
         public event Action DisconnectEvent;
+
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         // log messages
         // сообщения для лога

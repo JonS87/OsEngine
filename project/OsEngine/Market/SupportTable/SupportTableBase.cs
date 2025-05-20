@@ -38,15 +38,15 @@ namespace OsEngine.Market.SupportTable
             };
             supportList.Add(transaq);
 
-            SupportConnection tinkoff = new SupportConnection()
+            SupportConnection tinvest = new SupportConnection()
             {
-                ServerType = ServerType.TinkoffInvestments,
+                ServerType = ServerType.TInvest,
                 SupportType = SupportServerType.Prime,
-                LinqToLogo = "\\Images\\Connections\\Moex\\Tinkoff.png",
+                LinqToLogo = "\\Images\\Connections\\Moex\\TInvest.png",
                 LingSiteUrl = "",
                 Discount = 0
             };
-            supportList.Add(tinkoff);
+            supportList.Add(tinvest);
 
             SupportConnection quikLua = new SupportConnection()
             {
@@ -134,6 +134,47 @@ namespace OsEngine.Market.SupportTable
                 Discount = 0
             };
             supportList.Add(traderNet);
+
+            SupportConnection atp = new SupportConnection()
+            {
+                ServerType = ServerType.Atp,
+                SupportType = SupportServerType.Prime,
+                LinqToLogo = "\\Images\\Connections\\International\\ATP.png",
+                LingSiteUrl = "",
+                Discount = 0
+            };
+            supportList.Add(atp);
+
+            SupportConnection kite = new SupportConnection()
+            {
+                ServerType = ServerType.KiteConnect,
+                SupportType = SupportServerType.Prime,
+                LinqToLogo = "\\Images\\Connections\\International\\KiteConnect.png",
+                LingSiteUrl = "",
+                Discount = 0
+            };
+            supportList.Add(kite);
+
+            SupportConnection yahoo = new SupportConnection()
+            {
+                ServerType = ServerType.YahooFinance,
+                SupportType = SupportServerType.Prime,
+                LinqToLogo = "\\Images\\Connections\\International\\Yahoo.png",
+                LingSiteUrl = "",
+                Discount = 0
+            };
+            supportList.Add(yahoo);
+
+            SupportConnection polygon = new SupportConnection()
+            {
+                ServerType = ServerType.Polygon,
+                SupportType = SupportServerType.Prime,
+                LinqToLogo = "\\Images\\Connections\\International\\polygon-io.png",
+                LingSiteUrl = "",
+                Discount = 0
+            };
+            supportList.Add(polygon);
+
 
             SupportConnection ninja = new SupportConnection()
             {
@@ -313,6 +354,16 @@ namespace OsEngine.Market.SupportTable
             };
             supportList.Add(woo);
 
+            SupportConnection coinEx = new SupportConnection()
+            {
+                ServerType = ServerType.CoinExSpot,
+                SupportType = SupportServerType.Prime,
+                LinqToLogo = "\\Images\\Connections\\Crypto\\CoinEx.png",
+                LingSiteUrl = "https://www.coinex.com/register?rc=3hscg",
+                Discount = 5
+            };
+            supportList.Add(coinEx);
+
             SupportConnection bitMart = new SupportConnection()
             {
                 ServerType = ServerType.BitMart,
@@ -332,6 +383,16 @@ namespace OsEngine.Market.SupportTable
                 Discount = 30
             };
             supportList.Add(bitMartFutures);
+
+            SupportConnection bloFin = new SupportConnection()
+            {
+                ServerType = ServerType.BloFinFutures,
+                SupportType = SupportServerType.Prime,
+                LinqToLogo = "\\Images\\Connections\\Crypto\\BloFin.png",
+                LingSiteUrl = "https://partner.blofin.com/d/IHJBujb",
+                Discount = 20
+            };
+            supportList.Add(bloFin);
 
             SupportConnection bitmex = new SupportConnection()
             {

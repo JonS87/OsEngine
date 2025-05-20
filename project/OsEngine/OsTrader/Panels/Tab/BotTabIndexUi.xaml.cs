@@ -139,6 +139,11 @@ namespace OsEngine.OsTrader.Panels.Tab
         {
             _windowIsClosed = true;
 
+            if (_uiNewSecurities != null)
+            {
+                _uiNewSecurities.Close();
+            }
+
             ComboBoxRegime.SelectionChanged -= ComboBoxRegime_SelectionChanged;
             ComboBoxDayOfWeekToRebuildIndex.SelectionChanged -= ComboBoxDayOfWeekToRebuildIndex_SelectionChanged;
             ComboBoxHourInDayToRebuildIndex.SelectionChanged -= ComboBoxHourInDayToRebuildIndex_SelectionChanged;
@@ -178,7 +183,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                     return;
                 }
 
-                if(_spread.CalculationDepth != value)
+                if (_spread.CalculationDepth != value)
                 {
                     _spread.CalculationDepth = value;
                     _spread.Save();
@@ -201,12 +206,12 @@ namespace OsEngine.OsTrader.Panels.Tab
         {
             try
             {
-                if(_spread.PercentNormalization != CheckBoxPercentNormalization.IsChecked.Value)
+                if (_spread.PercentNormalization != CheckBoxPercentNormalization.IsChecked.Value)
                 {
                     _spread.PercentNormalization = CheckBoxPercentNormalization.IsChecked.Value;
                     _spread.Save();
 
-                    if(_spread.Candles != null &&
+                    if (_spread.Candles != null &&
                         _spread.Candles.Count > 0)
                     {
                         _spread.RebuildHard();
@@ -400,7 +405,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             HostSecurity1.Child = _sourcesGrid;
         }
 
-        void Grid1CellValueChangeClick(object sender, DataGridViewCellEventArgs e)
+        private void Grid1CellValueChangeClick(object sender, DataGridViewCellEventArgs e)
         {
             try
             {
@@ -435,7 +440,7 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                         acceptDialog.ShowDialog();
 
-                        if (acceptDialog.UserAcceptActioin)
+                        if (acceptDialog.UserAcceptAction)
                         {
                             _spread.DeleteSecurityTab(e.RowIndex);
                             _spread.SecuritiesInIndex.Clear();
@@ -498,7 +503,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                 }
 
                 row.Cells.Add((new DataGridViewTextBoxCell()));
-                row.Cells[2].Value = _spread.Tabs[i].ServerType.ToString();
+                row.Cells[2].Value = _spread.Tabs[i].ServerFullName.ToString();
 
                 row.Cells.Add((new DataGridViewTextBoxCell()));
                 row.Cells[3].Value = _spread.Tabs[i].TimeFrame.ToString();
@@ -563,9 +568,25 @@ namespace OsEngine.OsTrader.Panels.Tab
 
         private void ButtonAddSecurity_Click(object sender, RoutedEventArgs e)
         {
-            _spread.ShowNewSecurityDialog();
-            ReloadSecurityTable();
-            IndexOrSourcesChanged = true;
+            if(_spread.ShowNewSecurityDialog())
+            {
+                _uiNewSecurities = _spread.UiSecuritiesSelection;
+                _uiNewSecurities.Closed += UiSecuritiesSelection_Closed;
+            }
+        }
+
+        private Market.Connectors.MassSourcesCreateUi _uiNewSecurities;
+
+        private void UiSecuritiesSelection_Closed(object sender, EventArgs e)
+        {
+            if(_windowIsClosed == false)
+            {
+                ReloadSecurityTable();
+                IndexOrSourcesChanged = true;
+            }
+
+            _uiNewSecurities.Closed -= UiSecuritiesSelection_Closed;
+            _uiNewSecurities = null;
         }
 
         private void RepeatButtonDeleteSecurity_Click(object sender, RoutedEventArgs e)
@@ -603,7 +624,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                 AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Trader.Label370);
                 ui.ShowDialog();
 
-                if (ui.UserAcceptActioin == false)
+                if (ui.UserAcceptAction == false)
                 {
                     return;
                 }
@@ -657,7 +678,7 @@ namespace OsEngine.OsTrader.Panels.Tab
         {
             try
             {
-                if(_sourcesGrid == null)
+                if (_sourcesGrid == null)
                 {
                     return;
                 }
@@ -691,7 +712,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                     if (candles != null
                         && candles.Count > 0)
                     {
-                        priceInStr = 
+                        priceInStr =
                             candles[candles.Count - 1].Close.ToString() + " " + candles[candles.Count - 1].TimeStart.TimeOfDay;
                     }
 

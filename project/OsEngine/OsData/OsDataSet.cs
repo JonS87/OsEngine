@@ -193,6 +193,7 @@ namespace OsEngine.OsData
                     record.SecId = ui.SelectedSecurity[i].NameId;
                     record.SecClass = ui.SelectedSecurity[i].NameClass;
                     record.SecExchange = ui.SelectedSecurity[i].Exchange;
+                    record.SecNameFull = ui.SelectedSecurity[i].NameFull;
                     record.SetName = SetName;
                     record.NewLogMessageEvent += SendNewLogMessage;
 
@@ -430,6 +431,8 @@ namespace OsEngine.OsData
 
         public string SecExchange = "";
 
+        public string SecNameFull = "";
+
         public bool IsCollapsed = false;
 
         public void CopySettingsFromParam(SettingsToLoadSecurity param)
@@ -505,6 +508,11 @@ namespace OsEngine.OsData
             SecExchange = saveArray[4];
             SetName = saveArray[5];
             SettingsToLoadSecurities.Load(saveArray[6]);
+            if(saveArray.Length > 7)
+            {
+                SecNameFull = saveArray[7];
+            }
+            
             ActivateLoaders();
         }
 
@@ -516,7 +524,8 @@ namespace OsEngine.OsData
             result += IsCollapsed + "~";
             result += SecExchange + "~";
             result += SetName + "~";
-            result += SettingsToLoadSecurities.GetSaveStr();
+            result += SettingsToLoadSecurities.GetSaveStr() + "~";
+            result += SecNameFull;
 
             return result;
         }
@@ -1244,8 +1253,16 @@ namespace OsEngine.OsData
                 }
 
                 newCandleDataPies.Add(newPie);
+                
+                if(TimeFrame == TimeFrame.Tick)
+                {
+                    timeStart = timeNow.AddDays(1);
+                }
+                else
+                {
+                    timeStart = timeNow;
+                }
 
-                timeStart = timeNow;
                 timeNow = timeStart.Add(interval);
 
                 if (timeNow > TimeEnd)
@@ -1392,7 +1409,7 @@ namespace OsEngine.OsData
             List<Candle> candles =
                 server.GetCandleDataToSecurity(
                     id, SecClass, timeFrameBuilder,
-                    pie.Start, pie.End, pie.Start, false);
+                    pie.Start, pie.End.AddHours(23).AddMinutes(59), pie.Start, false);
 
             if (candles == null ||
                 candles.Count == 0)
@@ -1810,7 +1827,7 @@ namespace OsEngine.OsData
 
         #endregion
 
-        #region Candle whith time frame less than minute
+        #region Candle with time frame less than minute
 
         private void ProcessCandlesLessMinute(IServer server, SettingsToLoadSecurity param)
         {

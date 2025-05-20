@@ -90,7 +90,7 @@ namespace OsEngine.OsData
             DatePickerTimeStart.SelectedDate = _set.BaseSettings.TimeStart;
             DatePickerTimeEnd.SelectedDate = _set.BaseSettings.TimeEnd;
 
-            CheckBoxNeadToUpDate.IsChecked = _set.BaseSettings.NeedToUpdate;
+            CheckBoxNeedToUpDate.IsChecked = _set.BaseSettings.NeedToUpdate;
 
             for (int i = 1; i < 26; i++)
             {
@@ -116,7 +116,7 @@ namespace OsEngine.OsData
             Label19.Content = OsLocalization.Data.Label19;
             Label20.Content = OsLocalization.Data.Label20;
             ButtonAccept.Content = OsLocalization.Data.ButtonAccept;
-            CheckBoxNeadToUpDate.Content = OsLocalization.Data.Label22;
+            CheckBoxNeedToUpDate.Content = OsLocalization.Data.Label22;
 
             this.Activate();
             this.Focus();
@@ -411,7 +411,7 @@ namespace OsEngine.OsData
             _set.BaseSettings.TimeStart = DatePickerTimeStart.SelectedDate.Value;
             _set.BaseSettings.TimeEnd = DatePickerTimeEnd.SelectedDate.Value;
 
-            _set.BaseSettings.NeedToUpdate = CheckBoxNeadToUpDate.IsChecked.Value;
+            _set.BaseSettings.NeedToUpdate = CheckBoxNeedToUpDate.IsChecked.Value;
 
             if(_set.SecuritiesLoad != null)
             {
@@ -441,6 +441,13 @@ namespace OsEngine.OsData
             column0.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _grid.Columns.Add(column0);
 
+            DataGridViewColumn column1 = new DataGridViewColumn();
+            column1.CellTemplate = cell0;
+            column1.HeaderText = OsLocalization.Data.Label2;
+            column1.ReadOnly = true;
+            column1.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            _grid.Columns.Add(column1);
+
             HostSecurities.Child = _grid;
         }
 
@@ -452,8 +459,13 @@ namespace OsEngine.OsData
             for (int i = 0;names != null &&  i < names.Count; i++)
             {
                 DataGridViewRow row = new DataGridViewRow();
+
                 row.Cells.Add(new DataGridViewTextBoxCell());
                 row.Cells[0].Value = names[i].SecName;
+
+                row.Cells.Add(new DataGridViewTextBoxCell());
+                row.Cells[1].Value = names[i].SecNameFull;
+
                 _grid.Rows.Insert(0, row);
             }
         }
@@ -483,7 +495,7 @@ namespace OsEngine.OsData
                 AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Data.Label42);
                 ui.ShowDialog();
 
-                if (ui.UserAcceptActioin == false)
+                if (ui.UserAcceptAction == false)
                 {
                     return;
                 }

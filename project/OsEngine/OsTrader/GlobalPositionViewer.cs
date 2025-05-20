@@ -17,49 +17,21 @@ using System.Globalization;
 
 namespace OsEngine.OsTrader
 {
-    /// <summary>
-    /// class responsible for drawing the global position of all robots in the main window
-    /// класс отвечающий за прорисовку глобальной позиции всех роботов в главном окне
-    /// </summary>
     public class GlobalPositionViewer
     {
-        public GlobalPositionViewer(WindowsFormsHost openPositionHost, WindowsFormsHost closePositionHost, StartProgram startProgram)
+        #region Service and Journals to control
+
+        public GlobalPositionViewer(StartProgram startProgram)
         {
             _startProgram = startProgram;
             _currentCulture = OsLocalization.CurCulture;
-
-            if (openPositionHost != null)
-            {
-                _hostOpenPoses = openPositionHost;
-                _gridOpenPoses = CreateNewTable();
-                _hostOpenPoses.Child = _gridOpenPoses;
-                _hostOpenPoses.Child.Show();
-                _gridOpenPoses.Click += _gridAllPositions_Click;
-                _gridOpenPoses.DoubleClick += _gridOpenPoses_DoubleClick;
-            }
-
-            if(closePositionHost != null)
-            {
-                _hostClosePoses = closePositionHost;
-                _gridClosePoses = CreateNewTable();
-                _hostClosePoses.Child = _gridClosePoses;
-                _hostClosePoses.Child.Show();
-                _gridClosePoses.Click += _gridClosePoses_Click;
-                _gridClosePoses.DoubleClick += _gridClosePoses_DoubleClick;
-
-            }
 
             Task task = new Task(WatcherThreadWorkArea);
             task.Start();
         }
 
-        CultureInfo _currentCulture;
+        private CultureInfo _currentCulture;
 
-        /// <summary>
-        /// add another magazine to the collection to draw his deals
-        /// добавить ещё один журнал в коллекцию для прорисовки его сделок
-        /// </summary>
-        /// <param name="journal">new journal / новый журнал</param>
         public void SetJournal(Journal.Journal journal)
         {
             try
@@ -76,14 +48,62 @@ namespace OsEngine.OsTrader
 
                 for(int i = 0;i < _journals.Count;i++)
                 {
-                    if(_journals[i].Name == journal.Name)
+                    if (_journals[i] == null)
                     {
-                        return;
+                        continue;
+                    }
+                    try
+                    {
+                        if (_journals[i].Name == journal.Name)
+                        {
+                            return;
+                        }
+                    }
+                    catch
+                    {
+                        // ignore
+                        continue;
                     }
                 }
 
                 _journals.Add(journal);
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
 
+        public void RemoveJournal(Journal.Journal journal)
+        {
+            try
+            {
+                if (_journals == null)
+                {
+                    return;
+                }
+
+                for (int i = 0; i < _journals.Count; i++)
+                {
+                    if(_journals[i] == null)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        if (_journals[i].Name == journal.Name)
+                        {
+                            _journals.RemoveAt(i);
+                            return;
+                        }
+                    }
+                    catch
+                    {
+                        // ignore
+                        continue;
+                    }
+                }
             }
             catch (Exception error)
             {
@@ -125,10 +145,6 @@ namespace OsEngine.OsTrader
             return deals.Find(position => position.Number == number);
         }
 
-        /// <summary>
-        /// clear previously loaded journals
-        /// очистить от ранее загруженых журналов
-        /// </summary>
         public void ClearJournals()
         {
             try
@@ -148,11 +164,44 @@ namespace OsEngine.OsTrader
             }
         }
 
-        /// <summary>
-        /// journals we follow
-        /// журналы за которыми мы следим
-        /// </summary>
         private List<Journal.Journal> _journals;
+
+        public void Delete()
+        {
+            _journals = null;
+
+            if(_hostOpenPoses != null)
+            {
+                _hostOpenPoses.Child = null;
+                _hostOpenPoses = null;
+            }
+
+            if(_hostClosePoses != null)
+            {
+                _hostClosePoses.Child = null;
+                _hostClosePoses = null;
+            }
+
+            if(_gridOpenPoses != null)
+            {
+                DataGridFactory.ClearLinks(_gridOpenPoses);
+                _gridOpenPoses.Click -= _gridAllPositions_Click;
+                _gridOpenPoses.DoubleClick -= _gridOpenPoses_DoubleClick;
+                _gridOpenPoses = null;
+            }
+
+            if(_gridClosePoses != null)
+            {
+                DataGridFactory.ClearLinks(_gridClosePoses);
+                _gridClosePoses.Click -= _gridClosePoses_Click;
+                _gridClosePoses.DoubleClick -= _gridClosePoses_DoubleClick;
+                _gridClosePoses = null;
+            }
+        }
+
+        #endregion
+
+        #region Drawing
 
         private WindowsFormsHost _hostOpenPoses;
 
@@ -162,35 +211,35 @@ namespace OsEngine.OsTrader
 
         private DataGridView _gridClosePoses;
 
-        /// <summary>
-        /// table for drawing positions
-        /// программа запустившая класс
-        /// </summary>
         private StartProgram _startProgram;
 
-        //drawing / прорисовка
-
-        /// <summary>
-        /// stop drawing elements
-        /// остановить прорисовку элементов 
-        /// </summary>
         public void StopPaint()
         {
             try
             {
+                if(_hostOpenPoses == null)
+                {
+                    return;
+                }
+
                 if (!_hostOpenPoses.CheckAccess())
                 {
                     _hostOpenPoses.Dispatcher.Invoke(StopPaint);
                     return;
                 }
 
-                _hostOpenPoses.Child = null;
+                if (_hostOpenPoses != null)
+                {
+                    _hostOpenPoses.Child = null;
+                    _hostOpenPoses = null;
+                }
 
-                if(_hostClosePoses != null)
+                if (_hostOpenPoses != null)
                 {
                     _hostClosePoses.Child = null;
+                    _hostClosePoses = null;
                 }
-               
+
             }
             catch (Exception error)
             {
@@ -198,24 +247,63 @@ namespace OsEngine.OsTrader
             }
         }
 
-        /// <summary>
-        /// start drawing elements
-        /// запустить прорисовку элементов
-        /// </summary>
-        public void StartPaint()
+        public void StartPaint(WindowsFormsHost openPositionHost, WindowsFormsHost closePositionHost)
         {
             try
             {
-                if (!_hostOpenPoses.CheckAccess())
+                _hostOpenPoses = openPositionHost;
+                _hostClosePoses = closePositionHost;
+
+                if(_hostOpenPoses == null &&
+                    _hostClosePoses == null)
                 {
-                    _hostOpenPoses.Dispatcher.Invoke(StartPaint);
                     return;
                 }
-                _hostOpenPoses.Child = _gridOpenPoses;
 
-                if (_hostClosePoses != null)
+                if(_hostOpenPoses == null)
                 {
-                    _hostClosePoses.Child = _gridClosePoses;
+                    return;
+                }
+
+                if (!_hostOpenPoses.CheckAccess())
+                {
+                    _hostOpenPoses.Dispatcher.Invoke(
+                        new Action<WindowsFormsHost, WindowsFormsHost>(StartPaint),openPositionHost,closePositionHost);
+                    return;
+                }
+
+                if(_hostOpenPoses != null)
+                {
+                    if (_gridOpenPoses == null)
+                    {
+                        _gridOpenPoses = CreateNewTable();
+                        _gridOpenPoses.Click += _gridAllPositions_Click;
+                        _gridOpenPoses.DoubleClick += _gridOpenPoses_DoubleClick;
+                    }
+
+                    if (openPositionHost != null)
+                    {
+                        _hostOpenPoses = openPositionHost;
+                        _hostOpenPoses.Child = _gridOpenPoses;
+                        _hostOpenPoses.Child.Show();
+                    }
+                }
+
+                if(_hostClosePoses != null)
+                {
+                    if (_gridClosePoses == null)
+                    {
+                        _gridClosePoses = CreateNewTable();
+                        _gridClosePoses.Click += _gridClosePoses_Click;
+                        _gridClosePoses.DoubleClick += _gridClosePoses_DoubleClick;
+                    }
+
+                    if (closePositionHost != null)
+                    {
+                        _hostClosePoses = closePositionHost;
+                        _hostClosePoses.Child = _gridClosePoses;
+                        _hostClosePoses.Child.Show();
+                    }
                 }
             }
             catch (Exception error)
@@ -224,10 +312,6 @@ namespace OsEngine.OsTrader
             }
         }
 
-        /// <summary>
-        /// create a table
-        /// создать таблицу
-        /// </summary>
         private DataGridView CreateNewTable()
         {
             try
@@ -244,10 +328,6 @@ namespace OsEngine.OsTrader
             return null;
         }
 
-        /// <summary>
-        /// take a row for the table representing the position
-        /// взять строку для таблицы представляющую позицию
-        /// </summary>
         private DataGridViewRow GetRow(Position position)
         {
             if (position == null)
@@ -332,7 +412,7 @@ namespace OsEngine.OsTrader
                 nRow.Cells[11].Value = Math.Round(closePrice, decimalsPrice).ToStringWithNoEndZero();
 
                 nRow.Cells.Add(new DataGridViewTextBoxCell());
-                nRow.Cells[12].Value = Math.Round(position.ProfitPortfolioPunkt, decimalsPrice).ToStringWithNoEndZero();
+                nRow.Cells[12].Value = Math.Round(position.ProfitPortfolioAbs, decimalsPrice).ToStringWithNoEndZero();
 
                 nRow.Cells.Add(new DataGridViewTextBoxCell());
                 nRow.Cells[13].Value = Math.Round(position.StopOrderRedLine, decimalsPrice).ToStringWithNoEndZero();
@@ -441,7 +521,7 @@ namespace OsEngine.OsTrader
                 nRow.Cells[11].Value = closePrice.ToStringWithNoEndZero();
             }
 
-            decimal profit = Math.Round(position.ProfitPortfolioPunkt, decimalsPrice);
+            decimal profit = Math.Round(position.ProfitPortfolioAbs, decimalsPrice);
 
             if (nRow.Cells[12].Value == null
                 || nRow.Cells[12].Value.ToString() != profit.ToStringWithNoEndZero())
@@ -522,20 +602,30 @@ namespace OsEngine.OsTrader
                     List<Position> openPositions = new List<Position>();
                     List<Position> closePositions = new List<Position>();
 
-                    for (int i = 0; _journals != null && i < _journals.Count; i++)
+                    try
                     {
-                        if (_journals[i].OpenPositions != null
-                            && _journals[i].OpenPositions.Count != 0)
+                        for (int i = 0; _journals != null && i < _journals.Count; i++)
                         {
-                            openPositions.AddRange(_journals[i].OpenPositions);
-                        }
-                        if (_journals[i].CloseAllPositions != null)
-                        {
-                            for (int i2 = _journals[i].CloseAllPositions.Count - 1; i2 > -1 && i2 > _journals[i].CloseAllPositions.Count - 30; i2--)
+                            Journal.Journal journal = _journals[i];
+                            if (journal.OpenPositions != null
+                                && journal.OpenPositions.Count != 0)
                             {
-                                closePositions.Add(_journals[i].CloseAllPositions[i2]);
+                                openPositions.AddRange(journal.OpenPositions);
+                            }
+                            if (journal.CloseAllPositions != null)
+                            {
+                                for (int i2 = journal.CloseAllPositions.Count - 1;
+                                    i2 > -1 && i2 > journal.CloseAllPositions.Count - 30;
+                                    i2--)
+                                {
+                                    closePositions.Add(journal.CloseAllPositions[i2]);
+                                }
                             }
                         }
+                    }
+                    catch
+                    {
+                        continue;
                     }
 
                     for (int i = 0; i < closePositions.Count; i++)
@@ -588,6 +678,11 @@ namespace OsEngine.OsTrader
         {
             try
             {
+                if(grid == null)
+                {
+                    return;
+                }
+
                 if (grid.InvokeRequired)
                 {
                     grid.Invoke(new Action<DataGridView>(Sort), grid);
@@ -658,10 +753,6 @@ namespace OsEngine.OsTrader
             }
         }
 
-        /// <summary>
-        /// check the position on the correctness of drawing
-        /// проверить позиции на правильность прорисовки
-        /// </summary>
         [System.Runtime.ExceptionServices.HandleProcessCorruptedStateExceptions]
         private void CheckPosition(DataGridView grid, List<Position> positions)
         {
@@ -676,6 +767,7 @@ namespace OsEngine.OsTrader
                 {
                     Position position = positions[i1];
                     bool isIn = false;
+
                     for (int i = 0; i < grid.Rows.Count; i++)
                     {
                         if (grid.Rows[i].Cells[0].Value != null &&
@@ -713,7 +805,9 @@ namespace OsEngine.OsTrader
             }
         }
 
-        #region Исторические позиции
+        #endregion
+
+        #region Historical positions
 
         private void _gridClosePoses_DoubleClick(object sender, EventArgs e)
         {
@@ -754,14 +848,14 @@ namespace OsEngine.OsTrader
             }
         }
 
-        void ClosePositionClearDelete_Click(object sender, EventArgs e)
+        private void ClosePositionClearDelete_Click(object sender, EventArgs e)
         {
             try
             {
                 AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Journal.Message3);
                 ui.ShowDialog();
 
-                if (ui.UserAcceptActioin == false)
+                if (ui.UserAcceptAction == false)
                 {
                     return;
                 }
@@ -793,7 +887,7 @@ namespace OsEngine.OsTrader
 
         #endregion
 
-        #region Активные позиции
+        #region Active positions
 
         private void _gridOpenPoses_DoubleClick(object sender, EventArgs e)
         {
@@ -846,18 +940,14 @@ namespace OsEngine.OsTrader
             }
         }
 
-        /// <summary>
-        /// the user has ordered the closing of all positions
-        /// пользователь заказал закрытие всех позиций
-        /// </summary>
-        void PositionCloseAll_Click(object sender, EventArgs e)
+        private void PositionCloseAll_Click(object sender, EventArgs e)
         {
             try
             {
                 AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Journal.Message5);
                 ui.ShowDialog();
                 
-                if(ui.UserAcceptActioin == false)
+                if(ui.UserAcceptAction == false)
                 {
                     return;
                 }
@@ -873,11 +963,7 @@ namespace OsEngine.OsTrader
             }
         }
 
-        /// <summary>
-        /// the user has ordered the closing of the transaction by number
-        /// пользователь заказал закрытие сделки по номеру
-        /// </summary>
-        void PositionCloseForNumber_Click(object sender, EventArgs e)
+        private void PositionCloseForNumber_Click(object sender, EventArgs e)
         {
             try
             {
@@ -907,11 +993,7 @@ namespace OsEngine.OsTrader
             }
         }
 
-        /// <summary>
-        /// the user has ordered a new stop for the position
-        /// пользователь заказал новый стоп для позиции
-        /// </summary>
-        void PositionNewStop_Click(object sender, EventArgs e)
+        private void PositionNewStop_Click(object sender, EventArgs e)
         {
             try
             {
@@ -940,11 +1022,7 @@ namespace OsEngine.OsTrader
             }
         }
 
-        /// <summary>
-        /// the user has ordered a new profit for the position
-        /// пользователь заказал новый профит для позиции
-        /// </summary>
-        void PositionNewProfit_Click(object sender, EventArgs e)
+        private void PositionNewProfit_Click(object sender, EventArgs e)
         {
             try
             {
@@ -973,18 +1051,14 @@ namespace OsEngine.OsTrader
             }
         }
 
-        /// <summary>
-        /// the user has ordered the deletion of a position
-        /// пользователь заказал удаление позиции
-        /// </summary>
-        void PositionClearDelete_Click(object sender, EventArgs e)
+        private void PositionClearDelete_Click(object sender, EventArgs e)
         {
             try
             {
                 AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Journal.Message3);
                 ui.ShowDialog();
 
-                if (ui.UserAcceptActioin == false)
+                if (ui.UserAcceptAction == false)
                 {
                     return;
                 }
@@ -1048,7 +1122,7 @@ namespace OsEngine.OsTrader
 
         DataGridView _lastClickGrid;
 
-        int _rowToPaintInOpenPoses;
+        private int _rowToPaintInOpenPoses;
 
         private async void PaintPos()
         {
@@ -1076,18 +1150,14 @@ namespace OsEngine.OsTrader
             }
         }
 
-        #endregion
-
         public event Action<string> UserClickOnPositionShowBotInTableEvent;
 
         public event Action<Position, SignalType> UserSelectActionEvent;
 
-        // messages in log / сообщения в лог 
+        #endregion
 
-        /// <summary>
-        /// send a new message to the top
-        /// выслать новое сообщение на верх
-        /// </summary>
+        #region Log
+
         private void SendNewLogMessage(string message, LogMessageType type)
         {
             if (LogMessageEvent != null)
@@ -1100,11 +1170,9 @@ namespace OsEngine.OsTrader
             }
         }
 
-        /// <summary>
-        /// outgoing message for log
-        /// исходящее сообщение для лога
-        /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;
+
+        #endregion
 
     }
 }

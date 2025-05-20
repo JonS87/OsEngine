@@ -35,6 +35,11 @@ namespace OsEngine.Entity
         public string Id;
 
         /// <summary>
+        /// Transaction number in the system. In Tester and Optimizer
+        /// </summary>
+        public long IdInTester;
+
+        /// <summary>
         /// Volume
         /// </summary>
         public decimal Volume;
@@ -58,6 +63,11 @@ namespace OsEngine.Entity
         ///  Transaction direction
         /// </summary>
         public Side Side;
+
+        /// <summary>
+        /// Open interest
+        /// </summary>
+        public decimal OpenInterest;
 
         /// <summary>
         /// Tester only. Timeframe of the candlestick that generated the trade
@@ -108,17 +118,19 @@ namespace OsEngine.Entity
                 result += ",";
                 result += Id;
             }
+            else
+            {
+                result += ",";
+            }
 
             if (Bid != 0 && Ask != 0 &&
                 BidsVolume != 0 && AsksVolume != 0)
             {
                 result += ",";
-
                 result += Bid.ToString(CultureInfo.InvariantCulture) + ",";
                 result += Ask.ToString(CultureInfo.InvariantCulture) + ",";
                 result += BidsVolume.ToString(CultureInfo.InvariantCulture) + ",";
                 result += AsksVolume.ToString(CultureInfo.InvariantCulture);
-                
             }
 
             return result;

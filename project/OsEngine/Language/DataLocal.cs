@@ -3,11 +3,6 @@
  * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OsEngine.Language
 {
@@ -30,7 +25,7 @@ namespace OsEngine.Language
             "Ru:Класс_");
 
         public string Label2 => OsLocalization.ConvertToLocString(
-            "Eng:Id_" +
+            "Eng:Name code_" +
             "Ru:Код бумаги_");
 
         public string Label3 => OsLocalization.ConvertToLocString(

@@ -1,4 +1,9 @@
-﻿using OsEngine.Entity;
+﻿/*
+ * Your rights to use code governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
+ * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+*/
+
+using OsEngine.Entity;
 using System;
 using System.Collections.Generic;
 using System.Windows;
@@ -6,9 +11,6 @@ using OsEngine.Language;
 
 namespace OsEngine.OsConverter
 {
-    /// <summary>
-    /// Interaction logic for OsCandleConverterUi.xaml
-    /// </summary>
     public partial class OsCandleConverterUi : Window
     {
         private CandleConverter _candleConverter;
@@ -39,29 +41,50 @@ namespace OsEngine.OsConverter
 
         private void ButtonStart_Click(object sender, RoutedEventArgs e)
         {
-            decimal devider = 1;
-
-            if(ComboBoxTimeFrameInitial.SelectedItem.ToString() == TimeFrame.Min5.ToString())
+            try
             {
-                devider = 5;
+                decimal divider = 1;
+
+                if (ComboBoxTimeFrameInitial.SelectedItem.ToString() == TimeFrame.Min5.ToString())
+                {
+                    divider = 5;
+                }
+
+                List<Candle> candles = _candleConverter.ReadSourceFile();
+                List<Candle> mergedCandles = _candleConverter.Merge(candles,
+                    Convert.ToInt32(_candleConverter.ResultCandleTimeFrame / (double)divider));
+
+                _candleConverter.WriteExitFile(mergedCandles);
+                _candleConverter.SendNewLogMessage("The operation is complete", Logging.LogMessageType.System);
             }
-
-            List<Candle> candles = _candleConverter.ReadSourceFile();
-            List<Candle> mergedCandles = _candleConverter.Merge(candles, 
-                Convert.ToInt32(_candleConverter.ResultCandleTimeFrame / (double)devider));
-
-            _candleConverter.WriteExitFile(mergedCandles);
+            catch (Exception ex)
+            {
+                _candleConverter.SendNewLogMessage(ex.ToString(), Logging.LogMessageType.Error);
+            }
         }
 
         private void ButtonSetSource_Click(object sender, RoutedEventArgs e)
         {
-            _candleConverter.SelectSourceFile();
-
+            try
+            {
+                _candleConverter.SelectSourceFile();
+            }
+            catch (Exception ex)
+            {
+                _candleConverter.SendNewLogMessage(ex.ToString(), Logging.LogMessageType.Error);
+            }
         }
 
         private void ButtonSetExitFile_Click(object sender, RoutedEventArgs e)
         {
-            _candleConverter.CreateExitFile();
+            try
+            {
+                _candleConverter.CreateExitFile();
+            }
+            catch (Exception ex)
+            {
+                _candleConverter.SendNewLogMessage(ex.ToString(),Logging.LogMessageType.Error);
+            }
         }
     }
 }

@@ -78,7 +78,7 @@ namespace OsEngine.Market.Servers.MoexFixFastTwimeFutures
             thread7.Start();
         }
 
-        public void Connect()
+        public void Connect(WebProxy proxy)
         {
             try
             {
@@ -1162,6 +1162,13 @@ namespace OsEngine.Market.Servers.MoexFixFastTwimeFutures
                 SendLogMessage(exception.ToString(), LogMessageType.Error);
             }
         }
+
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
 
         #endregion
 
@@ -3576,6 +3583,8 @@ namespace OsEngine.Market.Servers.MoexFixFastTwimeFutures
         public event Action<MarketDepth> MarketDepthEvent;
 
         public event Action<Trade> NewTradesEvent;
+
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         #endregion
 

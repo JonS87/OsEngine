@@ -12,26 +12,14 @@ using System.Windows.Forms.Integration;
 using OsEngine.Entity;
 using OsEngine.Language;
 using OsEngine.Logging;
-using OsEngine.Market;
 using ComboBox = System.Windows.Controls.ComboBox;
 using TextBox = System.Windows.Controls.TextBox;
 
 namespace OsEngine.OsConverter
 {
-    /// <summary>
-    /// конвертер тиков в свечи
-    /// </summary>
     public class OsConverterMaster
     {
 
-        /// <summary>
-        /// constructor
-        /// конструктор
-        /// </summary>
-        /// <param name="textBoxSourceFile">control for tick source/контрол для источника тиков</param>
-        /// <param name="textBoxExitFile">control for outgoing file/контрол для исходящего файла</param>
-        /// <param name="comboBoxTimeFrame">control for timeframe created candles /контрол для таймФрейма создаваемых свечек</param>
-        /// <param name="logFormsHost">log host/хост для лога</param>
         public OsConverterMaster(TextBox textBoxSourceFile, TextBox textBoxExitFile, ComboBox comboBoxTimeFrame,
             WindowsFormsHost logFormsHost)
         {
@@ -70,9 +58,6 @@ namespace OsEngine.OsConverter
             log.Listen(this);
         }
 
-        /// <summary>
-        /// load settings from file/загрузить настройки из файла
-        /// </summary>
         public void Load()
         {
             if (!File.Exists("Engine\\Converter.txt"))
@@ -97,9 +82,6 @@ namespace OsEngine.OsConverter
             }
         }
 
-        /// <summary>
-        /// save settings to file/сохранить настройки в файл
-        /// </summary>
         public void Save()
         {
             try
@@ -119,48 +101,24 @@ namespace OsEngine.OsConverter
             }
         }
 
-        /// <summary>
-        /// the path to the source file from which we take the data/путь к исходному файлу из которого берём данные
-        /// </summary>
         private string _sourceFile;
 
-        /// <summary>
-        /// outgoing file path/путь к исходящему файлу
-        /// </summary>
         private string _exitFile;
 
-        /// <summary>
-        /// timeframe molded candles/таймФрейм формируемых свечей
-        /// </summary>
         public TimeFrame TimeFrame;
 
-        /// <summary>
-        /// control for source file path/контрол для пути исходного файла
-        /// </summary>
         private TextBox _textBoxSourceFile;
 
-        /// <summary>
-        /// control for outgoing file path/контрол для пути исходящего файла
-        /// </summary>
         private TextBox _textBoxExitFile;
 
-        /// <summary>
-        /// control with tf/контрол с ТФ
-        /// </summary>
         private ComboBox _comboBoxTimeFrame;
 
-        /// <summary>
-        /// changed tf/изменился ТФ
-        /// </summary>
-        void _comboBoxTimeFrame_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        private void _comboBoxTimeFrame_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             Enum.TryParse(_comboBoxTimeFrame.SelectedItem.ToString(), out TimeFrame);
             Save();
         }
 
-        /// <summary>
-        /// select source file/выбрать исходный файл
-        /// </summary>
         public void SelectSourceFile()
         {
             FileDialog myDialog = new OpenFileDialog();
@@ -172,7 +130,7 @@ namespace OsEngine.OsConverter
 
             myDialog.ShowDialog();
 
-            if (myDialog.FileName != "") // if anything is selected/если хоть что-то выбрано
+            if (myDialog.FileName != "") // if anything is selected
             {
                 _sourceFile = myDialog.FileName;
                 Save();
@@ -181,9 +139,6 @@ namespace OsEngine.OsConverter
             _textBoxSourceFile.Text = _sourceFile;
         }
 
-        /// <summary>
-        /// create new file/сохдать новый файл
-        /// </summary>
         public void CreateExitFile()
         {
             FileDialog myDialog = new SaveFileDialog();
@@ -195,7 +150,7 @@ namespace OsEngine.OsConverter
 
             myDialog.ShowDialog();
 
-            if (myDialog.FileName != "") //  if anything is selected/если хоть что-то выбрано
+            if (myDialog.FileName != "") //  if anything is selected
             {
                 if (!myDialog.FileName.Contains(".txt"))
                 {
@@ -209,9 +164,6 @@ namespace OsEngine.OsConverter
             _textBoxExitFile.Text = _exitFile;
         }
 
-        /// <summary>
-        /// enable conversion/включить конвертирование
-        /// </summary>
         public void StartConvert()
         {
             if (_worker != null &&
@@ -225,53 +177,56 @@ namespace OsEngine.OsConverter
             _worker.Start();
         }
 
-
         private void WorkerSpaceStreaming()
         {
-            using (StreamReader reader = new StreamReader(_sourceFile))
-            using (StreamWriter writer = new StreamWriter(_exitFile, false))
+            try
             {
-                SendNewLogMessage(OsLocalization.Converter.Message4, LogMessageType.System);
-                SendNewLogMessage(OsLocalization.Converter.Message5, LogMessageType.System);
-
-                List<Trade> trades = new List<Trade>();
-                DateTime currentDay = DateTime.MinValue;
-
-                while (!reader.EndOfStream)
+                using (StreamReader reader = new StreamReader(_sourceFile))
+                using (StreamWriter writer = new StreamWriter(_exitFile, false))
                 {
-                    Trade trade = new Trade();
-                    trade.SetTradeFromString(reader.ReadLine());
+                    SendNewLogMessage(OsLocalization.Converter.Message4, LogMessageType.System);
+                    SendNewLogMessage(OsLocalization.Converter.Message5, LogMessageType.System);
 
-                    if (currentDay == DateTime.MinValue)
+                    List<Trade> trades = new List<Trade>();
+                    DateTime currentDay = DateTime.MinValue;
+
+                    while (!reader.EndOfStream)
                     {
-                        currentDay = trade.Time.Date;
+                        Trade trade = new Trade();
+                        trade.SetTradeFromString(reader.ReadLine());
+
+                        if (currentDay == DateTime.MinValue)
+                        {
+                            currentDay = trade.Time.Date;
+                        }
+
+                        if (trade.Time.Date != currentDay || reader.EndOfStream)
+                        {
+                            ProcessTradesAndWriteCandles(trades, writer);
+                            trades = new List<Trade>(); // Clear trades for the next day
+                            currentDay = trade.Time.Date;
+                        }
+
+                        trades.Add(trade);
                     }
 
-                    if (trade.Time.Date != currentDay || reader.EndOfStream)
+                    // Process any remaining trades
+                    if (trades.Count > 0)
                     {
                         ProcessTradesAndWriteCandles(trades, writer);
-                        trades = new List<Trade>(); // Clear trades for the next day
-                        currentDay = trade.Time.Date;
                     }
 
-                    trades.Add(trade);
+                    SendNewLogMessage(OsLocalization.Converter.Message9, LogMessageType.System);
+
+                    MessageBox.Show("Conversion completed!", "Notification", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
-
-                // Process any remaining trades
-                if (trades.Count > 0)
-                {
-                    ProcessTradesAndWriteCandles(trades, writer);
-                }
-
-                SendNewLogMessage(OsLocalization.Converter.Message9, LogMessageType.System);
-
-                MessageBox.Show("Conversion completed!", "Notification", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                SendNewLogMessage(ex.ToString(), LogMessageType.Error);
             }
         }
 
-        /// <summary>
-        /// Helper function to process trades and write candles to the output file
-        /// </summary>
         private void ProcessTradesAndWriteCandles(List<Trade> trades, StreamWriter writer)
         {
             SendNewLogMessage(OsLocalization.Converter.Message8, LogMessageType.System);
@@ -300,18 +255,9 @@ namespace OsEngine.OsConverter
             series.Clear(); // Clear the candle series
         }
 
-
-        /// <summary>
-        /// stream creating new file/поток занимающийся созданием нового файла
-        /// </summary>
         private Task _worker;
 
-        // logging/логирование
-
-        /// <summary>
-        /// send new message to log/выслать новое сообщение в лог
-        /// </summary>
-        void SendNewLogMessage(string message, LogMessageType type)
+        public void SendNewLogMessage(string message, LogMessageType type)
         {
             if (LogMessageEvent != null)
             {
@@ -319,9 +265,6 @@ namespace OsEngine.OsConverter
             }
         }
 
-        /// <summary>
-        /// new message event to log/событие нового сообщения в лог
-        /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;
     }
 }

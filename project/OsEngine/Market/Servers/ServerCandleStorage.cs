@@ -19,7 +19,7 @@ namespace OsEngine.Market.Servers
         /// constructor
         /// </summary>
         /// <param name="server"> server for saving candles </param>
-        public ServerCandleStorage(IServer server)
+        public ServerCandleStorage(AServer server)
         {
 
             if (!Directory.Exists(@"Data"))
@@ -27,7 +27,7 @@ namespace OsEngine.Market.Servers
                 Directory.CreateDirectory(@"Data");
             }
 
-            _pathName = @"Data" + @"\" + server.GetType().Name + @"Candles";
+            _pathName = @"Data" + @"\" + server.ServerNameUnique + @"Candles";
 
             Thread saver = new Thread(CandleSaverSpaceInOneFile);
             saver.CurrentCulture = new CultureInfo("RU-ru");
@@ -43,7 +43,7 @@ namespace OsEngine.Market.Servers
         /// <summary>
         /// is the service enabled
         /// </summary>
-        public bool NeadToSave;
+        public bool NeedToSave;
 
         /// <summary>
         /// number of candles to be saved to the file system
@@ -61,6 +61,11 @@ namespace OsEngine.Market.Servers
         public void SetSeriesToSave(CandleSeries series)
         {
             string spec = series.Specification;
+
+            if(string.IsNullOrEmpty(spec))
+            {
+                return;
+            }
 
             for (int i = 0; i < _series.Count; i++)
             {
@@ -133,7 +138,7 @@ namespace OsEngine.Market.Servers
                         return;
                     }
 
-                    if (NeadToSave == false)
+                    if (NeedToSave == false)
                     {
                         continue;
                     }

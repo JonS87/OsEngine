@@ -70,6 +70,8 @@ namespace OsEngine.OsTrader.Panels
                 Title = panel.GetType().Name + " / " + panel.NameStrategyUniq;
             }
 
+            _startTitle = Title;
+
             TabControlBotsName.Items[0] = panel.NameStrategyUniq;
             ButtonShowInformPanel.Visibility = Visibility.Hidden;
 
@@ -91,6 +93,9 @@ namespace OsEngine.OsTrader.Panels
             rectToMove.MouseEnter += RectToMove_MouseEnter;
             rectToMove.MouseLeave += RectToMove_MouseLeave;
             rectToMove.MouseDown += RectToMove_MouseDown;
+
+            TabControlBotTab.SelectionChanged += TabControlBotTab_SelectionChanged;
+            TabControlBotTab_SelectionChanged(null, null);
         }
 
         private BotPanel _panel;
@@ -106,6 +111,8 @@ namespace OsEngine.OsTrader.Panels
                 rectToMove.MouseDown -= RectToMove_MouseDown;
 
                 LocationChanged -= RobotUi_LocationChanged;
+
+                TabControlBotTab.SelectionChanged -= TabControlBotTab_SelectionChanged;
 
                 if (_panel != null)
                 {
@@ -319,6 +326,38 @@ namespace OsEngine.OsTrader.Panels
 
         #endregion
 
+        #region Title managment
+
+        private void TabControlBotTab_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            try
+            {
+                IIBotTab currentTab = _panel.ActiveTab;
+
+                if(currentTab == null)
+                {
+                    return;
+                }
+
+                if (currentTab.EventsIsOn == false)
+                {
+                    Title = _startTitle + " / " + OsLocalization.Trader.Label435;
+                }
+                else
+                {
+                    Title = _startTitle;
+                }
+            }
+            catch (Exception ex)
+            {
+                _panel.SendNewLogMessage(ex.ToString(), LogMessageType.Error); 
+            }
+        }
+
+        private string _startTitle;
+
+        #endregion
+
         #region Journal
 
         private JournalUi2 _journalUi;
@@ -404,12 +443,12 @@ namespace OsEngine.OsTrader.Panels
         {
             try
             {
-                if (_panel.ActivTab == null)
+                if (_panel.ActiveTab == null)
                 {
                     return;
                 }
 
-                if (_panel.ActivTab.GetType().Name != "BotTabSimple")
+                if (_panel.ActiveTab.GetType().Name != "BotTabSimple")
                 {
                     return;
                 }
@@ -425,7 +464,7 @@ namespace OsEngine.OsTrader.Panels
                     MessageBox.Show(OsLocalization.Trader.Label49);
                     return;
                 }
-             ((BotTabSimple)_panel.ActivTab).BuyAtMarket(volume);
+             ((BotTabSimple)_panel.ActiveTab).BuyAtMarket(volume);
             }
             catch (Exception ex)
             {
@@ -437,11 +476,11 @@ namespace OsEngine.OsTrader.Panels
         {
             try
             {
-                if (_panel.ActivTab == null)
+                if (_panel.ActiveTab == null)
                 {
                     return;
                 }
-                if (_panel.ActivTab.GetType().Name != "BotTabSimple")
+                if (_panel.ActiveTab.GetType().Name != "BotTabSimple")
                 {
                     return;
                 }
@@ -455,7 +494,7 @@ namespace OsEngine.OsTrader.Panels
                     MessageBox.Show(OsLocalization.Trader.Label49);
                     return;
                 }
-            ((BotTabSimple)_panel.ActivTab).SellAtMarket(volume);
+            ((BotTabSimple)_panel.ActiveTab).SellAtMarket(volume);
             }
             catch (Exception ex)
             {
@@ -467,11 +506,11 @@ namespace OsEngine.OsTrader.Panels
         {
             try
             {
-                if (_panel.ActivTab == null)
+                if (_panel.ActiveTab == null)
                 {
                     return;
                 }
-                if (_panel.ActivTab.GetType().Name != "BotTabSimple")
+                if (_panel.ActiveTab.GetType().Name != "BotTabSimple")
                 {
                     return;
                 }
@@ -505,7 +544,7 @@ namespace OsEngine.OsTrader.Panels
                     MessageBox.Show(OsLocalization.Trader.Label50);
                     return;
                 }
-            ((BotTabSimple)_panel.ActivTab).BuyAtLimit(volume, price);
+            ((BotTabSimple)_panel.ActiveTab).BuyAtLimit(volume, price);
             }
             catch (Exception ex)
             {
@@ -517,11 +556,11 @@ namespace OsEngine.OsTrader.Panels
         {
             try
             {
-                if (_panel.ActivTab == null)
+                if (_panel.ActiveTab == null)
                 {
                     return;
                 }
-                if (_panel.ActivTab.GetType().Name != "BotTabSimple")
+                if (_panel.ActiveTab.GetType().Name != "BotTabSimple")
                 {
                     return;
                 }
@@ -554,7 +593,7 @@ namespace OsEngine.OsTrader.Panels
                     return;
                 }
 
-            ((BotTabSimple)_panel.ActivTab).SellAtLimit(volume, price);
+            ((BotTabSimple)_panel.ActiveTab).SellAtLimit(volume, price);
             }
             catch (Exception ex)
             {
@@ -566,16 +605,16 @@ namespace OsEngine.OsTrader.Panels
         {
             try
             {
-                if (_panel.ActivTab == null)
+                if (_panel.ActiveTab == null)
                 {
                     return;
                 }
-                if (_panel.ActivTab.GetType().Name != "BotTabSimple")
+                if (_panel.ActiveTab.GetType().Name != "BotTabSimple")
                 {
                     return;
                 }
 
-            ((BotTabSimple)_panel.ActivTab).CloseAllOrderInSystem();
+            ((BotTabSimple)_panel.ActiveTab).CloseAllOrderInSystem();
             }
             catch (Exception ex)
             {
@@ -603,7 +642,7 @@ namespace OsEngine.OsTrader.Panels
         {
             try
             {
-                _panel.ShowParametrDialog();
+                _panel.ShowParameterDialog();
             }
             catch (Exception ex)
             {
@@ -632,17 +671,17 @@ namespace OsEngine.OsTrader.Panels
         {
             try
             {
-                if (_panel.ActivTab == null)
+                if (_panel.ActiveTab == null)
                 {
                     return;
                 }
-                if (_panel.ActivTab.GetType().Name == "BotTabSimple")
+                if (_panel.ActiveTab.GetType().Name == "BotTabSimple")
                 {
-                    ((BotTabSimple)_panel.ActivTab).ShowManualControlDialog();
+                    ((BotTabSimple)_panel.ActiveTab).ShowManualControlDialog();
                 }
-                else if (_panel.ActivTab.GetType().Name == "BotTabScreener")
+                else if (_panel.ActiveTab.GetType().Name == "BotTabScreener")
                 {
-                    ((BotTabScreener)_panel.ActivTab).ShowManualControlDialog();
+                    ((BotTabScreener)_panel.ActiveTab).ShowManualControlDialog();
                 }
             }
             catch (Exception ex)
@@ -660,29 +699,34 @@ namespace OsEngine.OsTrader.Panels
                     MessageBox.Show(OsLocalization.Trader.Label10);
                     return;
                 }
-                if (_panel.ActivTab == null)
+                if (_panel.ActiveTab == null)
                 {
                     return;
                 }
 
-                if (_panel.ActivTab.GetType().Name == "BotTabSimple")
+                if (_panel.ActiveTab.GetType().Name == "BotTabSimple")
                 {
-                    ((BotTabSimple)_panel.ActivTab).ShowConnectorDialog();
+                    ((BotTabSimple)_panel.ActiveTab).ShowConnectorDialog();
                 }
-                else if (_panel.ActivTab != null &&
-                    _panel.ActivTab.GetType().Name == "BotTabIndex")
+                else if (_panel.ActiveTab != null &&
+                    _panel.ActiveTab.GetType().Name == "BotTabIndex")
                 {
-                    ((BotTabIndex)_panel.ActivTab).ShowDialog();
+                    ((BotTabIndex)_panel.ActiveTab).ShowDialog();
                 }
-                else if (_panel.ActivTab != null &&
-                         _panel.ActivTab.GetType().Name == "BotTabCluster")
+                else if (_panel.ActiveTab != null &&
+                         _panel.ActiveTab.GetType().Name == "BotTabCluster")
                 {
-                    ((BotTabCluster)_panel.ActivTab).ShowDialog();
+                    ((BotTabCluster)_panel.ActiveTab).ShowDialog();
                 }
-                else if (_panel.ActivTab != null &&
-                        _panel.ActivTab.GetType().Name == "BotTabScreener")
+                else if (_panel.ActiveTab != null &&
+                        _panel.ActiveTab.GetType().Name == "BotTabScreener")
                 {
-                    ((BotTabScreener)_panel.ActivTab).ShowDialog();
+                    ((BotTabScreener)_panel.ActiveTab).ShowDialog();
+                }
+                else if (_panel.ActiveTab != null &&
+                 _panel.ActiveTab.GetType().Name == "BotTabNews")
+                {
+                    ((BotTabNews)_panel.ActiveTab).ShowDialog();
                 }
                 else
                 {
@@ -705,7 +749,7 @@ namespace OsEngine.OsTrader.Panels
         {
             try
             {
-                if (_panel.ActivTab == null)
+                if (_panel.ActiveTab == null)
                 {
                     return;
                 }
@@ -714,12 +758,12 @@ namespace OsEngine.OsTrader.Panels
 
                 try
                 {
-                    if (_panel.ActivTab.GetType().Name != "BotTabSimple")
+                    if (_panel.ActiveTab.GetType().Name != "BotTabSimple")
                     {
                         return;
                     }
 
-                    activTab = (BotTabSimple)_panel.ActivTab;
+                    activTab = (BotTabSimple)_panel.ActiveTab;
                 }
                 catch (Exception ex)
                 {

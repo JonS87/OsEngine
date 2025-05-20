@@ -1,4 +1,10 @@
-﻿namespace OsEngine.Market.Servers.GateIo.GateIoSpot
+﻿/*
+ *Your rights to use the code are governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
+ *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+*/
+
+
+namespace OsEngine.Market.Servers.GateIo.GateIoSpot
 {
     public class GateIoSpotServerPermission : IServerPermission
     {
@@ -17,76 +23,95 @@
         {
             get { return false; }
         }
+
         public bool DataFeedTf5SecondCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTf10SecondCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTf15SecondCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTf20SecondCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTf30SecondCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTf1MinuteCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTf2MinuteCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTf5MinuteCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTf10MinuteCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTf15MinuteCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTf30MinuteCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTf1HourCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTf2HourCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTf4HourCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTfDayCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTfTickCanLoad
         {
             get { return false; }
         }
+
         public bool DataFeedTfMarketDepthCanLoad
         {
-            get { return true; }
+            get { return false; }
         }
 
         #endregion
+
+        #region Trade permission
 
         public bool MarketOrdersIsSupport
         {
@@ -116,13 +141,13 @@
         private TimeFramePermission _tradeTimeFramePermission
             = new TimeFramePermission()
             {
-                TimeFrameSec1IsOn = false,
-                TimeFrameSec2IsOn = false,
-                TimeFrameSec5IsOn = false,
+                TimeFrameSec1IsOn = true,
+                TimeFrameSec2IsOn = true,
+                TimeFrameSec5IsOn = true,
                 TimeFrameSec10IsOn = true,
-                TimeFrameSec15IsOn = false,
-                TimeFrameSec20IsOn = false,
-                TimeFrameSec30IsOn = false,
+                TimeFrameSec15IsOn = true,
+                TimeFrameSec20IsOn = true,
+                TimeFrameSec30IsOn = true,
                 TimeFrameMin1IsOn = true,
                 TimeFrameMin2IsOn = false,
                 TimeFrameMin3IsOn = false,
@@ -139,7 +164,7 @@
             };
 
 
-        public bool UseStandartCandlesStarter
+        public bool UseStandardCandlesStarter
         {
             get { return true; }
         }
@@ -166,12 +191,48 @@
 
         public bool CanQueryOrdersAfterReconnect
         {
-            get { return false; }
+            get { return true; }
         }
 
         public bool CanQueryOrderStatus
         {
+            get { return true; }
+        }
+
+        #endregion
+
+        #region Other Permissions
+
+        public bool IsNewsServer
+        {
             get { return false; }
         }
+
+        public bool IsSupports_CheckDataFeedLogic
+        {
+            get { return false; }
+        }
+
+        public string[] CheckDataFeedLogic_ExceptionSecuritiesClass
+        {
+            get { return null; }
+        }
+
+        public int CheckDataFeedLogic_NoDataMinutesToDisconnect
+        {
+            get { return 10; }
+        }
+
+        public bool IsSupports_MultipleInstances
+        {
+            get { return true; }
+        }
+
+        public bool IsSupports_ProxyFor_MultipleInstances
+        {
+            get { return true; }
+        }
+
+        #endregion
     }
 }

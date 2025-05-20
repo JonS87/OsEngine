@@ -13,7 +13,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
     [Bot("WServerTester")]
     public class WServerTester : BotPanel
     {
-        #region Settings and Params
+        #region Settings and Parameters
 
         public WServerTester(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -176,6 +176,13 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
             O10_SecurityClass = CreateParameter("Sec class. orders test 10", "Futures", "O10");
             O10_Volume = CreateParameter("Volume. orders test 10", 0.01m, 1, 1, 1, "O10");
 
+            StrategyParameterButton buttonOrdersTest11 = CreateParameterButton("Start test orders 11", "O11");
+            buttonOrdersTest11.UserClickOnButtonEvent += ButtonOrdersTest11_UserClickOnButtonEvent;
+            O11_PortfolioName = CreateParameter("Portfolio. orders test 11", "BinanceFutures", "O11");
+            O11_SecurityName = CreateParameter("Sec name. orders test 11", "ETHUSDT", "O11");
+            O11_SecurityClass = CreateParameter("Sec class. orders test 11", "Futures", "O11");
+            O11_Volume = CreateParameter("Volume. orders test 11", 0.01m, 1, 1, 1, "O11");
+
             StrategyParameterButton buttonPortfolioTest1 = CreateParameterButton("Start test portfolio 1", "P1");
             buttonPortfolioTest1.UserClickOnButtonEvent += ButtonPortfolioTest1_UserClickOnButtonEvent;
             P1_PortfolioName = CreateParameter("Portfolio.  portfolio 1", "BinanceFutures", "P1");
@@ -293,6 +300,11 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
         StrategyParameterString O10_SecurityClass;
         StrategyParameterString O10_PortfolioName;
         StrategyParameterDecimal O10_Volume;
+
+        StrategyParameterString O11_SecurityName;
+        StrategyParameterString O11_SecurityClass;
+        StrategyParameterString O11_PortfolioName;
+        StrategyParameterDecimal O11_Volume;
 
         StrategyParameterString P1_SecurityName;
         StrategyParameterString P1_SecurityClass;
@@ -627,6 +639,19 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
             worker.Start();
         }
 
+        private void ButtonOrdersTest11_UserClickOnButtonEvent()
+        {
+            if (_threadIsWork == true)
+            {
+                return;
+            }
+
+            CurTestType = ServerTestType.Order_11;
+
+            Thread worker = new Thread(WorkerThreadArea);
+            worker.Start();
+        }
+
         private void ButtonPortfolioTest1_UserClickOnButtonEvent()
         {
             if (_threadIsWork == true)
@@ -650,364 +675,387 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
         {
             _threadIsWork = true;
 
-            List<IServer> servers = ServerMaster.GetServers();
-
-            if(servers == null ||
-                servers.Count == 0)
+            try
             {
+                List<IServer> servers = ServerMaster.GetServers();
+
+                if (servers == null ||
+                    servers.Count == 0)
+                {
+                    _threadIsWork = false;
+                    SendNewLogMessage("No Servers Found", LogMessageType.Error);
+                    return;
+                }
+
+                if (servers.Count > 1)
+                {
+                    _threadIsWork = false;
+                    SendNewLogMessage("You've created more than one server! Tests are not possible. Only one at a time!", LogMessageType.Error);
+                    return;
+                }
+
+                for (int i = 0; servers != null && i < servers.Count; i++)
+                {
+                    string servType = servers[i].GetType().BaseType.ToString();
+
+                    if (servType.EndsWith("AServer") == false)
+                    {
+                        continue;
+                    }
+
+                    if (CurTestType == ServerTestType.Var_1_Securities)
+                    {
+                        Var_1_Securities tester = new Var_1_Securities();
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Var_2_MarketDepth)
+                    {
+                        Var_2_MarketDepth tester = new Var_2_MarketDepth();
+                        tester.MinutesToTest = V2_MarketDepthMinutesToTest.ValueInt;
+                        tester.SecNames = V2_SecurityName.ValueString;
+                        tester.SecClassCode = V2_ClassCode.ValueString;
+                        tester.SecuritiesSeparator = V2_SecuritiesSeparator.ValueString;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Var_3_Trades)
+                    {
+                        Var_3_Trades tester = new Var_3_Trades();
+                        tester.MinutesToTest = V3_TradesMinutesToTest.ValueInt;
+                        tester.SecNames = V3_SecurityName.ValueString;
+                        tester.SecClassCode = V3_ClassCode.ValueString;
+                        tester.SecuritiesSeparator = V3_SecuritiesSeparator.ValueString;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Data_1)
+                    {
+                        Data_1_Integrity tester = new Data_1_Integrity();
+                        tester.SecName = D1_SecurityName.ValueString;
+                        tester.SecClass = D1_SecurityClass.ValueString;
+                        tester.StartDate = DateTime.Parse(D1_StartDate.ValueString);
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Data_2)
+                    {
+                        Data_2_Validation_Candles tester = new Data_2_Validation_Candles();
+                        tester.SecName = D2_SecurityName.ValueString;
+                        tester.SecClass = D2_SecurityClass.ValueString;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Data_3)
+                    {
+                        Data_3_Validation_Trades tester = new Data_3_Validation_Trades();
+                        tester.SecName = D3_SecurityName.ValueString;
+                        tester.SecClass = D3_SecurityClass.ValueString;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Data_4)
+                    {
+                        Data_4_Stress_Candles tester = new Data_4_Stress_Candles();
+                        tester.SecNames = D4_SecuritiesNames.ValueString;
+                        tester.SecClass = D4_SecurityClass.ValueString;
+                        tester.SecuritiesSeparator = D4_SecuritiesSeparator.ValueString;
+                        tester.StartDate = DateTime.Parse(D4_StartDate.ValueString);
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Data_5)
+                    {
+                        Data_5_Stress_Trades tester = new Data_5_Stress_Trades();
+                        tester.SecNames = D5_SecuritiesNames.ValueString;
+                        tester.SecClass = D5_SecurityClass.ValueString;
+                        tester.SecuritiesSeparator = D5_SecuritiesSeparator.ValueString;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Conn_1)
+                    {
+                        Conn_1_Status tester = new Conn_1_Status();
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Conn_2)
+                    {
+                        Conn_2_SubscrAllSec tester = new Conn_2_SubscrAllSec();
+                        tester.SecClass = C2_SecuritiesClass.ValueString;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Conn_3)
+                    {
+                        Conn_3_Stress_Memory tester = new Conn_3_Stress_Memory();
+                        tester.SecClass = C3_SecuritiesClass.ValueString;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Conn_4)
+                    {
+                        Conn_4_Validation_Candles tester = new Conn_4_Validation_Candles();
+                        tester.SecutiesToSubscrible = C4_SecuritiesNames.ValueString;
+                        tester.SecuritiesClass = C4_SecuritiesClass.ValueString;
+                        tester.SecuritiesSeparator = C4_SecuritiesSeparator.ValueString;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Conn_5)
+                    {
+                        Conn_5_Screener tester = new Conn_5_Screener();
+                        tester.SecuritiesClass = C5_SecuritiesClass.ValueString;
+                        tester.SecuritiesCount = C5_SecuritiesCount.ValueInt;
+                        tester.TimeFrame = C5_TimeFrame.ValueString;
+
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Order_1)
+                    {
+                        Orders_1_FakeOrders tester = new Orders_1_FakeOrders();
+                        tester.SecurityNameToTrade = O1_SecurityName.ValueString;
+                        tester.SecurityClassToTrade = O1_SecurityClass.ValueString;
+                        tester.PortfolioName = O1_PortfolioName.ValueString;
+                        tester.VolumeMin = O1_VolumeLess.ValueDecimal;
+                        tester.VolumeMax = O1_VolumeMax.ValueDecimal;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Order_2)
+                    {
+                        Orders_2_LimitsExecute tester = new Orders_2_LimitsExecute();
+                        tester.SecurityNameToTrade = O2_SecurityName.ValueString;
+                        tester.SecurityClassToTrade = O2_SecurityClass.ValueString;
+                        tester.PortfolioName = O2_PortfolioName.ValueString;
+                        tester.VolumeToTrade = O2_Volume.ValueDecimal;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Order_3)
+                    {
+                        Orders_3_MarketOrders tester = new Orders_3_MarketOrders();
+                        tester.SecurityNameToTrade = O3_SecurityName.ValueString;
+                        tester.SecurityClassToTrade = O3_SecurityClass.ValueString;
+                        tester.PortfolioName = O3_PortfolioName.ValueString;
+                        tester.VolumeToTrade = O3_Volume.ValueDecimal;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Order_4)
+                    {
+                        Orders_4_LimitCancel tester = new Orders_4_LimitCancel();
+                        tester.SecurityNameToTrade = O4_SecurityName.ValueString;
+                        tester.SecurityClassToTrade = O4_SecurityClass.ValueString;
+                        tester.PortfolioName = O4_PortfolioName.ValueString;
+                        tester.VolumeToTrade = O4_Volume.ValueDecimal;
+                        tester.CountOrders = O4_CountOrders.ValueInt;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Order_5)
+                    {
+                        Orders_5_ChangePrice tester = new Orders_5_ChangePrice();
+                        tester.SecurityNameToTrade = O5_SecurityName.ValueString;
+                        tester.SecurityClassToTrade = O5_SecurityClass.ValueString;
+                        tester.PortfolioName = O5_PortfolioName.ValueString;
+                        tester.VolumeToTrade = O5_Volume.ValueDecimal;
+                        tester.CountOrders = O5_CountOrders.ValueInt;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Order_6)
+                    {
+                        Orders_6_ChangePriceError tester = new Orders_6_ChangePriceError();
+                        tester.SecurityNameToTrade = O6_SecurityName.ValueString;
+                        tester.SecurityClassToTrade = O6_SecurityClass.ValueString;
+                        tester.PortfolioName = O6_PortfolioName.ValueString;
+                        tester.VolumeToTrade = O6_Volume.ValueDecimal;
+                        tester.FakeBigPrice = O6_FakeBigPrice.ValueDecimal;
+                        tester.FakeSmallPrice = O6_FakeSmallPrice.ValueDecimal;
+
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Order_7)
+                    {
+                        Orders_7_Add_Move_Cancel_Spam tester = new Orders_7_Add_Move_Cancel_Spam();
+                        tester.SecurityNameToTrade = O7_SecurityName.ValueString;
+                        tester.SecurityClassToTrade = O7_SecurityClass.ValueString;
+                        tester.PortfolioName = O7_PortfolioName.ValueString;
+                        tester.VolumeToTrade = O7_Volume.ValueDecimal;
+                        tester.CountOrders = O7_CountOrders.ValueInt;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Order_8)
+                    {
+                        Orders_8_RequestOnReconnect tester = new Orders_8_RequestOnReconnect();
+                        tester.SecurityNameToTrade = O8_SecurityName.ValueString;
+                        tester.SecurityClassToTrade = O8_SecurityClass.ValueString;
+                        tester.PortfolioName = O8_PortfolioName.ValueString;
+                        tester.VolumeToTrade = O8_Volume.ValueDecimal;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Order_9)
+                    {
+                        Orders_9_RequestLostActivOrder tester = new Orders_9_RequestLostActivOrder();
+                        tester.SecurityNameToTrade = O9_SecurityName.ValueString;
+                        tester.SecurityClassToTrade = O9_SecurityClass.ValueString;
+                        tester.PortfolioName = O9_PortfolioName.ValueString;
+                        tester.VolumeToTrade = O9_Volume.ValueDecimal;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Order_10)
+                    {
+                        Orders_10_RequestLostDoneOrder tester = new Orders_10_RequestLostDoneOrder();
+                        tester.SecurityNameToTrade = O10_SecurityName.ValueString;
+                        tester.SecurityClassToTrade = O10_SecurityClass.ValueString;
+                        tester.PortfolioName = O10_PortfolioName.ValueString;
+                        tester.VolumeToTrade = O10_Volume.ValueDecimal;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Order_11)
+                    {
+                        Orders_11_RequestLostMyTrades tester = new Orders_11_RequestLostMyTrades();
+                        tester.SecurityNameToTrade = O11_SecurityName.ValueString;
+                        tester.SecurityClassToTrade = O11_SecurityClass.ValueString;
+                        tester.PortfolioName = O11_PortfolioName.ValueString;
+                        tester.VolumeToTrade = O11_Volume.ValueDecimal;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                    else if (CurTestType == ServerTestType.Portfolio_1)
+                    {
+                        Portfolio_1_Validation tester = new Portfolio_1_Validation();
+                        tester.SecurityNameToTrade = P1_SecurityName.ValueString;
+                        tester.SecurityClassToTrade = P1_SecurityClass.ValueString;
+                        tester.PortfolioName = P1_PortfolioName.ValueString;
+                        tester.VolumeToTrade = P1_Volume.ValueDecimal;
+                        tester.AssetInPortfolio = P1_AssetInPortfolioName.ValueString;
+                        tester.LogMessage += SendNewLogMessage;
+                        tester.TestEndEvent += Tester_TestEndEvent;
+                        _testers.Add(tester);
+                        tester.Server = (AServer)servers[i];
+                        SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
+                        tester.Start();
+                    }
+                }
+
+                while (_testers.Count > 0)
+                {
+                    Thread.Sleep(1000);
+                }
+
+                SendNewLogMessage("Tests ended", LogMessageType.Error);
                 _threadIsWork = false;
-                SendNewLogMessage("No Servers Found", LogMessageType.Error);
-                return;
             }
-
-            if (servers.Count > 1)
+            catch(Exception ex)
             {
+                SendNewLogMessage(ex.ToString(),LogMessageType.Error);
+                SendNewLogMessage("Tests ended with critical error", LogMessageType.Error);
                 _threadIsWork = false;
-                SendNewLogMessage("You've created more than one server! Tests are not possible. Only one at a time!", LogMessageType.Error);
-                return;
             }
-
-            for (int i = 0; servers != null && i < servers.Count;i++)
-            {
-                string servType = servers[i].GetType().BaseType.ToString();
-
-                if (servType.EndsWith("AServer") == false) 
-                {
-                    continue;
-                }
-
-                if(CurTestType == ServerTestType.Var_1_Securities)
-                {
-                    Var_1_Securities tester = new Var_1_Securities();
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " +  servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if(CurTestType == ServerTestType.Var_2_MarketDepth)
-                {
-                    Var_2_MarketDepth tester = new Var_2_MarketDepth();
-                    tester.MinutesToTest = V2_MarketDepthMinutesToTest.ValueInt;
-                    tester.SecNames = V2_SecurityName.ValueString;
-                    tester.SecClassCode = V2_ClassCode.ValueString;
-                    tester.SecuritiesSeparator = V2_SecuritiesSeparator.ValueString;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Var_3_Trades)
-                {
-                    Var_3_Trades tester = new Var_3_Trades();
-                    tester.MinutesToTest = V3_TradesMinutesToTest.ValueInt;
-                    tester.SecNames = V3_SecurityName.ValueString;
-                    tester.SecClassCode = V3_ClassCode.ValueString;
-                    tester.SecuritiesSeparator = V3_SecuritiesSeparator.ValueString;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Data_1)
-                {
-                    Data_1_Integrity tester = new Data_1_Integrity();
-                    tester.SecName = D1_SecurityName.ValueString;
-                    tester.SecClass = D1_SecurityClass.ValueString;
-                    tester.StartDate = DateTime.Parse(D1_StartDate.ValueString);
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Data_2)
-                {
-                    Data_2_Validation_Candles tester = new Data_2_Validation_Candles();
-                    tester.SecName = D2_SecurityName.ValueString;
-                    tester.SecClass = D2_SecurityClass.ValueString;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Data_3)
-                {
-                    Data_3_Validation_Trades tester = new Data_3_Validation_Trades();
-                    tester.SecName = D3_SecurityName.ValueString;
-                    tester.SecClass = D3_SecurityClass.ValueString;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Data_4)
-                {
-                    Data_4_Stress_Candles tester = new Data_4_Stress_Candles();
-                    tester.SecNames = D4_SecuritiesNames.ValueString;
-                    tester.SecClass = D4_SecurityClass.ValueString;
-                    tester.SecuritiesSeparator = D4_SecuritiesSeparator.ValueString;
-                    tester.StartDate = DateTime.Parse(D4_StartDate.ValueString);
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Data_5)
-                {
-                    Data_5_Stress_Trades tester = new Data_5_Stress_Trades();
-                    tester.SecNames = D5_SecuritiesNames.ValueString;
-                    tester.SecClass = D5_SecurityClass.ValueString;
-                    tester.SecuritiesSeparator = D5_SecuritiesSeparator.ValueString;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Conn_1)
-                {
-                    Conn_1_Status tester = new Conn_1_Status();
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Conn_2)
-                {
-                    Conn_2_SubscrAllSec tester = new Conn_2_SubscrAllSec();
-                    tester.SecClass = C2_SecuritiesClass.ValueString;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Conn_3)
-                {
-                    Conn_3_Stress_Memory tester = new Conn_3_Stress_Memory();
-                    tester.SecClass = C3_SecuritiesClass.ValueString;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Conn_4)
-                {
-                    Conn_4_Validation_Candles tester = new Conn_4_Validation_Candles();
-                    tester.SecutiesToSubscrible = C4_SecuritiesNames.ValueString;
-                    tester.SecuritiesClass = C4_SecuritiesClass.ValueString;
-                    tester.SecuritiesSeparator = C4_SecuritiesSeparator.ValueString;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Conn_5)
-                {
-                    Conn_5_Screener tester = new Conn_5_Screener();
-                    tester.SecuritiesClass = C5_SecuritiesClass.ValueString;
-                    tester.SecuritiesCount = C5_SecuritiesCount.ValueInt;
-                    tester.TimeFrame = C5_TimeFrame.ValueString;
-
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Order_1)
-                {
-                    Orders_1_FakeOrders tester = new Orders_1_FakeOrders();
-                    tester.SecurityNameToTrade = O1_SecurityName.ValueString;
-                    tester.SecurityClassToTrade = O1_SecurityClass.ValueString;
-                    tester.PortfolioName = O1_PortfolioName.ValueString;
-                    tester.VolumeMin = O1_VolumeLess.ValueDecimal;
-                    tester.VolumeMax = O1_VolumeMax.ValueDecimal;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Order_2)
-                {
-                    Orders_2_LimitsExecute tester = new Orders_2_LimitsExecute();
-                    tester.SecurityNameToTrade = O2_SecurityName.ValueString;
-                    tester.SecurityClassToTrade = O2_SecurityClass.ValueString;
-                    tester.PortfolioName = O2_PortfolioName.ValueString;
-                    tester.VolumeToTrade = O2_Volume.ValueDecimal;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Order_3)
-                {
-                    Orders_3_MarketOrders tester = new Orders_3_MarketOrders();
-                    tester.SecurityNameToTrade = O3_SecurityName.ValueString;
-                    tester.SecurityClassToTrade = O3_SecurityClass.ValueString;
-                    tester.PortfolioName = O3_PortfolioName.ValueString;
-                    tester.VolumeToTrade = O3_Volume.ValueDecimal;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Order_4)
-                {
-                    Orders_4_LimitCancel tester = new Orders_4_LimitCancel();
-                    tester.SecurityNameToTrade = O4_SecurityName.ValueString;
-                    tester.SecurityClassToTrade = O4_SecurityClass.ValueString;
-                    tester.PortfolioName = O4_PortfolioName.ValueString;
-                    tester.VolumeToTrade = O4_Volume.ValueDecimal;
-                    tester.CountOrders = O4_CountOrders.ValueInt;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Order_5)
-                {
-                    Orders_5_ChangePrice tester = new Orders_5_ChangePrice();
-                    tester.SecurityNameToTrade = O5_SecurityName.ValueString;
-                    tester.SecurityClassToTrade = O5_SecurityClass.ValueString;
-                    tester.PortfolioName = O5_PortfolioName.ValueString;
-                    tester.VolumeToTrade = O5_Volume.ValueDecimal;
-                    tester.CountOrders = O5_CountOrders.ValueInt;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Order_6)
-                {
-                    Orders_6_ChangePriceError tester = new Orders_6_ChangePriceError();
-                    tester.SecurityNameToTrade = O6_SecurityName.ValueString;
-                    tester.SecurityClassToTrade = O6_SecurityClass.ValueString;
-                    tester.PortfolioName = O6_PortfolioName.ValueString;
-                    tester.VolumeToTrade = O6_Volume.ValueDecimal;
-                    tester.FakeBigPrice = O6_FakeBigPrice.ValueDecimal;
-                    tester.FakeSmallPrice = O6_FakeSmallPrice.ValueDecimal;
-
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Order_7)
-                {
-                    Orders_7_Add_Move_Cancel_Spam tester = new Orders_7_Add_Move_Cancel_Spam();
-                    tester.SecurityNameToTrade = O7_SecurityName.ValueString;
-                    tester.SecurityClassToTrade = O7_SecurityClass.ValueString;
-                    tester.PortfolioName = O7_PortfolioName.ValueString;
-                    tester.VolumeToTrade = O7_Volume.ValueDecimal;
-                    tester.CountOrders = O7_CountOrders.ValueInt;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Order_8)
-                {
-                    Orders_8_RequestOnReconnect tester = new Orders_8_RequestOnReconnect();
-                    tester.SecurityNameToTrade = O8_SecurityName.ValueString;
-                    tester.SecurityClassToTrade = O8_SecurityClass.ValueString;
-                    tester.PortfolioName = O8_PortfolioName.ValueString;
-                    tester.VolumeToTrade = O8_Volume.ValueDecimal;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Order_9)
-                {
-                    Orders_9_RequestLostActivOrder tester = new Orders_9_RequestLostActivOrder();
-                    tester.SecurityNameToTrade = O9_SecurityName.ValueString;
-                    tester.SecurityClassToTrade = O9_SecurityClass.ValueString;
-                    tester.PortfolioName = O9_PortfolioName.ValueString;
-                    tester.VolumeToTrade = O9_Volume.ValueDecimal;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Order_10)
-                {
-                    Orders_10_RequestLostDoneOrder tester = new Orders_10_RequestLostDoneOrder();
-                    tester.SecurityNameToTrade = O10_SecurityName.ValueString;
-                    tester.SecurityClassToTrade = O10_SecurityClass.ValueString;
-                    tester.PortfolioName = O10_PortfolioName.ValueString;
-                    tester.VolumeToTrade = O10_Volume.ValueDecimal;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-                else if (CurTestType == ServerTestType.Portfolio_1)
-                {
-                    Portfolio_1_Validation tester = new Portfolio_1_Validation();
-                    tester.SecurityNameToTrade = P1_SecurityName.ValueString;
-                    tester.SecurityClassToTrade = P1_SecurityClass.ValueString;
-                    tester.PortfolioName = P1_PortfolioName.ValueString;
-                    tester.VolumeToTrade = P1_Volume.ValueDecimal;
-                    tester.AssetInPortfolio = P1_AssetInPortfolioName.ValueString;
-                    tester.LogMessage += SendNewLogMessage;
-                    tester.TestEndEvent += Tester_TestEndEvent;
-                    _testers.Add(tester);
-                    tester.Server = (AServer)servers[i];
-                    SendNewLogMessage("Tests started " + tester.GetType().Name + " " + servers[i].ServerType.ToString(), LogMessageType.Error);
-                    tester.Start();
-                }
-            }
-
-            while (_testers.Count > 0)
-            {
-                Thread.Sleep(1000);
-            }
-
-            SendNewLogMessage("Tests ended", LogMessageType.Error);
-            _threadIsWork = false;
         }
 
         private bool _threadIsWork;
@@ -1067,6 +1115,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
         Order_8,
         Order_9,
         Order_10,
+        Order_11,
         Portfolio_1,
     }
 

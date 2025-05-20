@@ -34,8 +34,8 @@ namespace OsEngine.Entity
                 CandleSeriesRealization = CandleFactory.CreateCandleSeriesRealization("Simple");
                 CandleSeriesRealization.Init(startProgram);
                 CandleSeriesRealization.ParametersChangeByUser += CandleSeriesRealization_ParametersChangeByUser;
-                CandleSeriesRealization.СandleUpdateEvent += CandleSeriesRealization_СandleUpdateEvent;
-                CandleSeriesRealization.СandleFinishedEvent += CandleSeriesRealization_СandleFinishedEvent;
+                CandleSeriesRealization.CandleUpdateEvent += CandleSeriesRealization_CandleUpdateEvent;
+                CandleSeriesRealization.CandleFinishedEvent += CandleSeriesRealization_CandleFinishedEvent;
                 TimeFrame = TimeFrame.Min1;
             }
         }
@@ -46,8 +46,8 @@ namespace OsEngine.Entity
             CandleSeriesRealization = CandleFactory.CreateCandleSeriesRealization("Simple");
             CandleSeriesRealization.Init(_startProgram);
             CandleSeriesRealization.ParametersChangeByUser += CandleSeriesRealization_ParametersChangeByUser;
-            CandleSeriesRealization.СandleUpdateEvent += CandleSeriesRealization_СandleUpdateEvent;
-            CandleSeriesRealization.СandleFinishedEvent += CandleSeriesRealization_СandleFinishedEvent;
+            CandleSeriesRealization.CandleUpdateEvent += CandleSeriesRealization_CandleUpdateEvent;
+            CandleSeriesRealization.CandleFinishedEvent += CandleSeriesRealization_CandleFinishedEvent;
             TimeFrame = TimeFrame.Min1;
             _canSave = true;
         }
@@ -65,8 +65,8 @@ namespace OsEngine.Entity
                 CandleSeriesRealization = CandleFactory.CreateCandleSeriesRealization("Simple");
                 CandleSeriesRealization.Init(_startProgram);
                 CandleSeriesRealization.ParametersChangeByUser += CandleSeriesRealization_ParametersChangeByUser;
-                CandleSeriesRealization.СandleUpdateEvent += CandleSeriesRealization_СandleUpdateEvent;
-                CandleSeriesRealization.СandleFinishedEvent += CandleSeriesRealization_СandleFinishedEvent;
+                CandleSeriesRealization.CandleUpdateEvent += CandleSeriesRealization_CandleUpdateEvent;
+                CandleSeriesRealization.CandleFinishedEvent += CandleSeriesRealization_CandleFinishedEvent;
                 return;
             }
             try
@@ -88,8 +88,8 @@ namespace OsEngine.Entity
                     TimeFrame = frame;
 
                     CandleSeriesRealization.ParametersChangeByUser += CandleSeriesRealization_ParametersChangeByUser;
-                    CandleSeriesRealization.СandleUpdateEvent += CandleSeriesRealization_СandleUpdateEvent;
-                    CandleSeriesRealization.СandleFinishedEvent += CandleSeriesRealization_СandleFinishedEvent;
+                    CandleSeriesRealization.CandleUpdateEvent += CandleSeriesRealization_CandleUpdateEvent;
+                    CandleSeriesRealization.CandleFinishedEvent += CandleSeriesRealization_CandleFinishedEvent;
 
                     reader.Close();
                 }
@@ -104,8 +104,8 @@ namespace OsEngine.Entity
                 CandleSeriesRealization = CandleFactory.CreateCandleSeriesRealization("Simple");
                 CandleSeriesRealization.Init(_startProgram);
                 CandleSeriesRealization.ParametersChangeByUser += CandleSeriesRealization_ParametersChangeByUser;
-                CandleSeriesRealization.СandleUpdateEvent += CandleSeriesRealization_СandleUpdateEvent;
-                CandleSeriesRealization.СandleFinishedEvent += CandleSeriesRealization_СandleFinishedEvent;
+                CandleSeriesRealization.CandleUpdateEvent += CandleSeriesRealization_CandleUpdateEvent;
+                CandleSeriesRealization.CandleFinishedEvent += CandleSeriesRealization_CandleFinishedEvent;
             }
         }
 
@@ -116,7 +116,7 @@ namespace OsEngine.Entity
 
         public void Save()
         {
-            _neadToRebuildSpecification = true;
+            _needToRebuildSpecification = true;
 
             if (_canSave == false)
             {
@@ -162,8 +162,8 @@ namespace OsEngine.Entity
                 if (CandleSeriesRealization != null)
                 {
                     CandleSeriesRealization.ParametersChangeByUser -= CandleSeriesRealization_ParametersChangeByUser;
-                    CandleSeriesRealization.СandleUpdateEvent -= CandleSeriesRealization_СandleUpdateEvent;
-                    CandleSeriesRealization.СandleFinishedEvent -= CandleSeriesRealization_СandleFinishedEvent;
+                    CandleSeriesRealization.CandleUpdateEvent -= CandleSeriesRealization_CandleUpdateEvent;
+                    CandleSeriesRealization.CandleFinishedEvent -= CandleSeriesRealization_CandleFinishedEvent;
                     CandleSeriesRealization.Delete();
                     CandleSeriesRealization = null;
                 }
@@ -197,8 +197,8 @@ namespace OsEngine.Entity
                 if (CandleSeriesRealization != null)
                 {
                     CandleSeriesRealization.ParametersChangeByUser -= CandleSeriesRealization_ParametersChangeByUser;
-                    CandleSeriesRealization.СandleUpdateEvent -= CandleSeriesRealization_СandleUpdateEvent;
-                    CandleSeriesRealization.СandleFinishedEvent -= CandleSeriesRealization_СandleFinishedEvent;
+                    CandleSeriesRealization.CandleUpdateEvent -= CandleSeriesRealization_CandleUpdateEvent;
+                    CandleSeriesRealization.CandleFinishedEvent -= CandleSeriesRealization_CandleFinishedEvent;
                     CandleSeriesRealization.Delete();
                     CandleSeriesRealization = null;
                 }
@@ -206,8 +206,8 @@ namespace OsEngine.Entity
                 CandleSeriesRealization = CandleFactory.CreateCandleSeriesRealization(newType);
                 CandleSeriesRealization.Init(_startProgram);
                 CandleSeriesRealization.ParametersChangeByUser += CandleSeriesRealization_ParametersChangeByUser;
-                CandleSeriesRealization.СandleUpdateEvent += CandleSeriesRealization_СandleUpdateEvent;
-                CandleSeriesRealization.СandleFinishedEvent += CandleSeriesRealization_СandleFinishedEvent;
+                CandleSeriesRealization.CandleUpdateEvent += CandleSeriesRealization_CandleUpdateEvent;
+                CandleSeriesRealization.CandleFinishedEvent += CandleSeriesRealization_CandleFinishedEvent;
 
                 Save();
             }
@@ -233,12 +233,17 @@ namespace OsEngine.Entity
             get
             {
                 if (_lastSpecification != null &&
-                    _neadToRebuildSpecification == false)
+                    _needToRebuildSpecification == false)
                 {
                     return _lastSpecification;
                 }
 
-                _neadToRebuildSpecification = false;
+                if(CandleSeriesRealization == null)
+                {
+                    return null;
+                }
+
+                _needToRebuildSpecification = false;
 
                 StringBuilder result = new StringBuilder();
 
@@ -255,7 +260,7 @@ namespace OsEngine.Entity
                 return _lastSpecification;
             }
         }
-        private bool _neadToRebuildSpecification;
+        private bool _needToRebuildSpecification;
 
         private string _lastSpecification;
 
@@ -391,25 +396,25 @@ namespace OsEngine.Entity
 
         private bool _saveTradesInCandles;
 
-        private void CandleSeriesRealization_СandleFinishedEvent(List<Candle> candles)
+        private void CandleSeriesRealization_CandleFinishedEvent(List<Candle> candles)
         {
-            if (СandleFinishedEvent != null)
+            if (CandleFinishedEvent != null)
             {
-                СandleFinishedEvent(candles);
+                CandleFinishedEvent(candles);
             }
         }
 
-        private void CandleSeriesRealization_СandleUpdateEvent(List<Candle> candles)
+        private void CandleSeriesRealization_CandleUpdateEvent(List<Candle> candles)
         {
-            if (СandleUpdateEvent != null)
+            if (CandleUpdateEvent != null)
             {
-                СandleUpdateEvent(candles);
+                CandleUpdateEvent(candles);
             }
         }
 
-        public event Action<List<Candle>> СandleUpdateEvent;
+        public event Action<List<Candle>> CandleUpdateEvent;
 
-        public event Action<List<Candle>> СandleFinishedEvent;
+        public event Action<List<Candle>> CandleFinishedEvent;
 
     }
 

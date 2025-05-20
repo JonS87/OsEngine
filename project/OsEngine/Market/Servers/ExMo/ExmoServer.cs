@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using OsEngine.Entity;
 using OsEngine.Language;
 using OsEngine.Logging;
@@ -15,7 +16,7 @@ namespace OsEngine.Market.Servers.ExMo
             ServerRealization = realization;
 
             CreateParameterString(OsLocalization.Market.ServerParamPublicKey, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamSecretKey, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterSecretKey, "");
         }
     }
 
@@ -84,7 +85,7 @@ namespace OsEngine.Market.Servers.ExMo
         /// connect to API
         /// подсоединиться к апи
         /// </summary>
-        public void Connect()
+        public void Connect(WebProxy proxy = null)
         {
             if (_client == null)
             {
@@ -176,6 +177,13 @@ namespace OsEngine.Market.Servers.ExMo
         {
             _client.SubscribleTradesAndDepths(security);
         }
+
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
 
         /// <summary>
         /// take candle history for period
@@ -355,6 +363,8 @@ namespace OsEngine.Market.Servers.ExMo
         /// соединение с API разорвано
         /// </summary>
         public event Action DisconnectEvent;
+
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         // log messages
         // сообщения для лога

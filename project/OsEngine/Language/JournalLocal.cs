@@ -143,6 +143,14 @@ namespace OsEngine.Language
          "Eng:1000 / page_" +
          "Ru:1000 / страница_");
 
+        public string Label21 => OsLocalization.ConvertToLocString(
+         "Eng:Bots filter_" +
+         "Ru:Роботы_");
+
+        public string Label22 => OsLocalization.ConvertToLocString(
+         "Eng:Securities filter_" +
+         "Ru:Фильтр по бумагам_");
+
         public string TabItem1 => OsLocalization.ConvertToLocString(
             "Eng:Equity_" +
             "Ru:Эквити_");
@@ -248,8 +256,8 @@ namespace OsEngine.Language
             "Ru:Среднее время удержания_");
 
         public string GridRow18 => OsLocalization.ConvertToLocString(
-            "Eng:Sharp ratio_" +
-            "Ru:Sharp ratio_");
+            "Eng:Sharpe ratio_" +
+            "Ru:Sharpe ratio_");
 
         public string Message1 => OsLocalization.ConvertToLocString(
             "Eng:You must select a file to save!_" +

@@ -30,10 +30,6 @@ namespace OsEngine.Market
 
         private CultureInfo _currentCulture;
 
-        /// <summary>
-        /// incoming events. a new server has been deployed in server-master
-        /// входящее событие. В сервермастере был развёрнут новый сервер
-        /// </summary>
         private void ServerMaster_ServerCreateEvent(IServer server)
         {
             if (server.ServerType == ServerType.Optimizer)
@@ -55,11 +51,11 @@ namespace OsEngine.Market
                     {
                         continue;
                     }
-                    servers[i].NewOrderIncomeEvent -= _server_NewOrderIncomeEvent;
-                    servers[i].NewMyTradeEvent -= serv_NewMyTradeEvent;
+                    servers[i].NewOrderIncomeEvent -= server_NewOrderIncomeEvent;
+                    servers[i].NewMyTradeEvent -= server_NewMyTradeEvent;
 
-                    servers[i].NewOrderIncomeEvent += _server_NewOrderIncomeEvent;
-                    servers[i].NewMyTradeEvent += serv_NewMyTradeEvent;
+                    servers[i].NewOrderIncomeEvent += server_NewOrderIncomeEvent;
+                    servers[i].NewMyTradeEvent += server_NewMyTradeEvent;
                 }
                 catch
                 {
@@ -69,10 +65,6 @@ namespace OsEngine.Market
             }
         }
 
-        /// <summary>
-        /// start drawing class control
-        /// начать прорисовывать контролы класса 
-        /// </summary>
         public void StartPaint()
         {
             if (_hostActiveOrders.Dispatcher.CheckAccess() == false)
@@ -100,10 +92,6 @@ namespace OsEngine.Market
             }
         }
 
-        /// <summary>
-        /// stop drawing class control
-        /// остановить прорисовку контролов класса 
-        /// </summary>
         public void StopPaint()
         {
 
@@ -160,10 +148,10 @@ namespace OsEngine.Market
 
         public void InsertOrder(Order order)
         {
-            _server_NewOrderIncomeEvent(order);
+            server_NewOrderIncomeEvent(order);
         }
 
-        #region работа потока прорисовывающего ордера
+        #region Drawing order thread
 
         private async void PainterThreadArea()
         {
@@ -258,7 +246,7 @@ namespace OsEngine.Market
 
         #endregion
 
-        #region Работа по прорисовке
+        #region Drawing work
 
         private DataGridView _gridActiveOrders;
 
@@ -270,7 +258,7 @@ namespace OsEngine.Market
 
         private object _lockerOrders = new Object();
 
-        private void _server_NewOrderIncomeEvent(Order order)
+        private void server_NewOrderIncomeEvent(Order order)
         {
             if (order.ServerType == ServerType.Optimizer ||
                 order.ServerType == ServerType.Miner)
@@ -292,6 +280,11 @@ namespace OsEngine.Market
                     for(int i = 0;i < _orders.Count;i++)
                     {
                         Order curOrder = _orders[i];
+
+                        if (curOrder == null)
+                        {
+                            continue;
+                        }
 
                         if(curOrder.NumberUser != 0 &&
                             order.NumberUser != 0 
@@ -364,6 +357,7 @@ namespace OsEngine.Market
                         }
                     }
 
+                    
                     if (_orders.Count > 200)
                     {
                         _orders.RemoveAt(0);
@@ -380,7 +374,7 @@ namespace OsEngine.Market
 
         private object _lockerTrades = new Object();
 
-        private void serv_NewMyTradeEvent(MyTrade trade)
+        private void server_NewMyTradeEvent(MyTrade trade)
         {
             if (_orders == null || _orders.Count == 0)
             {
@@ -403,7 +397,6 @@ namespace OsEngine.Market
                     return;
                 }
 
-                _orders.Remove(myOrder);
                 _needToPaintOrders = true;
             }
         }
@@ -434,8 +427,6 @@ namespace OsEngine.Market
 
                 for (int i = ordersToPaint.Count - 1; ordersToPaint != null && ordersToPaint.Count != 0 && i > -1; i--)
                 {
-
-
                     DataGridViewRow nRow = new DataGridViewRow();
 
                     nRow.Cells.Add(new DataGridViewTextBoxCell());
@@ -531,7 +522,7 @@ namespace OsEngine.Market
             AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Market.Label67);
             ui.ShowDialog();
 
-            if (ui.UserAcceptActioin == false)
+            if (ui.UserAcceptAction == false)
             {
                 return;
             }
@@ -544,14 +535,16 @@ namespace OsEngine.Market
                     {
                         for (int i = 0; i < _orders.Count; i++)
                         {
-                            if (_orders[i].State == OrderStateType.Active &&
-                                !string.IsNullOrEmpty(_orders[i].PortfolioNumber))
+                            Order order = _orders[i];
+
+                            if (order.State == OrderStateType.Active &&
+                                !string.IsNullOrEmpty(order.PortfolioNumber))
                             {
-                                if (_orders[i].PortfolioNumber == "Emulator")
+                                if (order.PortfolioNumber == "Emulator")
                                 {
                                     if(RevokeOrderToEmulatorEvent != null)
                                     {
-                                        RevokeOrderToEmulatorEvent(_orders[i]);
+                                        RevokeOrderToEmulatorEvent(order);
                                     }
                                 }
                                 else
@@ -561,11 +554,22 @@ namespace OsEngine.Market
                                         continue;
                                     }
 
+                                    IServer server = null;
 
-                                    IServer server = ServerMaster.GetServers().Find(server1 => server1.ServerType == _orders[i].ServerType);
+                                    if (string.IsNullOrEmpty(order.ServerName) == false)
+                                    {
+                                        server = ServerMaster.GetServers().Find(server1 =>
+                                        server1.ServerNameAndPrefix == order.ServerName);
+                                    }
+                                    else
+                                    {
+                                        server = ServerMaster.GetServers().Find(server1 =>
+                                        server1.ServerType == order.ServerType);
+                                    }
+
                                     if (server != null)
                                     {
-                                        server.CancelOrder(_orders[i]);
+                                        server.CancelOrder(order);
                                     }
                                 }
                             }
@@ -593,7 +597,7 @@ namespace OsEngine.Market
             AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Market.Label68);
             ui.ShowDialog();
 
-            if (ui.UserAcceptActioin == false)
+            if (ui.UserAcceptAction == false)
             {
                 return;
             }
@@ -650,7 +654,19 @@ namespace OsEngine.Market
                         }
                         else
                         {
-                            IServer server = ServerMaster.GetServers().Find(server1 => server1.ServerType == order.ServerType);
+                            IServer server = null;
+
+                            if(string.IsNullOrEmpty(order.ServerName) == false)
+                            {
+                                server = ServerMaster.GetServers().Find(server1 => 
+                                server1.ServerNameAndPrefix == order.ServerName);
+                            }
+                            else
+                            {
+                                server = ServerMaster.GetServers().Find(server1 => 
+                                server1.ServerType == order.ServerType);
+                            }
+
                             if (server != null)
                             {
                                 server.CancelOrder(order);
@@ -668,10 +684,9 @@ namespace OsEngine.Market
 
         public event Action<Order> RevokeOrderToEmulatorEvent;
 
-
         #endregion
 
-        // log message
+        #region Drawing work
 
         private void SendNewLogMessage(string message, LogMessageType type)
         {
@@ -686,5 +701,7 @@ namespace OsEngine.Market
         }
 
         public event Action<string, LogMessageType> LogMessageEvent;
+
+        #endregion
     }
 }

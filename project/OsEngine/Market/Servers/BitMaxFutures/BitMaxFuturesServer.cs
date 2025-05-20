@@ -7,6 +7,7 @@ using SuperSocket.ClientEngine;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
@@ -23,7 +24,7 @@ namespace OsEngine.Market.Servers.BitMaxFutures
             ServerRealization = realization;
 
             CreateParameterString(OsLocalization.Market.ServerParamPublicKey, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamSecretKey, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterSecretKey, "");
         }
 
         /// <summary>
@@ -68,6 +69,7 @@ namespace OsEngine.Market.Servers.BitMaxFutures
         public event Action ConnectEvent;
         public event Action DisconnectEvent;
         public event Action<string, LogMessageType> LogMessageEvent;
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         private const string BaseUrl = "https://ascendex.com/";
         private const string WebsocketPublicChanel = "wss://ascendex.com:443/api/pro/v2/stream";
@@ -76,7 +78,7 @@ namespace OsEngine.Market.Servers.BitMaxFutures
         private string SeckretKey = String.Empty;
         private string AccGroup = String.Empty;
 
-        public void Connect()
+        public void Connect(WebProxy proxy = null)
         {
             PublicKey = ((ServerParameterString)ServerParameters[0]).Value;
             SeckretKey = ((ServerParameterPassword)ServerParameters[1]).Value;
@@ -520,6 +522,13 @@ namespace OsEngine.Market.Servers.BitMaxFutures
                 }
             }
         }
+
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
 
         private void PushMessage(object sender, MessageReceivedEventArgs e)
         {

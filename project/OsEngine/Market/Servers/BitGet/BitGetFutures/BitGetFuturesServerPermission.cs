@@ -1,4 +1,9 @@
-﻿namespace OsEngine.Market.Servers.BitGet.BitGetFutures
+﻿/*
+ *Your rights to use the code are governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
+ *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+*/
+
+namespace OsEngine.Market.Servers.BitGet.BitGetFutures
 {
     public class BitGetFuturesServerPermission : IServerPermission
     {
@@ -6,6 +11,8 @@
         {
             get { return ServerType.BitGetFutures; }
         }
+
+        #region DataFeedPermissions
 
         public bool DataFeedTf1SecondCanLoad
         {
@@ -102,6 +109,10 @@
             get { return false; }
         }
 
+        #endregion
+
+        #region Trade permission
+
         public TimeFramePermission TradeTimeFramePermission
         {
             get { return _tradeTimeFramePermission; }
@@ -110,13 +121,13 @@
         private TimeFramePermission _tradeTimeFramePermission
             = new TimeFramePermission()
             {
-                TimeFrameSec1IsOn = false,
-                TimeFrameSec2IsOn = false,
-                TimeFrameSec5IsOn = false,
-                TimeFrameSec10IsOn = false,
-                TimeFrameSec15IsOn = false,
-                TimeFrameSec20IsOn = false,
-                TimeFrameSec30IsOn = false,
+                TimeFrameSec1IsOn = true,
+                TimeFrameSec2IsOn = true,
+                TimeFrameSec5IsOn = true,
+                TimeFrameSec10IsOn = true,
+                TimeFrameSec15IsOn = true,
+                TimeFrameSec20IsOn = true,
+                TimeFrameSec30IsOn = true,
                 TimeFrameMin1IsOn = true,
                 TimeFrameMin2IsOn = false,
                 TimeFrameMin3IsOn = true,
@@ -147,7 +158,7 @@
             get { return 1; }
         }
 
-        public bool UseStandartCandlesStarter
+        public bool UseStandardCandlesStarter
         {
             get { return true; }
         }
@@ -191,7 +202,20 @@
                     "SBTC",
                     "SEOS",
                     "SETH",
-                    "SUSDC"
+                    "SUSDC",
+                    "USDC",
+                    "BCH",
+                    "EOS",
+                    "DOT",
+                    "DOGE",
+                    "SOL",
+                    "AVAX",
+                    "XRP",
+                    "USDE",
+                    "LTC",
+                    "LINK",
+                    "TRX",
+                    "ADA"
                 };
 
                 return values;
@@ -212,5 +236,41 @@
         {
             get { return true; }
         }
+
+        #endregion
+
+        #region Other Permissions
+
+        public bool IsNewsServer
+        {
+            get { return false; }
+        }
+
+        public bool IsSupports_CheckDataFeedLogic
+        {
+            get { return false; }
+        }
+
+        public string[] CheckDataFeedLogic_ExceptionSecuritiesClass
+        {
+            get { return null; }
+        }
+
+        public int CheckDataFeedLogic_NoDataMinutesToDisconnect
+        {
+            get { return 10; }
+        }
+
+        public bool IsSupports_MultipleInstances
+        {
+            get { return true; }
+        }
+
+        public bool IsSupports_ProxyFor_MultipleInstances
+        {
+            get { return true; }
+        }
+
+        #endregion
     }
 }

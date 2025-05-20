@@ -19,15 +19,15 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
 {
     public class BitGetServerFutures : AServer
     {
-        public BitGetServerFutures()
+        public BitGetServerFutures(int uniqueNumber)
         {
-
+            ServerNum = uniqueNumber;
             BitGetServerRealization realization = new BitGetServerRealization();
             ServerRealization = realization;
 
             CreateParameterString(OsLocalization.Market.ServerParamPublicKey, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamSecretKey, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamPassphrase, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterSecretKey, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterPassphrase, "");
             CreateParameterEnum("Hedge Mode", "On", new List<string> { "On", "Off" });
             CreateParameterEnum("Margin Mode", "Crossed", new List<string> { "Crossed", "Isolated" });
             CreateParameterBoolean("Demo Trading", false);
@@ -55,10 +55,18 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
             Thread thread = new Thread(CheckAliveWebSocket);
             thread.Name = "CheckAliveWebSocket";
             thread.Start();
+
+            Thread threadGetPortfolios = new Thread(ThreadGetPortfolios);
+            threadGetPortfolios.IsBackground = true;
+            threadGetPortfolios.Name = "ThreadBitGetFuturesPortfolios";
+            threadGetPortfolios.Start();
         }
 
-        public void Connect()
+        private WebProxy _myProxy;
+
+        public void Connect(WebProxy proxy = null)
         {
+            _myProxy = proxy;
             PublicKey = ((ServerParameterString)ServerParameters[0]).Value;
             SeckretKey = ((ServerParameterPassword)ServerParameters[1]).Value;
             Passphrase = ((ServerParameterPassword)ServerParameters[2]).Value;
@@ -112,7 +120,15 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
             {
                 string requestStr = "/api/v2/public/time";
                 RestRequest requestRest = new RestRequest(requestStr, Method.GET);
-                IRestResponse response = new RestClient(BaseUrl).Execute(requestRest);
+
+                RestClient client = new RestClient(BaseUrl);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
+
+                IRestResponse response = client.Execute(requestRest);
 
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
@@ -221,9 +237,19 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
             {
                 try
                 {
+                    _rateGateSecurity.WaitToProceed();
+
                     string requestStr = $"/api/v2/mix/market/contracts?productType={_listCoin[indCoin]}";
                     RestRequest requestRest = new RestRequest(requestStr, Method.GET);
-                    IRestResponse response = new RestClient(BaseUrl).Execute(requestRest);
+
+                    RestClient client = new RestClient(BaseUrl);
+
+                    if (_myProxy != null)
+                    {
+                        client.Proxy = _myProxy;
+                    }
+
+                    IRestResponse response = client.Execute(requestRest);
 
                     if (response.StatusCode != HttpStatusCode.OK)
                     {
@@ -253,7 +279,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
 
                             newSecurity.Exchange = ServerType.BitGetFutures.ToString();
                             newSecurity.DecimalsVolume = Convert.ToInt32(item.volumePlace);
-                            newSecurity.Lot = GetVolumeStep(newSecurity.DecimalsVolume);
+                            newSecurity.Lot = 1;
                             newSecurity.Name = item.symbol;
                             newSecurity.NameFull = item.symbol;
                             newSecurity.NameClass = _listCoin[indCoin];
@@ -263,19 +289,32 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                             newSecurity.PriceStep = priceStep;
                             newSecurity.PriceStepCost = priceStep;
                             newSecurity.State = SecurityStateType.Activ;
+                            newSecurity.MinTradeAmountType = MinTradeAmountType.C_Currency;
+                            newSecurity.MinTradeAmount = item.minTradeUSDT.ToDecimal();
+
+                            if (newSecurity.DecimalsVolume == 0)
+                            {
+                                newSecurity.VolumeStep = 1;
+                            }
+                            else
+                            {
+                                newSecurity.VolumeStep = item.minTradeNum.ToDecimal();
+                            }
 
                             securities.Add(newSecurity);
                         }
                     }
+
                     SecurityEvent(securities);
                 }
-
                 catch (Exception exception)
                 {
                     SendLogMessage(exception.ToString(), LogMessageType.Error);
                 }
             }
         }
+
+        private RateGate _rateGateSecurity = new RateGate(2, TimeSpan.FromMilliseconds(100));
 
         private decimal GetVolumeStep(int ScalePrice)
         {
@@ -324,14 +363,343 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
 
         #region 4 Portfolios
 
+        public List<Portfolio> Portfolios;
+
+        private RateGate _rateGatePortfolio = new RateGate(1, TimeSpan.FromMilliseconds(100));
+
+        private void ThreadGetPortfolios()
+        {
+            Thread.Sleep(15000);
+
+            while (true)
+            {
+                if (ServerStatus != ServerConnectStatus.Connect)
+                {
+                    Thread.Sleep(3000);
+                    continue;
+                }
+
+                try
+                {
+                    Thread.Sleep(5000);
+
+                    if (_portfolioIsStarted == false)
+                    {
+                        continue;
+                    }
+
+                    if (Portfolios == null)
+                    {
+                        GetNewPortfolio();
+                    }
+
+                    for (int i = 0; i < _listCoin.Count; i++)
+                    {
+                        CreatePortfolio(false, _listCoin[i]);
+                        CreatePositions(_listCoin[i]);
+                    }
+
+                    GetUSDTMasterPortfolio(false);
+                }
+                catch (Exception ex)
+                {
+                    SendLogMessage($"{ex.Message} {ex.StackTrace}", LogMessageType.Error);
+                }
+            }
+        }
+
+        List<string> resultPositionInUSDT = new List<string>();
+        List<string> resultPositionPnL = new List<string>();
+
         public void GetPortfolios()
         {
+            if (Portfolios == null)
+            {
+                GetNewPortfolio();
+            }
+
+            for (int i = 0; i < _listCoin.Count; i++)
+            {
+                CreatePortfolio(true, _listCoin[i]);
+                CreatePositions(_listCoin[i]);
+            }
+
+            GetUSDTMasterPortfolio(true);
+
+            _portfolioIsStarted = true;
+        }
+
+        private void CreatePortfolio(bool IsUpdateValueBegin, string productType)
+        {
+            _rateGatePortfolio.WaitToProceed();
+
+            try
+            {
+                string path = "/api/v2/mix/account/accounts" + "?productType=" + productType;
+
+                IRestResponse responseMessage = CreatePrivateQuery(path, Method.GET, null, null);
+                string json = responseMessage.Content;
+
+                if (responseMessage.StatusCode == HttpStatusCode.OK)
+                {
+                    ResponseRestMessage<List<Account>> stateResponse = JsonConvert.DeserializeAnonymousType(json, new ResponseRestMessage<List<Account>>());
+
+                    if (stateResponse.code.Equals("00000") == true)
+                    {
+                        if (Portfolios == null)
+                        {
+                            return;
+                        }
+
+                        Portfolio portfolio = Portfolios[0];
+
+                        decimal positionInUSDT = 0;
+                        decimal positionPnL = 0;
+
+                        for (int i = 0; i < stateResponse.data.Count; i++)
+                        {
+                            if (productType == "COIN-FUTURES"
+                                && stateResponse.data[i].marginCoin.ToString() == "USDC")
+                            {
+                                continue;
+                            }
+
+                            if (stateResponse.data[i].marginCoin.ToString() == "USDT")
+                            {
+                                positionInUSDT = stateResponse.data[i].unionTotalMargin.ToDecimal();
+                                positionPnL = stateResponse.data[i].unrealizedPL.ToDecimal();
+                            }
+                            else
+                            {
+                                positionInUSDT += stateResponse.data[i].usdtEquity.ToDecimal();
+                                positionPnL += stateResponse.data[i].unrealizedPL.ToDecimal();
+                            }
+
+                            PositionOnBoard pos = new PositionOnBoard();
+                            pos.PortfolioName = "BitGetFutures";
+                            pos.SecurityNameCode = stateResponse.data[i].marginCoin.ToString();
+                            pos.ValueBlocked = stateResponse.data[i].locked.ToDecimal();
+                            pos.ValueCurrent = stateResponse.data[i].available.ToDecimal();
+                            pos.UnrealizedPnl = Math.Round(stateResponse.data[i].unrealizedPL.ToDecimal(), 6);
+
+                            if (IsUpdateValueBegin)
+                            {
+                                pos.ValueBegin = stateResponse.data[i].accountEquity.ToDecimal();
+                            }
+
+                            portfolio.SetNewPosition(pos);
+                        }
+
+                        resultPositionInUSDT.Add(positionInUSDT.ToString());
+                        resultPositionPnL.Add(positionPnL.ToString());
+
+                        PortfolioEvent(Portfolios);
+                    }
+                    else
+                    {
+                        SendLogMessage($"Code: {stateResponse.code}", LogMessageType.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SendLogMessage(ex.Message, LogMessageType.Error);
+            }
+        }
+
+        private void GetNewPortfolio()
+        {
+            Portfolios = new List<Portfolio>();
+
+            Portfolio portfolioInitial = new Portfolio();
+            portfolioInitial.Number = "BitGetFutures";
+            portfolioInitial.ValueBegin = 1;
+            portfolioInitial.ValueCurrent = 1;
+            portfolioInitial.ValueBlocked = 0;
+
+            Portfolios.Add(portfolioInitial);
+
+            PortfolioEvent(Portfolios);
+        }
+
+        private void CreatePositions(string productType)
+        {
+            _rateGatePortfolio.WaitToProceed();
+
+            try
+            {
+                string path = "/api/v2/mix/position/all-position" + "?productType=" + productType;
+
+                IRestResponse responseMessage = CreatePrivateQuery(path, Method.GET, null, null);
+                string json = responseMessage.Content;
+
+                if (responseMessage.StatusCode == HttpStatusCode.OK)
+                {
+                    ResponseRestMessage<List<RestMessagePositions>> positions = JsonConvert.DeserializeAnonymousType(json, new ResponseRestMessage<List<RestMessagePositions>>());
+
+                    if (positions.code.Equals("00000") == true)
+                    {
+                        if (positions.data == null)
+                        {
+                            return;
+                        }
+
+                        if (Portfolios == null)
+                        {
+                            GetNewPortfolio();
+                        }
+
+                        Portfolio portfolio = Portfolios[0];
+
+                        if (positions != null)
+                        {
+                            if (positions.data.Count > 0)
+                            {
+                                for (int i = 0; i < positions.data.Count; i++)
+                                {
+                                    PositionOnBoard pos = new PositionOnBoard();
+                                    pos.PortfolioName = "BitGetFutures";
+                                    pos.SecurityNameCode = positions.data[i].symbol;
+
+                                    if (positions.data[i].posMode == "hedge_mode")
+                                    {
+                                        if (positions.data[i].holdSide == "long")
+                                        {
+                                            pos.SecurityNameCode = positions.data[i].symbol + "_" + "LONG";
+                                        }
+                                        if (positions.data[i].holdSide == "short")
+                                        {
+                                            pos.SecurityNameCode = positions.data[i].symbol + "_" + "SHORT";
+                                        }
+                                    }
+
+                                    if (positions.data[i].holdSide == "long")
+                                    {
+                                        pos.ValueCurrent = positions.data[i].available.ToDecimal();
+                                    }
+                                    else if (positions.data[i].holdSide == "short")
+                                    {
+                                        pos.ValueCurrent = positions.data[i].available.ToDecimal() * -1;
+                                    }
+
+                                    pos.ValueBlocked = positions.data[i].locked.ToDecimal();
+                                    pos.UnrealizedPnl = positions.data[i].unrealizedPL.ToDecimal();
+
+                                    portfolio.SetNewPosition(pos);
+
+                                    if (!_allPositions.ContainsKey(productType))
+                                    {
+                                        _allPositions.Add(productType, new List<string>());
+                                    }
+
+                                    if (!_allPositions[productType].Contains(pos.SecurityNameCode))
+                                    {
+                                        _allPositions[productType].Add(pos.SecurityNameCode);
+                                    }
+                                }
+                            }
+
+                            if (_allPositions.ContainsKey(productType))
+                            {
+                                if (_allPositions[productType].Count > 0)
+                                {
+                                    for (int indAllPos = 0; indAllPos < _allPositions[productType].Count; indAllPos++)
+                                    {
+                                        bool isInData = false;
+
+                                        if (positions.data.Count > 0)
+                                        {
+                                            for (int indData = 0; indData < positions.data.Count; indData++)
+                                            {
+                                                if (positions.data[indData].posMode == "hedge_mode")
+                                                {
+                                                    if (_allPositions[productType][indAllPos] == positions.data[indData].symbol + "_" + positions.data[indData].holdSide.ToUpper())
+                                                    {
+                                                        isInData = true;
+                                                        break;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    if (_allPositions[productType][indAllPos] == positions.data[indData].symbol)
+                                                    {
+                                                        isInData = true;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        if (!isInData)
+                                        {
+                                            PositionOnBoard pos = new PositionOnBoard();
+                                            pos.PortfolioName = "BitGetFutures";
+                                            pos.SecurityNameCode = _allPositions[productType][indAllPos];
+                                            pos.ValueCurrent = 0;
+                                            pos.ValueBlocked = 0;
+
+                                            portfolio.SetNewPosition(pos);
+
+                                            _allPositions[productType].RemoveAt(indAllPos);
+                                            indAllPos--;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            SendLogMessage("BITGET ERROR. NO POSITIONS IN REQUEST.", LogMessageType.Error);
+                        }
+
+                        PortfolioEvent(Portfolios);
+                    }
+                    else
+                    {
+                        SendLogMessage($"Code: {positions.code}", LogMessageType.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SendLogMessage(ex.Message, LogMessageType.Error);
+            }
+        }
+
+        private void GetUSDTMasterPortfolio(bool IsUpdateValueBegin)
+        {
+            decimal portfolioInUSDT = 0;
+            decimal portfolioPnL = 0;
+
+            for (int i = 0; i < resultPositionInUSDT.Count; i++)
+            {
+                portfolioInUSDT += resultPositionInUSDT[i].ToDecimal();
+            }
+
+            for (int i = 0; i < resultPositionPnL.Count; i++)
+            {
+                portfolioPnL += resultPositionPnL[i].ToDecimal();
+            }
+
+            Portfolio portfolio = Portfolios[0];
+
+            if (IsUpdateValueBegin)
+            {
+                portfolio.ValueBegin = Math.Round(portfolioInUSDT, 4);
+            }
+
+            portfolio.ValueCurrent = Math.Round(portfolioInUSDT, 4);
+            portfolio.UnrealizedPnl = Math.Round(portfolioPnL, 6);
+
+            PortfolioEvent(Portfolios);
+
+            resultPositionInUSDT.Clear();
+            resultPositionPnL.Clear();
         }
 
         private bool _portfolioIsStarted = false;
 
         public event Action<List<Portfolio>> PortfolioEvent;
-
         #endregion
 
         #region 5 Data
@@ -352,6 +720,10 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
 
         private List<Candle> GetCandleData(Security security, TimeFrameBuilder timeFrameBuilder, DateTime startTime, DateTime endTime, DateTime actualTime, bool isOsData)
         {
+            startTime = DateTime.SpecifyKind(startTime, DateTimeKind.Utc);
+            endTime = DateTime.SpecifyKind(endTime, DateTimeKind.Utc);
+            actualTime = DateTime.SpecifyKind(actualTime, DateTimeKind.Utc);
+
             if (!CheckTime(startTime, endTime, actualTime))
             {
                 return null;
@@ -450,10 +822,9 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
         private bool CheckTime(DateTime startTime, DateTime endTime, DateTime actualTime)
         {
             if (startTime >= endTime ||
-                startTime >= DateTime.Now ||
+                startTime >= DateTime.UtcNow ||
                 actualTime > endTime ||
-                actualTime > DateTime.Now ||
-                endTime < DateTime.UtcNow.AddYears(-20))
+                actualTime > DateTime.UtcNow)
             {
                 return false;
             }
@@ -487,11 +858,11 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
             }
         }
 
-        private readonly RateGate _rgCandleData = new RateGate(1, TimeSpan.FromMilliseconds(100));
+        private readonly RateGate _rgCandleData = new RateGate(2, TimeSpan.FromMilliseconds(100));
 
         private List<Candle> RequestCandleHistory(Security security, string interval, long startTime, long endTime, bool isOsData, int limitCandles)
         {
-            _rgCandleData.WaitToProceed(100);
+            _rgCandleData.WaitToProceed();
 
             string stringUrl = "/api/v2/mix/market/candles";
 
@@ -505,7 +876,15 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                 string requestStr = $"{stringUrl}?symbol={security.Name}&productType={security.NameClass.ToLower()}&" +
                     $"startTime={startTime}&granularity={interval}&limit={limitCandles}&endTime={endTime}";
                 RestRequest requestRest = new RestRequest(requestStr, Method.GET);
-                IRestResponse response = new RestClient(BaseUrl).Execute(requestRest);
+
+                RestClient client = new RestClient(BaseUrl);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
+
+                IRestResponse response = client.Execute(requestRest);
 
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
@@ -566,6 +945,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
             {
                 return true;
             }
+
             return false;
         }
 
@@ -603,6 +983,13 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                 }
 
                 _webSocketPublic = new WebSocket(_webSocketUrlPublic);
+
+                if (_myProxy != null)
+                {
+                    NetworkCredential credential = (NetworkCredential)_myProxy.Credentials;
+                    _webSocketPublic.SetProxy(_myProxy.Address.ToString(), credential.UserName, credential.Password);
+                }
+
                 _webSocketPublic.EmitOnPing = true;
                 _webSocketPublic.SslConfiguration.EnabledSslProtocols
                     = System.Security.Authentication.SslProtocols.Ssl3
@@ -622,6 +1009,13 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                 }
 
                 _webSocketPrivate = new WebSocket(_webSocketUrlPrivate);
+
+                if (_myProxy != null)
+                {
+                    NetworkCredential credential = (NetworkCredential)_myProxy.Credentials;
+                    _webSocketPrivate.SetProxy(_myProxy.Address.ToString(), credential.UserName, credential.Password);
+                }
+
                 _webSocketPrivate.EmitOnPing = true;
                 _webSocketPrivate.SslConfiguration.EnabledSslProtocols
                     = System.Security.Authentication.SslProtocols.Ssl3
@@ -774,15 +1168,16 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                 {
                     return;
                 }
+
                 if (string.IsNullOrEmpty(e.Data))
                 {
                     return;
                 }
+
                 if (e.Data.Length == 4)
                 { // pong message
                     return;
                 }
-
 
                 if (FIFOListWebSocketPublicMessage == null)
                 {
@@ -839,10 +1234,12 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                 {
                     return;
                 }
+
                 if (string.IsNullOrEmpty(e.Data))
                 {
                     return;
                 }
+
                 if (e.Data.Length == 4)
                 { // pong message
                     return;
@@ -933,7 +1330,6 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                             DisconnectEvent();
                         }
                     }
-
                 }
                 catch (Exception ex)
                 {
@@ -957,7 +1353,6 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
             {
                 _rateGateSubscrible.WaitToProceed();
                 CreateSubscribleSecurityMessageWebSocket(security);
-
             }
             catch (Exception exception)
             {
@@ -1051,6 +1446,13 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                 }
             }
         }
+
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
 
         #endregion
 
@@ -1239,129 +1641,143 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
 
         private void UpdatePositions(string message)
         {
-            ResponseWebSocketMessageAction<List<ResponseMessagePositions>> positions = JsonConvert.DeserializeAnonymousType(message, new ResponseWebSocketMessageAction<List<ResponseMessagePositions>>());
-
-            if (positions.data == null)
+            if (_portfolioIsStarted == false)
             {
                 return;
             }
 
-            Portfolio portfolio = new Portfolio();
-            portfolio.Number = "BitGetFutures";
-            portfolio.ValueBegin = 1;
-            portfolio.ValueCurrent = 1;
-
-            if (positions != null)
+            try
             {
-                if (positions.data.Count > 0)
+                ResponseWebSocketMessageAction<List<ResponseMessagePositions>> positions = JsonConvert.DeserializeAnonymousType(message, new ResponseWebSocketMessageAction<List<ResponseMessagePositions>>());
+
+                if (positions.data == null)
                 {
-                    for (int i = 0; i < positions.data.Count; i++)
-                    {
-                        PositionOnBoard pos = new PositionOnBoard();
-                        pos.PortfolioName = "BitGetFutures";
-                        pos.SecurityNameCode = positions.data[i].instId;
-
-                        if (positions.data[i].posMode == "hedge_mode")
-                        {
-                            if(positions.data[i].holdSide == "long")
-                            {
-                                pos.SecurityNameCode = positions.data[i].instId + "_" + "LONG";
-                            }
-                            if (positions.data[i].holdSide == "short")
-                            {
-                                pos.SecurityNameCode = positions.data[i].instId + "_" + "SHORT";
-                            }
-                        }
-
-                        if (positions.data[i].holdSide == "long")
-                        {
-                            pos.ValueCurrent = positions.data[i].available.ToDecimal();
-                            pos.ValueBlocked = positions.data[i].frozen.ToDecimal();
-                        }
-                        else if (positions.data[i].holdSide == "short")
-                        {
-                            pos.ValueCurrent = positions.data[i].available.ToDecimal() * -1;
-                            pos.ValueBlocked = positions.data[i].frozen.ToDecimal();
-                        }
-
-                        if (_portfolioIsStarted == false)
-                        {
-                            pos.ValueBegin = pos.ValueCurrent;
-                        }
-
-                        portfolio.SetNewPosition(pos);
-
-                        if (!_allPositions.ContainsKey(positions.arg.instType))
-                        {
-                            _allPositions.Add(positions.arg.instType, new List<string>());
-                        }
-
-                        if (!_allPositions[positions.arg.instType].Contains(pos.SecurityNameCode))
-                        {
-                            _allPositions[positions.arg.instType].Add(pos.SecurityNameCode);
-                        }
-                    }
+                    return;
                 }
 
-                if (_allPositions.ContainsKey(positions.arg.instType))
+                if (Portfolios == null)
                 {
-                    if (_allPositions[positions.arg.instType].Count > 0)
-                    {
-                        for (int indAllPos = 0; indAllPos < _allPositions[positions.arg.instType].Count; indAllPos++)
-                        {
-                            bool isInData = false;
+                    GetNewPortfolio();
+                }
 
-                            if (positions.data.Count > 0)
+                Portfolio portfolio = Portfolios[0];
+
+                if (positions != null)
+                {
+                    if (positions.data.Count > 0)
+                    {
+                        for (int i = 0; i < positions.data.Count; i++)
+                        {
+                            PositionOnBoard pos = new PositionOnBoard();
+                            pos.PortfolioName = "BitGetFutures";
+                            pos.SecurityNameCode = positions.data[i].instId;
+
+                            if (positions.data[i].posMode == "hedge_mode")
                             {
-                                for (int indData = 0; indData < positions.data.Count; indData++)
+                                if (positions.data[i].holdSide == "long")
                                 {
-                                    if (positions.data[indData].posMode == "hedge_mode")
-                                    {
-                                        if (_allPositions[positions.arg.instType][indAllPos] == positions.data[indData].instId + "_" + positions.data[indData].holdSide.ToUpper())
-                                        {
-                                            isInData = true;
-                                            break;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        if (_allPositions[positions.arg.instType][indAllPos] == positions.data[indData].instId)
-                                        {
-                                            isInData = true;
-                                            break;
-                                        }
-                                    }
+                                    pos.SecurityNameCode = positions.data[i].instId + "_" + "LONG";
+                                }
+                                if (positions.data[i].holdSide == "short")
+                                {
+                                    pos.SecurityNameCode = positions.data[i].instId + "_" + "SHORT";
                                 }
                             }
 
-                            if (!isInData)
+                            if (positions.data[i].holdSide == "long")
                             {
-                                PositionOnBoard pos = new PositionOnBoard();
-                                pos.PortfolioName = "BitGetFutures";
-                                pos.SecurityNameCode = _allPositions[positions.arg.instType][indAllPos];
-                                pos.ValueCurrent = 0;
-                                pos.ValueBlocked = 0;
+                                pos.ValueCurrent = positions.data[i].available.ToDecimal();
+                            }
+                            else if (positions.data[i].holdSide == "short")
+                            {
+                                pos.ValueCurrent = positions.data[i].available.ToDecimal() * -1;
+                            }
 
-                                portfolio.SetNewPosition(pos);
+                            pos.ValueBlocked = positions.data[i].frozen.ToDecimal();
+                            pos.UnrealizedPnl = positions.data[i].unrealizedPL.ToDecimal();
 
-                                _allPositions[positions.arg.instType].RemoveAt(indAllPos);
-                                indAllPos--;
+                            portfolio.SetNewPosition(pos);
+
+                            if (!_allPositions.ContainsKey(positions.arg.instType))
+                            {
+                                _allPositions.Add(positions.arg.instType, new List<string>());
+                            }
+
+                            if (!_allPositions[positions.arg.instType].Contains(pos.SecurityNameCode))
+                            {
+                                _allPositions[positions.arg.instType].Add(pos.SecurityNameCode);
+                            }
+                        }
+                    }
+
+                    if (_allPositions.ContainsKey(positions.arg.instType))
+                    {
+                        if (_allPositions[positions.arg.instType].Count > 0)
+                        {
+                            for (int indAllPos = 0; indAllPos < _allPositions[positions.arg.instType].Count; indAllPos++)
+                            {
+                                bool isInData = false;
+
+                                if (positions.data.Count > 0)
+                                {
+                                    for (int indData = 0; indData < positions.data.Count; indData++)
+                                    {
+                                        if (positions.data[indData].posMode == "hedge_mode")
+                                        {
+                                            if (_allPositions[positions.arg.instType][indAllPos] == positions.data[indData].instId + "_" + positions.data[indData].holdSide.ToUpper())
+                                            {
+                                                isInData = true;
+                                                break;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            if (_allPositions[positions.arg.instType][indAllPos] == positions.data[indData].instId)
+                                            {
+                                                isInData = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (!isInData)
+                                {
+                                    PositionOnBoard pos = new PositionOnBoard();
+                                    pos.PortfolioName = "BitGetFutures";
+                                    pos.SecurityNameCode = _allPositions[positions.arg.instType][indAllPos];
+                                    pos.ValueCurrent = 0;
+                                    pos.ValueBlocked = 0;
+
+                                    portfolio.SetNewPosition(pos);
+
+                                    _allPositions[positions.arg.instType].RemoveAt(indAllPos);
+                                    indAllPos--;
+                                }
                             }
                         }
                     }
                 }
-            }
-            else
-            {
-                SendLogMessage("BITGET ERROR. NO POSITIONS IN REQUEST.", LogMessageType.Error);
-            }
-            _portfolioIsStarted = true;
+                else
+                {
+                    SendLogMessage("BITGET ERROR. NO POSITIONS IN REQUEST.", LogMessageType.Error);
+                }
 
-            PortfolioEvent(new List<Portfolio> { portfolio });
+                PortfolioEvent(Portfolios);
+            }
+            catch (Exception ex)
+            {
+                SendLogMessage(ex.Message, LogMessageType.Error);
+            }
         }
 
         private void UpdateAccount(string message)
         {
+            if (_portfolioIsStarted == false)
+            {
+                return;
+            }
+
             try
             {
                 ResponseWebSocketMessageAction<List<ResponseWebSocketAccount>> assets = JsonConvert.DeserializeAnonymousType(message, new ResponseWebSocketMessageAction<List<ResponseWebSocketAccount>>());
@@ -1372,11 +1788,12 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                     return;
                 }
 
-                Portfolio portfolio = new Portfolio();
-                portfolio.Number = "BitGetFutures";
-                portfolio.ValueBegin = 1;
-                portfolio.ValueCurrent = 1;
+                if (Portfolios == null)
+                {
+                    GetNewPortfolio();
+                }
 
+                Portfolio portfolio = Portfolios[0];
 
                 for (int i = 0; i < assets.data.Count; i++)
                 {
@@ -1390,7 +1807,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                     portfolio.SetNewPosition(pos);
                 }
 
-                PortfolioEvent(new List<Portfolio> { portfolio });
+                PortfolioEvent(Portfolios);
             }
             catch (Exception ex)
             {
@@ -1428,8 +1845,6 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                         continue;
                     }
 
-
-
                     Order newOrder = new Order();
                     newOrder.SecurityNameCode = item.instId;
                     newOrder.TimeCallBack = TimeManager.GetDateTimeFromTimeStamp(Convert.ToInt64(item.cTime));
@@ -1442,8 +1857,6 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                     newOrder.ServerType = ServerType.BitGetFutures;
                     newOrder.PortfolioNumber = "BitGetFutures";
                     newOrder.SecurityClassCode = order.arg.instType.ToString();
-
-
 
                     if (item.orderType.Equals("market"))
                     {
@@ -1638,7 +2051,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
             }
         }
 
-        private DateTime _lastTimeMd;
+        private DateTime _lastTimeMd = DateTime.MinValue;
 
         public event Action<Order> MyOrderEvent;
 
@@ -1648,13 +2061,13 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
 
         public event Action<Trade> NewTradesEvent;
 
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
+
         #endregion
 
         #region 11 Trade
 
-        private RateGate _rateGateSendOrder = new RateGate(1, TimeSpan.FromMilliseconds(200));
-
-        private RateGate _rateGateCancelOrder = new RateGate(1, TimeSpan.FromMilliseconds(200));
+        private RateGate _rateGateOrder = new RateGate(1, TimeSpan.FromMilliseconds(100));
 
         public void SendOrder(Order order)
         {
@@ -1681,14 +2094,24 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                     posSide = order.Side == Side.Buy ? "buy" : "sell";
                 }
 
-                _rateGateSendOrder.WaitToProceed();
+                _rateGateOrder.WaitToProceed();
 
                 Dictionary<string, dynamic> jsonContent = new Dictionary<string, dynamic>();
 
                 jsonContent.Add("symbol", order.SecurityNameCode);
                 jsonContent.Add("productType", order.SecurityClassCode.ToLower());
                 jsonContent.Add("marginMode", _marginMode);
-                jsonContent.Add("marginCoin", order.SecurityClassCode.Split('-')[0]);
+
+                if (order.SecurityClassCode == "COIN-FUTURES")
+                {
+                    string securityName = order.SecurityNameCode.Substring(0, order.SecurityNameCode.IndexOf("USD"));
+                    jsonContent.Add("marginCoin", securityName);
+                }
+                else
+                {
+                    jsonContent.Add("marginCoin", order.SecurityClassCode.Split('-')[0]);
+                }
+
                 jsonContent.Add("side", posSide);
                 jsonContent.Add("orderType", order.TypeOrder.ToString().ToLower());
                 jsonContent.Add("price", order.Price.ToString().Replace(",", "."));
@@ -1742,7 +2165,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
         {
             try
             {
-                _rateGateCancelOrder.WaitToProceed();
+                _rateGateOrder.WaitToProceed();
 
                 Dictionary<string, string> jsonContent = new Dictionary<string, string>();
 
@@ -1765,14 +2188,14 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                     }
                     else
                     {
-                        CreateOrderFail(order);
+                        GetOrderStatus(order);
                         SendLogMessage($"Code: {stateResponse.code}\n"
                             + $"Message: {stateResponse.msg}", LogMessageType.Error);
                     }
                 }
                 else
                 {
-                    CreateOrderFail(order);
+                    GetOrderStatus(order);
                     SendLogMessage($"Http State Code: {response.StatusCode}", LogMessageType.Error);
 
                     if (stateResponse != null && stateResponse.code != null)
@@ -1810,6 +2233,8 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
         {
             try
             {
+                _rateGateOrder.WaitToProceed();
+
                 string path = "/api/v2/mix/order/detail?symbol=" + order.SecurityNameCode + "&productType=" + order.SecurityClassCode + "&clientOid=" + order.NumberUser;
 
                 IRestResponse responseMessage = CreatePrivateQuery(path, Method.GET, null, null);
@@ -1867,6 +2292,8 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
         {
             try
             {
+                _rateGateOrder.WaitToProceed();
+
                 string path = $"/api/v2/mix/order/fills?symbol={order.SecurityNameCode}&productType={order.SecurityClassCode}";
 
                 IRestResponse responseMessage = CreatePrivateQuery(path, Method.GET, null, null);
@@ -1916,7 +2343,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
         {
             try
             {
-                _rateGateCancelOrder.WaitToProceed();
+                _rateGateOrder.WaitToProceed();
 
                 Dictionary<string, string> jsonContent = new Dictionary<string, string>();
 
@@ -1937,7 +2364,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
         {
             try
             {
-                _rateGateCancelOrder.WaitToProceed();
+                _rateGateOrder.WaitToProceed();
 
                 for (int i = 0; i < _listCoin.Count; i++)
                 {
@@ -1959,6 +2386,10 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
         {
             try
             {
+                _rateGateOrder.WaitToProceed();
+
+                List<Order> orders = new List<Order>();
+
                 for (int i = 0; i < _listCoin.Count; i++)
                 {
                     IRestResponse responseMessage = CreatePrivateQuery($"/api/v2/mix/order/orders-pending?productType={_listCoin[i]}", Method.GET, null, null);
@@ -1972,18 +2403,14 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                         {
                             if (stateResponse.data.entrustedList == null)
                             {
-                                return null;
+                                continue;
                             }
-
-                            List<Order> orders = new List<Order>();
 
                             for (int ind = 0; ind < stateResponse.data.entrustedList.Count; ind++)
                             {
                                 Order curOder = ConvertRestToOrder(stateResponse.data.entrustedList[ind]);
                                 orders.Add(curOder);
                             }
-
-                            return orders;
                         }
                         else
                         {
@@ -1992,7 +2419,8 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
                         }
                     }
                 }
-                return null;
+
+                return orders;
             }
             catch (Exception e)
             {
@@ -2080,6 +2508,11 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
 
                 RestClient client = new RestClient(BaseUrl);
 
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
+
                 IRestResponse response = client.Execute(requestRest);
 
                 return response;
@@ -2095,26 +2528,40 @@ namespace OsEngine.Market.Servers.BitGet.BitGetFutures
         {
             try
             {
-                HttpClient _httpClient = new HttpClient();
+                HttpClient httpClient = null;
+
+                if (_myProxy == null)
+                {
+                    httpClient = new HttpClient();
+                }
+                else
+                {
+                    HttpClientHandler httpClientHandler = new HttpClientHandler
+                    {
+                        Proxy = _myProxy
+                    };
+
+                    httpClient = new HttpClient(httpClientHandler);
+                }
 
                 string requestPath = path;
                 string url = $"{BaseUrl}{requestPath}";
                 string timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
                 string signature = GenerateSignature(timestamp, method, requestPath, queryString, body, SeckretKey);
 
-                _httpClient.DefaultRequestHeaders.Add("ACCESS-KEY", PublicKey);
-                _httpClient.DefaultRequestHeaders.Add("ACCESS-SIGN", signature);
-                _httpClient.DefaultRequestHeaders.Add("ACCESS-TIMESTAMP", timestamp);
-                _httpClient.DefaultRequestHeaders.Add("ACCESS-PASSPHRASE", Passphrase);
-                _httpClient.DefaultRequestHeaders.Add("X-CHANNEL-API-CODE", "6yq7w");
+                httpClient.DefaultRequestHeaders.Add("ACCESS-KEY", PublicKey);
+                httpClient.DefaultRequestHeaders.Add("ACCESS-SIGN", signature);
+                httpClient.DefaultRequestHeaders.Add("ACCESS-TIMESTAMP", timestamp);
+                httpClient.DefaultRequestHeaders.Add("ACCESS-PASSPHRASE", Passphrase);
+                httpClient.DefaultRequestHeaders.Add("X-CHANNEL-API-CODE", "6yq7w");
 
                 if (method.Equals("POST"))
                 {
-                    return _httpClient.PostAsync(url, new StringContent(body, Encoding.UTF8, "application/json")).Result;
+                    return httpClient.PostAsync(url, new StringContent(body, Encoding.UTF8, "application/json")).Result;
                 }
                 else
                 {
-                    return _httpClient.GetAsync(url).Result;
+                    return httpClient.GetAsync(url).Result;
                 }
             }
             catch (Exception ex)

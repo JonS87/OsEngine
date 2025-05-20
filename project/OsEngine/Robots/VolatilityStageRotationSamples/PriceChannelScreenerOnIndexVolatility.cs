@@ -12,7 +12,6 @@ using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
 using OsEngine.OsTrader.Panels.Tab;
 using OsEngine.Indicators;
-using System.Reflection;
 using OsEngine.Market.Servers.Tester;
 
 namespace OsEngine.Robots.VolatilityStageRotationSamples
@@ -113,11 +112,18 @@ namespace OsEngine.Robots.VolatilityStageRotationSamples
 
             ParametrsChangeByUser += PriceChannelScreenerOnIndexVolatility_ParametrsChangeByUser;
 
-            if (StartProgram == StartProgram.IsTester && ServerMaster.GetServers() != null)
+            if (StartProgram == StartProgram.IsTester 
+                && ServerMaster.GetServers() != null)
             {
-                TesterServer server = (TesterServer)ServerMaster.GetServers()[0];
+                List<IServer> servers = ServerMaster.GetServers();
 
-                server.TestingStartEvent += Server_TestingStartEvent;
+                if (servers != null
+                    && servers.Count > 0
+                    && servers[0].ServerType == ServerType.Tester)
+                {
+                    TesterServer server = (TesterServer)servers[0];
+                    server.TestingStartEvent += Server_TestingStartEvent;
+                }
             }
         }
 
@@ -319,6 +325,16 @@ namespace OsEngine.Robots.VolatilityStageRotationSamples
 
         private decimal GetVolatilityDiff(List<Candle> sec, List<Candle> index, int len)
         {
+            if(sec == null || sec.Count == 0)
+            {
+                return 0;
+            }
+
+            if (index == null || index.Count == 0)
+            {
+                return 0;
+            }
+
             // волатильность. Берём внутридневную волу за N дней в % по бумаге(V1) и по индексу(V2)
             // делим V1 / V2 - получаем отношение волатильности бумаги к индексу. 
 
@@ -337,6 +353,12 @@ namespace OsEngine.Robots.VolatilityStageRotationSamples
 
         private decimal GetVolatility(List<Candle> candles, int len)
         {
+            if (candles == null
+                || candles.Count == 0)
+            {
+                return 0;
+            }
+
             List<decimal> curDaysVola = new List<decimal>();
 
             decimal curMinInDay = decimal.MaxValue;

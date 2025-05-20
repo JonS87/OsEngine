@@ -126,7 +126,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
             _md = md;
         }
 
-        Side _whaitSide;
+        Side _waitSide;
 
         private void SendBuyOrder(Security mySec, decimal price)
         {
@@ -136,16 +136,16 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
 
             Order newOrder = CreateOrder(mySec, price, volume, Side.Buy);
 
-            _whaitSide = Side.Buy;
+            _waitSide = Side.Buy;
 
             Server.ExecuteOrder(newOrder);
 
-            DateTime timeEndWhait = DateTime.Now.AddMinutes(2);
+            DateTime timeEndWait = DateTime.Now.AddMinutes(2);
 
             // нужно дождаться когда будет Active order
             while (true)
             {
-                if (timeEndWhait < DateTime.Now)
+                if (timeEndWait < DateTime.Now)
                 {
                     this.SetNewError("Error 8. No Active order from server BuyLimit");
                     return;
@@ -174,12 +174,12 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
                 }
             }
 
-            timeEndWhait = DateTime.Now.AddMinutes(2);
+            timeEndWait = DateTime.Now.AddMinutes(2);
 
             // нужно дождаться когда будет Done order
             while (true)
             {
-                if (timeEndWhait < DateTime.Now)
+                if (timeEndWait < DateTime.Now)
                 {
                     this.SetNewError("Error 10. No Done order from server BuyLimit");
                     return;
@@ -202,12 +202,12 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
                 }
             }
 
-            timeEndWhait = DateTime.Now.AddMinutes(2);
+            timeEndWait = DateTime.Now.AddMinutes(2);
 
             // нужно дождаться когда будет придёт MyTrade
             while (true)
             {
-                if (timeEndWhait < DateTime.Now)
+                if (timeEndWait < DateTime.Now)
                 {
                     this.SetNewError("Error 12. No MyTrade BuyLimit");
                     return;
@@ -236,16 +236,16 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
             Order newOrder = CreateOrder(mySec, price, volume, Side.Sell);
             newOrder.PositionConditionType = OrderPositionConditionType.Close;
 
-            _whaitSide = Side.Sell;
+            _waitSide = Side.Sell;
 
             Server.ExecuteOrder(newOrder);
 
-            DateTime timeEndWhait = DateTime.Now.AddMinutes(2);
+            DateTime timeEndWait = DateTime.Now.AddMinutes(2);
 
             // нужно дождаться когда будет Active order
             while (true)
             {
-                if (timeEndWhait < DateTime.Now)
+                if (timeEndWait < DateTime.Now)
                 {
                     this.SetNewError("Error 13. No reject order from server SellLimit");
                     return;
@@ -274,12 +274,12 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
                 }
             }
 
-            timeEndWhait = DateTime.Now.AddMinutes(2);
+            timeEndWait = DateTime.Now.AddMinutes(2);
 
             // нужно дождаться когда будет Done order
             while (true)
             {
-                if (timeEndWhait < DateTime.Now)
+                if (timeEndWait < DateTime.Now)
                 {
                     this.SetNewError("Error 15. No reject order from server SellLimit");
                     return;
@@ -304,11 +304,11 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
 
             // нужно дождаться когда будет придёт MyTrade
 
-            timeEndWhait = DateTime.Now.AddMinutes(2);
+            timeEndWait = DateTime.Now.AddMinutes(2);
 
             while (true)
             {
-                if (timeEndWhait < DateTime.Now)
+                if (timeEndWait < DateTime.Now)
                 {
                     this.SetNewError("Error 17. No MyTrade SellLimit");
                     return;
@@ -350,7 +350,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
         List<Order> _ordersCancel = new List<Order>();
         List<Order> _ordersDone = new List<Order>();
         List<Order> _ordersFail = new List<Order>();
-        List<Order> _ordersPatrial = new List<Order>();
+        List<Order> _ordersPartial = new List<Order>();
         List<Order> _ordersPending = new List<Order>();
 
         private void ClearOrders()
@@ -359,7 +359,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
             _ordersCancel.Clear();
             _ordersDone.Clear();
             _ordersFail.Clear();
-            _ordersPatrial.Clear();
+            _ordersPartial.Clear();
             _ordersPending.Clear();
             _myTrades.Clear();
         }
@@ -368,7 +368,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
         {
             if (order.State == OrderStateType.None)
             {
-                this.SetNewError("Error 18. Order whith state NONE");
+                this.SetNewError("Error 18. Order with state NONE");
                 return;
             }
 
@@ -395,7 +395,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
             }
             else if (order.State == OrderStateType.Partial)
             {
-                _ordersPatrial.Add(order);
+                _ordersPartial.Add(order);
             }
             else if (order.State == OrderStateType.Pending)
             {
@@ -420,9 +420,9 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
             12.TimeCancel – время сервера когда ордер получил статус Cancel
             */
 
-            if (order.Side != _whaitSide)
+            if (order.Side != _waitSide)
             {
-                this.SetNewError("Error 19. Whait side note equal. Whait: " + _whaitSide
+                this.SetNewError("Error 19. Wait side note equal. Wait: " + _waitSide
                     + " Side in order: " + order.Side);
                 return false;
             }
@@ -443,13 +443,13 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
 
             if (order.TimeCallBack.AddDays(-1) > now)
             {
-                this.SetNewError("Error 22. Order. TimeCallBack is to big. Time: " + order.TimeCallBack.ToString());
+                this.SetNewError("Error 22. Order. TimeCallBack is too big. Time: " + order.TimeCallBack.ToString());
                 return false;
             }
 
             if (order.TimeCallBack.AddDays(1) < now)
             {
-                this.SetNewError("Error 23. Order. TimeCallBack is to small. Time: " + order.TimeCallBack.ToString());
+                this.SetNewError("Error 23. Order. TimeCallBack is too small. Time: " + order.TimeCallBack.ToString());
                 return false;
             }
 
@@ -462,13 +462,13 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
                 }
                 if (order.TimeDone.AddDays(-1) > now)
                 {
-                    this.SetNewError("Error 25. Order. TimeDone is to big. Time: " + order.TimeDone.ToString());
+                    this.SetNewError("Error 25. Order. TimeDone is too big. Time: " + order.TimeDone.ToString());
                     return false;
                 }
 
                 if (order.TimeDone.AddDays(1) < now)
                 {
-                    this.SetNewError("Error 26. Order. TimeDone is to small. Time: " + order.TimeDone.ToString());
+                    this.SetNewError("Error 26. Order. TimeDone is too small. Time: " + order.TimeDone.ToString());
                     return false;
                 }
             }
@@ -482,13 +482,13 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
                 }
                 if (order.TimeCancel.AddDays(-1) > now)
                 {
-                    this.SetNewError("Error 28. Order. TimeCancel is to big. Time: " + order.TimeCancel.ToString());
+                    this.SetNewError("Error 28. Order. TimeCancel is too big. Time: " + order.TimeCancel.ToString());
                     return false;
                 }
 
                 if (order.TimeCancel.AddDays(1) < now)
                 {
-                    this.SetNewError("Error 29. Order. TimeCancel is to small. Time: " + order.TimeCancel.ToString());
+                    this.SetNewError("Error 29. Order. TimeCancel is too small. Time: " + order.TimeCancel.ToString());
                     return false;
                 }
             }
@@ -567,9 +567,9 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
             12.2.9.Side – сторона ордера
             */
 
-            if (myTrade.Side != _whaitSide)
+            if (myTrade.Side != _waitSide)
             {
-                this.SetNewError("Error 37. MyTrade. Whait side note equal. Whait: " + _whaitSide
+                this.SetNewError("Error 37. MyTrade. Unexpected side. Expected: " + _waitSide
                   + " Side in order: " + myTrade.Side);
                 return false;
             }
@@ -614,13 +614,13 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
 
             if(myTrade.Time.AddDays(-1) > now)
             {
-                this.SetNewError("Error 44. MyTrade. Time is to big. Time: " + myTrade.Time.ToString());
+                this.SetNewError("Error 44. MyTrade. Time is too big. Time: " + myTrade.Time.ToString());
                 return false;
             }
 
             if (myTrade.Time.AddDays(1) < now)
             {
-                this.SetNewError("Error 45. MyTrade. Time is to small. Time: " + myTrade.Time.ToString());
+                this.SetNewError("Error 45. MyTrade. Time is too small. Time: " + myTrade.Time.ToString());
                 return false;
             }
 

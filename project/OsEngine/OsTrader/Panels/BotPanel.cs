@@ -26,43 +26,48 @@ using OsEngine.OsTrader.RiskManager;
 namespace OsEngine.OsTrader.Panels
 {
     /// <summary>
-    /// types of tabs for the robot 
+    /// types of sources for the robot 
     /// </summary>
     public enum BotTabType
     {
         /// <summary>
-        /// for trading one instrument
+        /// source for trading one security
         /// </summary>
         Simple,
 
         /// <summary>
-        /// tab - spread of candlestick data in the form of a candlestick chart
+        /// source for index creation
         /// </summary>
         Index,
 
         /// <summary>
-        /// tab type for creating and displaying a cluster plot
+        /// source for creating and displaying a cluster chart
         /// </summary>
         Cluster,
 
         /// <summary>
-        /// for trading a portfolio of instruments
+        /// source for trading multiple securities
         /// </summary>
         Screener,
 
         /// <summary>
-        ///  tab - for trading pairs
+        ///  source for trading pairs
         /// </summary>
         Pair,
 
         /// <summary>
-        /// tab for tradind Currency Arbitrage
+        /// source for trading currency arbitrage
         /// </summary>
-        Polygon
+        Polygon,
+
+        /// <summary>
+        ///  source for the news feed
+        /// </summary>
+        News
     }
 
     /// <summary>
-    /// main parent for all robots in the program
+    /// parent for all robots in the program
     /// </summary>
     public abstract class BotPanel
     {
@@ -86,7 +91,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
-        /// critical error and system restart event /
+        /// critical error and system restart event
         /// </summary>
         private void OsTraderMaster_CriticalErrorEvent()
         {
@@ -200,7 +205,7 @@ namespace OsEngine.OsTrader.Panels
         /// <summary>
         /// show the chart window with deals
         /// </summary>
-        public void ShowChartDialog()
+        public BotPanelChartUi ShowChartDialog()
         {
             if (_chartUi == null)
             {
@@ -212,6 +217,8 @@ namespace OsEngine.OsTrader.Panels
             {
                 _chartUi.Activate();
             }
+
+            return _chartUi;
         }
 
         public BotPanelChartUi _chartUi;
@@ -302,9 +309,9 @@ namespace OsEngine.OsTrader.Panels
 
                 ReloadTab();
 
-                if (ActivTab != null)
+                if (ActiveTab != null)
                 {
-                    ChangeActivTab(ActivTab.TabNum);
+                    ChangeActiveTab(ActiveTab.TabNum);
                 }
                 else
                 {
@@ -312,13 +319,13 @@ namespace OsEngine.OsTrader.Panels
                         && _tabBotTab.Items.Count != 0
                         && _tabBotTab.SelectedItem != null)
                     {
-                        ChangeActivTab(_tabBotTab.SelectedIndex);
+                        ChangeActiveTab(_tabBotTab.SelectedIndex);
                     }
                     else if (_tabBotTab != null
                              && _tabBotTab.Items.Count != 0
                              && _tabBotTab.SelectedItem == null)
                     {
-                        ChangeActivTab(0);
+                        ChangeActiveTab(0);
                     }
                 }
             }
@@ -414,6 +421,15 @@ namespace OsEngine.OsTrader.Panels
                         return false;
                     }
                 }
+
+                for (int i = 0; TabsScreener != null && i < TabsScreener.Count; i++)
+                {
+                    if (TabsScreener[i].IsConnected == false)
+                    {
+                        return false;
+                    }
+                }
+
                 for (int i = 0; TabsIndex != null && i < TabsIndex.Count; i++)
                 {
                     if (TabsIndex[i].IsConnected == false)
@@ -598,14 +614,14 @@ namespace OsEngine.OsTrader.Panels
         /// </summary>
         public void MoveChartToTheRight()
         {
-            if (ActivTab == null)
+            if (ActiveTab == null)
             {
                 return;
             }
 
-            if (ActivTab.GetType().Name == "BotTabSimple")
+            if (ActiveTab.GetType().Name == "BotTabSimple")
             {
-                ((BotTabSimple)ActivTab).MoveChartToTheRight();
+                ((BotTabSimple)ActiveTab).MoveChartToTheRight();
             }
         }
 
@@ -614,7 +630,7 @@ namespace OsEngine.OsTrader.Panels
         /// <summary>
         /// total profit
         /// </summary>
-        public decimal TotalProfitInPersent
+        public decimal TotalProfitInPercent
         {
             get
             {
@@ -640,7 +656,7 @@ namespace OsEngine.OsTrader.Panels
 position => position.State != PositionStateType.OpeningFail
 && position.EntryPrice != 0 && position.ClosePrice != 0));
 
-                    result += PositionStatisticGenerator.GetAllProfitPersent(positions.ToArray());
+                    result += PositionStatisticGenerator.GetAllProfitPercent(positions.ToArray());
                 }
                 return result;
             }
@@ -675,7 +691,7 @@ position => position.State != PositionStateType.OpeningFail
 position => position.State != PositionStateType.OpeningFail
 && position.EntryPrice != 0 && position.ClosePrice != 0));
 
-                    result += PositionStatisticGenerator.GetAllProfitInPunkt(positions.ToArray());
+                    result += PositionStatisticGenerator.GetAllProfitInAbsolute(positions.ToArray());
                 }
                 return result;
             }
@@ -684,7 +700,7 @@ position => position.State != PositionStateType.OpeningFail
         /// <summary>
         /// average profit from the transaction
         /// </summary>
-        public decimal MiddleProfitInPersent
+        public decimal MiddleProfitInPercent
         {
             get
             {
@@ -749,7 +765,7 @@ position => position.State != PositionStateType.OpeningFail
         /// <summary>
         /// maximum drawdown
         /// </summary>
-        public decimal MaxDrowDown
+        public decimal MaxDrawDown
         {
             get
             {
@@ -779,7 +795,7 @@ position => position.State != PositionStateType.OpeningFail
         /// <summary>
         /// profit position count
         /// </summary>
-        public decimal WinPositionPersent
+        public decimal WinPositionPercent
         {
             get
             {
@@ -804,7 +820,7 @@ position => position.State != PositionStateType.OpeningFail
                     }
 
                     allPoses += journals[i].AllPosition.Count;
-                    List<Position> winPositions = journals[i].AllPosition.FindAll(pos => pos.ProfitOperationPunkt > 0);
+                    List<Position> winPositions = journals[i].AllPosition.FindAll(pos => pos.ProfitOperationAbs > 0);
                     winPoses += (winPositions.Count);
                 }
                 return winPoses / allPoses;
@@ -934,7 +950,7 @@ position => position.State != PositionStateType.OpeningFail
         /// <summary>
         /// show parameter settings window
         /// </summary>
-        public void ShowParametrDialog()
+        public void ShowParameterDialog()
         {
             if (_parameters == null ||
                 _parameters.Count == 0)
@@ -943,37 +959,55 @@ position => position.State != PositionStateType.OpeningFail
                 return;
             }
 
-            if (_paramUi == null)
+            if (_parametersUi == null)
             {
-                _paramUi = new ParemetrsUi(_parameters, ParamGuiSettings, this);
-                _paramUi.Show();
-                _paramUi.Closing += _paramUi_Closing;
+                _parametersUi = new StrategyParametersUi(_parameters, ParamGuiSettings, this);
+                _parametersUi.Show();
+                _parametersUi.Closing += _parametersUi_Closing;
             }
             else
             {
-                _paramUi.Activate();
+                _parametersUi.Activate();
             }
         }
 
-        private void _paramUi_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        private void _parametersUi_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            _paramUi.Closing -= _paramUi_Closing;
-            _paramUi = null;
+            _parametersUi.Closing -= _parametersUi_Closing;
+            _parametersUi = null;
         }
 
         /// <summary>
         /// parameters window
         /// </summary>
-        private ParemetrsUi _paramUi;
+        private StrategyParametersUi _parametersUi;
 
         /// <summary>
         /// close the options window
         /// </summary>
         public void CloseParameterDialog()
         {
-            if (_paramUi != null)
+            if (_parametersUi != null)
             {
-                _paramUi.Close();
+                _parametersUi.Close();
+            }
+        }
+
+        /// <summary>
+        /// Whether the parameter window is open for display. True - is open
+        /// </summary>
+        public bool ParamGuiIsOpen
+        {
+            get
+            {
+                if(_parametersUi == null)
+                {
+                    return false;
+                }
+                else
+                {
+                    return true;
+                }
             }
         }
 
@@ -985,12 +1019,12 @@ position => position.State != PositionStateType.OpeningFail
         /// <summary>
         /// create a Decimal type parameter
         /// </summary>
-        /// <param name="name">param name </param>
+        /// <param name="name">parameter name </param>
         /// <param name="value">default value </param>
         /// <param name="start">first value </param>
         /// <param name="stop">last value </param>
         /// <param name="step">value step </param>
-        /// <param name="tabName">name of the tab in the param window </param>
+        /// <param name="tabName">name of the tab in the parameter window </param>
         public StrategyParameterDecimal CreateParameter(string name, decimal value, decimal start, decimal stop, decimal step, string tabControlName = null)
         {
             StrategyParameterDecimal newParameter = new StrategyParameterDecimal(name, value, start, stop, step, tabControlName);
@@ -1004,9 +1038,9 @@ position => position.State != PositionStateType.OpeningFail
         }
 
         /// <summary>
-        /// create a TimeOfDay type paramete
+        /// create a TimeOfDay type parameter
         /// </summary>
-        /// <param name="name">param name </param>
+        /// <param name="name">parameter name </param>
         /// <param name="value">default value </param>
         /// <param name="start">first value </param>
         /// <param name="stop">last value </param>
@@ -1027,7 +1061,7 @@ position => position.State != PositionStateType.OpeningFail
         /// <summary>
         /// create int parameter
         /// </summary>
-        /// <param name="name">param name </param>
+        /// <param name="name">parameter name </param>
         /// <param name="value">default value </param>
         /// <param name="start">first value </param>
         /// <param name="stop">last value </param>
@@ -1047,7 +1081,7 @@ position => position.State != PositionStateType.OpeningFail
         /// <summary>
         /// create string parameter
         /// </summary>
-        /// <param name="name">param name </param>
+        /// <param name="name">parameter name </param>
         /// <param name="value">default value </param>
         /// <param name="collection">values </param>
         public StrategyParameterString CreateParameter(string name, string value, string[] collection, string tabControlName = null)
@@ -1105,7 +1139,7 @@ position => position.State != PositionStateType.OpeningFail
         /// <summary>
         /// create string parameter 
         /// </summary>
-        /// <param name="name">param name </param>
+        /// <param name="name">parameter name </param>
         /// <param name="value">default value </param>
         public StrategyParameterString CreateParameter(string name, string value, string tabControlName = null)
         {
@@ -1122,7 +1156,7 @@ position => position.State != PositionStateType.OpeningFail
         /// <summary>
         /// create bool type parameter 
         /// </summary>
-        /// <param name="name">param name </param>
+        /// <param name="name">parameter name </param>
         /// <param name="value">default value </param>
         public StrategyParameterBool CreateParameter(string name, bool value, string tabControlName = null)
         {
@@ -1266,7 +1300,7 @@ position => position.State != PositionStateType.OpeningFail
         {
             if (StartProgram != StartProgram.IsOsOptimizer)
             {
-                SaveParametrs();
+                SaveParameters();
             }
 
             try
@@ -1285,7 +1319,7 @@ position => position.State != PositionStateType.OpeningFail
         /// <summary>
         /// save parameter values
         /// </summary>
-        public void SaveParametrs()
+        public void SaveParameters()
         {
             if (_lastParamLoadTime.AddSeconds(3) > DateTime.Now)
             {
@@ -1425,7 +1459,7 @@ position => position.State != PositionStateType.OpeningFail
         /// <summary>
         /// active tab
         /// </summary>
-        public IIBotTab ActivTab;
+        public IIBotTab ActiveTab;
 
         /// <summary>
         /// control which tabs are located
@@ -1435,13 +1469,13 @@ position => position.State != PositionStateType.OpeningFail
         /// <summary>
         /// open tab number
         /// </summary>
-        public int ActivTabNumber
+        public int ActiveTabNumber
         {
             get
             {
                 try
                 {
-                    if (ActivTab == null
+                    if (ActiveTab == null
                         || _tabBotTab == null
                         || _tabBotTab.Items == null
                         || _tabBotTab.Items.Count == 0)
@@ -1526,7 +1560,7 @@ position => position.State != PositionStateType.OpeningFail
         private List<BotTabScreener> _tabsScreener = new List<BotTabScreener>();
 
         /// <summary>
-        /// pair tabs
+        /// polygon tabs
         /// </summary>
         public List<BotTabPolygon> TabsPolygon
         {
@@ -1538,15 +1572,76 @@ position => position.State != PositionStateType.OpeningFail
         private List<BotTabPolygon> _tabsPolygon = new List<BotTabPolygon>();
 
         /// <summary>
+        /// news tabs
+        /// </summary>
+        public List<BotTabNews> TabsNews
+        {
+            get
+            {
+                return _tabsNews;
+            }
+        }
+        private List<BotTabNews> _tabsNews = new List<BotTabNews>();
+
+        public DateTime TimeServer
+        {
+            get
+            {
+                DateTime result = DateTime.MinValue;
+
+                if (_tabSimple != null
+                    && _tabSimple.Count > 0)
+                {
+                    for (int i = 0; i < _tabSimple.Count; i++)
+                    {
+                        if (_tabSimple[i].IsConnected == false)
+                        {
+                            continue;
+                        }
+
+                        if (_tabSimple[i].TimeServerCurrent > result)
+                        {
+                            result = _tabSimple[i].TimeServerCurrent;
+                        }
+                    }
+                }
+
+                if (_tabsScreener != null
+                    && _tabsScreener.Count > 0)
+                {
+                    for (int i = 0; i < _tabsScreener.Count; i++)
+                    {
+                        for (int j = 0; j < _tabsScreener[i].Tabs.Count; j++)
+                        {
+                            BotTabSimple tab = _tabsScreener[i].Tabs[j];
+
+                            if (tab.IsConnected == false)
+                            {
+                                continue;
+                            }
+
+                            if (tab.TimeServerCurrent > result)
+                            {
+                                result = tab.TimeServerCurrent;
+                            }
+                        }
+                    }
+                }
+
+                return result;
+            }
+        }
+
+        /// <summary>
         /// user toggled tabs
         /// </summary>
-        void _tabBotTab_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void _tabBotTab_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             try
             {
                 if (_tabBotTab != null && _tabBotTab.Items.Count != 0)
                 {
-                    ChangeActivTab(_tabBotTab.SelectedIndex);
+                    ChangeActiveTab(_tabBotTab.SelectedIndex);
                 }
 
             }
@@ -1606,18 +1701,26 @@ position => position.State != PositionStateType.OpeningFail
                 {
                     newTab = new BotTabPair(nameTab, StartProgram);
                     _tabsPair.Add((BotTabPair)newTab);
+                    ((BotTabPair)newTab).UserSelectActionEvent += UserSetPositionAction;
                 }
                 else if (tabType == BotTabType.Polygon)
                 {
                     newTab = new BotTabPolygon(nameTab, StartProgram);
                     _tabsPolygon.Add((BotTabPolygon)newTab);
                 }
+                else if (tabType == BotTabType.News)
+                {
+                    newTab = new BotTabNews(nameTab, StartProgram);
+                    _tabsNews.Add((BotTabNews)newTab);
+                }
                 else if (tabType == BotTabType.Screener)
                 {
                     newTab = new BotTabScreener(nameTab, StartProgram);
                     _tabsScreener.Add((BotTabScreener)newTab);
 
-                    ((BotTabScreener)newTab).NewTabCreateEvent += (tab) =>
+                    ((BotTabScreener)newTab).UserSelectActionEvent += UserSetPositionAction;
+
+                     ((BotTabScreener)newTab).NewTabCreateEvent += (tab) =>
                     {
                         if (NewTabCreateEvent != null)
                         {
@@ -1635,7 +1738,7 @@ position => position.State != PositionStateType.OpeningFail
 
                 newTab.TabNum = _botTabs.Count - 1;
 
-                ChangeActivTab(_botTabs.Count - 1);
+                ChangeActiveTab(_botTabs.Count - 1);
 
                 ReloadTab();
 
@@ -1657,18 +1760,18 @@ position => position.State != PositionStateType.OpeningFail
         {
             try
             {
-                if (ActivTab == null)
+                if (ActiveTab == null)
                 {
                     return;
                 }
 
-                ActivTab.Delete();
+                ActiveTab.Delete();
 
-                _botTabs.Remove(ActivTab);
+                _botTabs.Remove(ActiveTab);
 
                 if (_botTabs != null && _botTabs.Count != 0)
                 {
-                    ChangeActivTab(0);
+                    ChangeActiveTab(0);
                 }
 
                 ReloadTab();
@@ -1691,7 +1794,7 @@ position => position.State != PositionStateType.OpeningFail
         {
             try
             {
-                if (ActivTab == null)
+                if (ActiveTab == null)
                 {
                     return;
                 }
@@ -1706,7 +1809,7 @@ position => position.State != PositionStateType.OpeningFail
                 _botTabs.RemoveAt(index);
                 if (_botTabs != null && _botTabs.Count != 0)
                 {
-                    ChangeActivTab(0);
+                    ChangeActiveTab(0);
                 }
 
                 ReloadTab();
@@ -1725,7 +1828,7 @@ position => position.State != PositionStateType.OpeningFail
         /// <summary>
         /// set new active tab
         /// </summary>
-        private void ChangeActivTab(int tabNumber)
+        private void ChangeActiveTab(int tabNumber)
         {
             try
             {
@@ -1736,7 +1839,7 @@ position => position.State != PositionStateType.OpeningFail
 
                 if (!_tabBotTab.Dispatcher.CheckAccess())
                 {
-                    _tabBotTab.Dispatcher.Invoke(new Action<int>(ChangeActivTab), tabNumber);
+                    _tabBotTab.Dispatcher.Invoke(new Action<int>(ChangeActiveTab), tabNumber);
                     return;
                 }
 
@@ -1745,9 +1848,9 @@ position => position.State != PositionStateType.OpeningFail
 
                 }
 
-                if (ActivTab != null)
+                if (ActiveTab != null)
                 {
-                    ActivTab.StopPaint();
+                    ActiveTab.StopPaint();
                 }
 
                 if (_botTabs == null ||
@@ -1756,32 +1859,36 @@ position => position.State != PositionStateType.OpeningFail
                     return;
                 }
 
-                ActivTab = _botTabs[tabNumber];
+                ActiveTab = _botTabs[tabNumber];
 
-                if (ActivTab.TabType == BotTabType.Simple)
+                if (ActiveTab.TabType == BotTabType.Simple)
                 {
-                    ((BotTabSimple)ActivTab).StartPaint(_gridChart, _hostChart, _hostGlass, _hostOpenDeals, _hostCloseDeals,
+                    ((BotTabSimple)ActiveTab).StartPaint(_gridChart, _hostChart, _hostGlass, _hostOpenDeals, _hostCloseDeals,
                         _rectangle, _hostAlerts, _textBoxLimitPrice, _gridChartControlPanel, _textBoxVolume);
                 }
-                else if (ActivTab.TabType == BotTabType.Index)
+                else if (ActiveTab.TabType == BotTabType.Index)
                 {
-                    ((BotTabIndex)ActivTab).StartPaint(_gridChart, _hostChart, _rectangle);
+                    ((BotTabIndex)ActiveTab).StartPaint(_gridChart, _hostChart, _rectangle);
                 }
-                else if (ActivTab.TabType == BotTabType.Cluster)
+                else if (ActiveTab.TabType == BotTabType.Cluster)
                 {
-                    ((BotTabCluster)ActivTab).StartPaint(_hostChart, _rectangle);
+                    ((BotTabCluster)ActiveTab).StartPaint(_hostChart, _rectangle);
                 }
-                else if (ActivTab.TabType == BotTabType.Screener)
+                else if (ActiveTab.TabType == BotTabType.Screener)
                 {
-                    ((BotTabScreener)ActivTab).StartPaint(_hostChart);
+                    ((BotTabScreener)ActiveTab).StartPaint(_hostChart, _hostOpenDeals, _hostCloseDeals);
                 }
-                else if (ActivTab.TabType == BotTabType.Pair)
+                else if (ActiveTab.TabType == BotTabType.Pair)
                 {
-                    ((BotTabPair)ActivTab).StartPaint(_hostChart);
+                    ((BotTabPair)ActiveTab).StartPaint(_hostChart, _hostOpenDeals, _hostCloseDeals);
                 }
-                else if (ActivTab.TabType == BotTabType.Polygon)
+                else if (ActiveTab.TabType == BotTabType.Polygon)
                 {
-                    ((BotTabPolygon)ActivTab).StartPaint(_hostChart);
+                    ((BotTabPolygon)ActiveTab).StartPaint(_hostChart);
+                }
+                else if (ActiveTab.TabType == BotTabType.News)
+                {
+                    ((BotTabNews)ActiveTab).StartPaint(_hostChart);
                 }
             }
             catch (Exception error)
@@ -1823,9 +1930,9 @@ position => position.State != PositionStateType.OpeningFail
                         }
                     }
 
-                    if (ActivTab != null && _botTabs != null && _botTabs.Count != 0)
+                    if (ActiveTab != null && _botTabs != null && _botTabs.Count != 0)
                     {
-                        int index = _botTabs.FindIndex(tab => tab.TabName == ActivTab.TabName);
+                        int index = _botTabs.FindIndex(tab => tab.TabName == ActiveTab.TabName);
 
                         if (index >= 0)
                         {
@@ -1878,7 +1985,7 @@ position => position.State != PositionStateType.OpeningFail
                 _botTabs.Clear();
             }
 
-            ActivTab = null;
+            ActiveTab = null;
 
             if (NewTabCreateEvent != null)
             {
@@ -1895,7 +2002,7 @@ position => position.State != PositionStateType.OpeningFail
         {
             try
             {
-                if (ActivTab == null)
+                if (ActiveTab == null)
                 {
                     return;
                 }
@@ -1930,6 +2037,10 @@ position => position.State != PositionStateType.OpeningFail
                     for (int i = 0; i < _tabsScreener.Count; i++)
                     {
                         _tabsScreener[i].CloseAllPositionAtMarket();
+                    }
+                    for (int i = 0; i < _tabsPair.Count; i++)
+                    {
+                        _tabsPair[i].CloseAllPositionAtMarket();
                     }
 
                     return;
@@ -2182,6 +2293,125 @@ position => position.State != PositionStateType.OpeningFail
         /// log message event
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;
+		
+        /// <summary>
+        /// set border under of Parameter
+        /// </summary>
+        /// <param name="parameterName">Parameter name (do not empty names "" of StrategyParameter; for StrategyParameterButton use "buttonLabel"; for StrategyParameterLabel use "label")</param>
+        /// <param name="color">border color</param>
+        /// <param name="thickness">border thickness (min 1, max 10)</param>
+        public void SetBorderUnderParameter(string parameterName, System.Drawing.Color color, int thickness)
+        {
+            try
+            {
+                ParamDesign newBorderSet = new ParamDesign(ParamDesignType.BorderUnder, parameterName, color, thickness);
+
+                if (_parameterDesigns.ContainsKey(parameterName + ParamDesignType.BorderUnder.ToString()))
+                {
+                    _parameterDesigns[parameterName + ParamDesignType.BorderUnder.ToString()] = newBorderSet;
+                }
+                else
+                {
+                    _parameterDesigns.Add(parameterName + ParamDesignType.BorderUnder.ToString(), newBorderSet);
+                }
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
+        /// <summary>
+        /// set fore color of Parameter (text color)
+        /// </summary>
+        /// <param name="parameterName">Parameter name (do not empty names "" of StrategyParameter; for StrategyParameterButton use "buttonLabel"; for StrategyParameterLabel use "label")</param>
+        /// <param name="color">color</param>
+        public void SetForeColorParameter(string parameterName, System.Drawing.Color color)
+        {
+            try
+            {
+                ParamDesign newForeColorSet = new ParamDesign(ParamDesignType.ForeColor, parameterName, color, 1);
+
+                if (_parameterDesigns.ContainsKey(parameterName + ParamDesignType.ForeColor.ToString()))
+                {
+                    _parameterDesigns[parameterName + ParamDesignType.ForeColor.ToString()] = newForeColorSet;
+                }
+                else
+                {
+                    _parameterDesigns.Add(parameterName + ParamDesignType.ForeColor.ToString(), newForeColorSet);
+                }
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+   
+        /// <summary>
+        /// set selection color of Parameter
+        /// </summary>
+        /// <param name="parameterName">Parameter name (do not empty names "" of StrategyParameter; for StrategyParameterButton use "buttonLabel"; for StrategyParameterLabel use "label")</param>
+        /// <param name="color">color</param>
+        public void SetSelectionColorParameter(string parameterName, System.Drawing.Color color)
+        {
+            try
+            {
+                ParamDesign newSelectionColorSet = new ParamDesign(ParamDesignType.SelectionColor, parameterName, color, 1);
+
+                if (_parameterDesigns.ContainsKey(parameterName + ParamDesignType.SelectionColor.ToString()))
+                {
+                    _parameterDesigns[parameterName + ParamDesignType.SelectionColor.ToString()] = newSelectionColorSet;
+                }
+                else
+                {
+                    _parameterDesigns.Add(parameterName + ParamDesignType.SelectionColor.ToString(), newSelectionColorSet);
+                }
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
+        /// <summary>
+        /// visual designs of Parameters
+        /// </summary>
+        public IReadOnlyDictionary<string, ParamDesign> ParameterDesigns
+        {
+            get 
+            { 
+                return _parameterDesigns; 
+            }
+        }
+        private Dictionary<string, ParamDesign> _parameterDesigns = new Dictionary<string, ParamDesign>();
+
+        /// <summary>	
+        ///  repaint Parameter tables (it is not recommended to call often, recommended >100 ms)
+        /// </summary>
+        public void RePaintParameterTables()
+        {
+            if (_isRePaintParameterTables == false)
+            {
+                _isRePaintParameterTables = true;
+            }
+            else
+            {
+                _isRePaintParameterTables = false;
+            }
+        }
+
+        /// <summary>
+        /// status of Parameter tables repaint (it is not specific pointer)
+        /// </summary>
+        public bool IsRePaintParameterTables
+        {
+            get
+            {
+                return _isRePaintParameterTables;
+            }
+        }
+        private bool _isRePaintParameterTables;
+
     }
 
     /// <summary>
@@ -2239,7 +2469,35 @@ position => position.State != PositionStateType.OpeningFail
             GridToPaint.Children.Add((UIElement)children);
         }
     }
+	
+    /// <summary>
+    /// visual design of Parameter
+    /// </summary>
+    public readonly struct ParamDesign
+    {
+        public ParamDesign(ParamDesignType designType, string parameterName, System.Drawing.Color color, int thickness)
+        {
+            DesignType = designType;
+            ParameterName = parameterName;
+            Color = color;
+            Thickness = thickness;
+        }
 
+        /// <summary>
+        /// type of Parameter visual design
+        /// </summary>
+        public ParamDesignType DesignType { get; }
+
+        /// <summary>
+        /// Parameter name
+        /// </summary>
+        public string ParameterName { get; }
+
+        public System.Drawing.Color Color { get; }
+
+        public int Thickness { get; }
+    }
+	
     /// <summary>
     /// robot trade regime
     /// </summary>
@@ -2270,4 +2528,25 @@ position => position.State != PositionStateType.OpeningFail
         /// </summary>
         Off
     }
+	
+    /// <summary>
+    /// type of Parameter visual design
+    /// </summary>
+    public enum ParamDesignType
+    {
+        /// <summary>
+        /// fore color of Parameter
+        /// </summary>
+        ForeColor,
+
+        /// <summary>
+        /// border under of Parameter 
+        /// </summary>
+        BorderUnder,
+		
+        /// <summary>
+        /// selection color of Parameter
+        /// </summary>
+        SelectionColor		
+    }	
 }

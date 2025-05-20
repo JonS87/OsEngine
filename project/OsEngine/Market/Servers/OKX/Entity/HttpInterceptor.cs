@@ -1,5 +1,6 @@
 ﻿using OsEngine.Market.Servers.Entity;
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
@@ -13,17 +14,30 @@ namespace OsEngine.Market.Servers.OKX.Entity
         private string _passPhrase;
         private string _secret;
         private string _bodyStr;
+        private bool _demoMode;
 
         //Задерждка для рест запросов
         public RateGate _rateGateRest = new RateGate(1, TimeSpan.FromMilliseconds(200));
 
-        public HttpInterceptor(string apiKey, string secret, string passPhrase, string bodyStr)
+        public HttpInterceptor(string apiKey, string secret, string passPhrase, string bodyStr, bool demoMode, WebProxy myProxy)
         {
             this._apiKey = apiKey;
             this._passPhrase = passPhrase;
             this._secret = secret;
             this._bodyStr = bodyStr;
-            InnerHandler = new HttpClientHandler();
+            this._demoMode = demoMode;
+
+            if (myProxy == null)
+            {
+                InnerHandler = new HttpClientHandler();
+            }
+            else if (myProxy != null)
+            {
+                InnerHandler = new HttpClientHandler
+                {
+                    Proxy = myProxy
+                };
+            }
         }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -50,7 +64,15 @@ namespace OsEngine.Market.Servers.OKX.Entity
             request.Headers.Add("OK-ACCESS-SIGN", sign);
             request.Headers.Add("OK-ACCESS-TIMESTAMP", timeStamp.ToString());
             request.Headers.Add("OK-ACCESS-PASSPHRASE", this._passPhrase);
-            request.Headers.Add("x-simulated-trading", "0");
+
+            if (_demoMode)
+            {
+                request.Headers.Add("x-simulated-trading", "1");
+            }
+            else
+            {
+                request.Headers.Add("x-simulated-trading", "0");
+            }
 
             return base.SendAsync(request, cancellationToken);
         }

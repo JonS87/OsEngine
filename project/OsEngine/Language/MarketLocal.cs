@@ -3,8 +3,6 @@
  * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
-using OsEngine.Entity;
-using OsEngine.Market.Servers.GateIo.GateIoFutures.Entities;
 
 namespace OsEngine.Language
 {
@@ -69,7 +67,7 @@ namespace OsEngine.Language
 
         public string Label7 => OsLocalization.ConvertToLocString(
             "Eng:Security_" +
-            "Ru:Инструмент_"); 
+            "Ru:Инструмент_");
 
         public string Label8 => OsLocalization.ConvertToLocString(
             "Eng:From what we collect candles_" +
@@ -671,6 +669,142 @@ namespace OsEngine.Language
           "Eng:Ignore_" +
           "Ru:Игнор_");
 
+        public string Label159 => OsLocalization.ConvertToLocString(
+          "Eng:Add security_" +
+          "Ru:Добавить_");
+
+        public string Label160 => OsLocalization.ConvertToLocString(
+            "Eng:At this time, the connector will try to connect to the server. The time is indicated by Moscow Time. Format: \"6:50/23:50\"_" +
+            "Ru:В данное время коннектор будет пытаться подключиться к серверу. Время указано по МСК. Формат: \"6:50/23:50\"_");
+
+        public string Label161 => OsLocalization.ConvertToLocString(
+            "Eng:Count news to save_" +
+            "Ru:Хранить новости. Кол-во_");
+
+        public string Label162 => OsLocalization.ConvertToLocString(
+          "Eng:One client code_" +
+          "Ru:Один код клиента_");
+
+        public string Label163 => OsLocalization.ConvertToLocString(
+          "Eng:If the broker uses several client codes, the value is false (for example, Finam , BCS), if there is only one client code, the value is true (for example, VTB). By default, false_" +
+          "Ru:Если брокер использует несколько клиентских кодов, то значение false (например, Финам, БКС), если клиент код всего один, то значение true (например, ВТБ). По умолчанию false_");
+
+        public string Label164 => OsLocalization.ConvertToLocString(
+          "Eng:Name _" +
+          "Ru:Имя _");
+
+        public string Label165 => OsLocalization.ConvertToLocString(
+          "Eng:Do you want to remove the connector? Settings will be lost!_" +
+          "Ru:Хотите удалить коннектор? Настройки будут утеряны!_");
+
+        public string Label166 => OsLocalization.ConvertToLocString(
+          "Eng:Pre-configured connections_" +
+          "Ru:Преднастроенные соединения_");
+
+        public string Label167 => OsLocalization.ConvertToLocString(
+          "Eng:Number_" +
+          "Ru:Номер_");
+
+        public string Label168 => OsLocalization.ConvertToLocString(
+          "Eng:Prefix_" +
+          "Ru:Приставка_");
+
+        public string Label169 => OsLocalization.ConvertToLocString(
+          "Eng:State_" +
+          "Ru:Статус_");
+
+        public string Label170 => OsLocalization.ConvertToLocString(
+          "Eng:Add new_" +
+          "Ru:Добавить_");
+
+        public string Label171 => OsLocalization.ConvertToLocString(
+          "Eng:Proxy type_" +
+          "Ru:Тип Прокси_");
+
+        public string Label172 => OsLocalization.ConvertToLocString(
+          "Eng:Proxy_" +
+          "Ru:Прокси_");
+
+        public string Label173 => OsLocalization.ConvertToLocString(
+          "Eng:Use proxy_" +
+          "Ru:Используем прокси_");
+
+        public string Label174 => OsLocalization.ConvertToLocString(
+          "Eng:Auto ping is on_" +
+          "Ru:Включить авто пинг_");
+
+        public string Label175 => OsLocalization.ConvertToLocString(
+          "Eng:Check ping_" +
+          "Ru:Проверить пинг_");
+
+        public string Label176 => OsLocalization.ConvertToLocString(
+          "Eng:Check location_" +
+          "Ru:Проверить локацию_");
+
+        public string Label177 => OsLocalization.ConvertToLocString(
+          "Eng:Ping minutes interval_" +
+          "Ru:Интервал пинга. Минут_");
+
+        public string Label178 => OsLocalization.ConvertToLocString(
+          "Eng:Ping last time_" +
+          "Ru:Время последнего пинга_");
+
+        public string Label179 => OsLocalization.ConvertToLocString(
+          "Eng:Proxy hub_" +
+          "Ru:Хранилище прокси_");
+
+        public string Label180 => OsLocalization.ConvertToLocString(
+          "Eng:Save_" +
+          "Ru:Сохранить_");
+
+        public string Label181 => OsLocalization.ConvertToLocString(
+          "Eng:Load_" +
+          "Ru:Загрузить_");
+
+        public string Label182 => OsLocalization.ConvertToLocString(
+          "Eng:Is on_" +
+          "Ru:Включено?_");
+
+        public string Label183 => OsLocalization.ConvertToLocString(
+          "Eng:Ip_" +
+          "Ru:Ip_");
+
+        public string Label184 => OsLocalization.ConvertToLocString(
+          "Eng:Port_" +
+          "Ru:Port_");
+
+        public string Label185 => OsLocalization.ConvertToLocString(
+          "Eng:Login_" +
+          "Ru:Login_");
+
+        public string Label186 => OsLocalization.ConvertToLocString(
+          "Eng:Password_" +
+          "Ru:Password_");
+
+        public string Label187 => OsLocalization.ConvertToLocString(
+          "Eng:Location_" +
+          "Ru:Локация_");
+
+        public string Label188 => OsLocalization.ConvertToLocString(
+          "Eng:Status_" +
+          "Ru:Статус_");
+
+        public string Label189 => OsLocalization.ConvertToLocString(
+          "Eng:Ping address_" +
+          "Ru:Пинг адрес_");
+
+        public string Label190 => OsLocalization.ConvertToLocString(
+          "Eng:Used count_" +
+          "Ru:Использован раз_");
+
+        public string Label191 => OsLocalization.ConvertToLocString(
+          "Eng:Type of proxy usage. None - none. Auto - auto selection from the list. Manual - you need to specify a number or IP in the following field_" +
+          "Ru:Тип использования прокси. None - никак. Auto - авто выбор из списка. Manual - нужно указать номер или IP в следующем поле_");
+
+        public string Label192 => OsLocalization.ConvertToLocString(
+          "Eng:The field is used when the proxy selection type is Manual. In the field you should insert the proxy number or IP address_" +
+          "Ru:Поле используется при типе выбора прокси Manual. В поле надо вставить номер прокси или IP адрес_");
+
         public string LabelCommissionType => OsLocalization.ConvertToLocString(
             "Eng:Commission type_" +
             "Ru:Тип комиссии_");
@@ -1099,6 +1233,10 @@ namespace OsEngine.Language
             "Eng:Intercepted attempt to revoke an order when the connection is off!_" +
             "Ru:Перехвачена попытка отозвать ордер при выключенном соединении!_");
 
+        public string Message100 => OsLocalization.ConvertToLocString(
+            "Eng:Connector operating time_" +
+            "Ru:Время работы коннектора_");
+
         public string TitleTester => OsLocalization.ConvertToLocString(
             "Eng:Exchange emulator_" +
             "Ru:Эмулятор биржи_");
@@ -1127,11 +1265,11 @@ namespace OsEngine.Language
             "Eng:Public key_" +
             "Ru:Публичный ключ_");
 
-        public string ServerParamSecretKey => OsLocalization.ConvertToLocString(
+        public string ServerParameterSecretKey => OsLocalization.ConvertToLocString(
             "Eng:Secret key_" +
             "Ru:Секретный ключ_");
 
-        public string ServerParamPassphrase => OsLocalization.ConvertToLocString(
+        public string ServerParameterPassphrase => OsLocalization.ConvertToLocString(
             "Eng:Passphrase_" +
             "Ru:Пароль_");
 
@@ -1203,6 +1341,10 @@ namespace OsEngine.Language
           "Eng:View securities_" +
           "Ru:Просмотр бумаг_");
 
+        public string ServerParam13 => OsLocalization.ConvertToLocString(
+          "Eng:Market depth levels_" +
+          "Ru:Уровней в стакане_");
+
         public string UseStock => OsLocalization.ConvertToLocString(
             "Eng:Stock_" +
             "Ru:Акции_");
@@ -1214,6 +1356,10 @@ namespace OsEngine.Language
         public string UseOptions => OsLocalization.ConvertToLocString(
             "Eng:Options_" +
             "Ru:Опционы_");
+
+        public string UseBonds => OsLocalization.ConvertToLocString(
+            "Eng:Bonds_" +
+            "Ru:Облигации_");
 
         public string UseCurrency => OsLocalization.ConvertToLocString(
             "Eng:Currency_" +
@@ -1230,10 +1376,17 @@ namespace OsEngine.Language
         public string ButtonNameChangePassword => OsLocalization.ConvertToLocString(
             "Eng:Change password_" +
             "Ru:Изменить пароль_");
-      
+
         public string Exchange => OsLocalization.ConvertToLocString(
             "Eng:Exchange_" +
             "Ru:Биржа_"
+
+
         );
+        public string IgnoreMorningAuctionTrades => OsLocalization.ConvertToLocString(
+            "Eng:Ignore morning auction trades_" +
+            "Ru:Игнорировать сделки утреннего аукциона_");
+
+
     }
 }

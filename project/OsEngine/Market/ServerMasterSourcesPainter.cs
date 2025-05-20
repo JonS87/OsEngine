@@ -14,23 +14,31 @@ using System.Windows.Forms.Integration;
 using System.IO;
 using System.Threading;
 using OsEngine.Language;
+using OsEngine.Logging;
+using System.Windows.Input;
 
 namespace OsEngine.Market
 {
     public class ServerMasterSourcesPainter
     {
-        public ServerMasterSourcesPainter(WindowsFormsHost hostServers, 
-            WindowsFormsHost hostLog, 
-            System.Windows.Controls.CheckBox boxCreateServerАutomatically)
+        public ServerMasterSourcesPainter(WindowsFormsHost hostServers,
+            WindowsFormsHost hostLog,
+            System.Windows.Controls.CheckBox boxCreateServerAutomatic
+            , System.Windows.Controls.TextBox textBoxSearchSource
+            , System.Windows.Controls.Button buttonRightInSearchResults
+            , System.Windows.Controls.Button buttonLeftInSearchResults
+            , System.Windows.Controls.Label labelCurrentResultShow
+            , System.Windows.Controls.Label labelCommasResultShow
+            , System.Windows.Controls.Label labelCountResultsShow)
         {
-            _boxCreateServerАutomatically = boxCreateServerАutomatically;
-             
+            _boxCreateServerAutomatic = boxCreateServerAutomatic;
+
             _hostServers = hostServers;
 
             _hostLog = hostLog;
 
-            _boxCreateServerАutomatically.IsChecked = ServerMaster.NeadToConnectAuto;
-            _boxCreateServerАutomatically.Click += CheckBoxServerAutoOpen_Click;
+            _boxCreateServerAutomatic.IsChecked = ServerMaster.NeedToConnectAuto;
+            _boxCreateServerAutomatic.Click += CheckBoxServerAutoOpen_Click;
 
             ServerMaster.Log.StartPaint(_hostLog);
 
@@ -42,17 +50,44 @@ namespace OsEngine.Market
             }
 
             ServerMaster.ServerCreateEvent += ServerMasterOnServerCreateEvent;
+            ServerMaster.ServerDeleteEvent += ServerMaster_ServerDeleteEvent;
 
             LoadAttachedServers();
 
             CreateSourceGrid();
             RePaintSourceGrid();
+
+            _textBoxSearchSecurity = textBoxSearchSource;
+            _buttonRightInSearchResults = buttonRightInSearchResults;
+            _buttonLeftInSearchResults = buttonLeftInSearchResults;
+            _labelCurrentResultShow = labelCurrentResultShow;
+            _labelCommasResultShow = labelCommasResultShow;
+            _labelCountResultsShow = labelCountResultsShow;
+
+            _buttonRightInSearchResults.Visibility = Visibility.Hidden;
+            _buttonLeftInSearchResults.Visibility = Visibility.Hidden;
+            _labelCurrentResultShow.Visibility = Visibility.Hidden;
+            _labelCommasResultShow.Visibility = Visibility.Hidden;
+            _labelCountResultsShow.Visibility = Visibility.Hidden;
+            _textBoxSearchSecurity.MouseEnter += TextBoxSearchSecurity_MouseEnter;
+            _textBoxSearchSecurity.TextChanged += TextBoxSearchSecurity_TextChanged;
+            _textBoxSearchSecurity.MouseLeave += TextBoxSearchSecurity_MouseLeave;
+            _textBoxSearchSecurity.LostKeyboardFocus += TextBoxSearchSecurity_LostKeyboardFocus;
+            _buttonLeftInSearchResults.Click += ButtonLeftInSearchResults_Click;
+            _buttonRightInSearchResults.Click += ButtonRightInSearchResults_Click;
         }
 
         public void Dispose()
         {
             try
             {
+                _textBoxSearchSecurity.MouseEnter -= TextBoxSearchSecurity_MouseEnter;
+                _textBoxSearchSecurity.TextChanged -= TextBoxSearchSecurity_TextChanged;
+                _textBoxSearchSecurity.MouseLeave -= TextBoxSearchSecurity_MouseLeave;
+                _textBoxSearchSecurity.LostKeyboardFocus -= TextBoxSearchSecurity_LostKeyboardFocus;
+                _buttonLeftInSearchResults.Click -= ButtonLeftInSearchResults_Click;
+                _buttonRightInSearchResults.Click -= ButtonRightInSearchResults_Click;
+
                 ServerMaster.ServerCreateEvent -= ServerMasterOnServerCreateEvent;
 
                 for (int i = 0; _servers != null && i < _servers.Count; i++)
@@ -96,10 +131,10 @@ namespace OsEngine.Market
                     return;
                 }
 
-                if (_boxCreateServerАutomatically != null)
+                if (_boxCreateServerAutomatic != null)
                 {
-                    _boxCreateServerАutomatically.Click -= CheckBoxServerAutoOpen_Click;
-                    _boxCreateServerАutomatically = null;
+                    _boxCreateServerAutomatic.Click -= CheckBoxServerAutoOpen_Click;
+                    _boxCreateServerAutomatic = null;
                 }
 
                 if (_hostServers != null)
@@ -129,24 +164,16 @@ namespace OsEngine.Market
             }
         }
 
-        List<IServer> _servers;
+        private List<IServer> _servers;
 
-        System.Windows.Controls.CheckBox _boxCreateServerАutomatically;
+        private System.Windows.Controls.CheckBox _boxCreateServerAutomatic;
 
-        WindowsFormsHost _hostServers;
+        private WindowsFormsHost _hostServers;
 
-        WindowsFormsHost _hostLog;
+        private WindowsFormsHost _hostLog;
 
-        /// <summary>
-        /// source table
-        /// таблица источников
-        /// </summary>
         private DataGridView _gridSources;
 
-        /// <summary>
-        /// create source table
-        /// сохдать таблицу источников
-        /// </summary>
         private void CreateSourceGrid()
         {
             DataGridView newGrid = DataGridFactory.GetDataGridServers();
@@ -159,10 +186,6 @@ namespace OsEngine.Market
             _hostServers.VerticalAlignment = VerticalAlignment.Top;
         }
 
-        /// <summary>
-        /// redraw source table
-        /// перерисовать таблицу источников
-        /// </summary>
         private void RePaintSourceGrid()
         {
             try
@@ -192,7 +215,17 @@ namespace OsEngine.Market
                 {
                     DataGridViewRow row1 = new DataGridViewRow();
                     row1.Cells.Add(new DataGridViewTextBoxCell());
-                    row1.Cells[0].Value = servers[i].ServerType;
+
+                    if (servers[i].GetType().BaseType.Name == "AServer")
+                    {
+                        AServer serv = (AServer)servers[i];
+                        row1.Cells[0].Value = serv.ServerNameAndPrefix;
+                    }
+                    else
+                    {
+                        row1.Cells[0].Value = servers[i].ServerType;
+                    }
+
                     row1.Cells.Add(new DataGridViewTextBoxCell());
                     row1.Cells[1].Value = servers[i].ServerStatus;
 
@@ -278,17 +311,13 @@ namespace OsEngine.Market
                     }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                ServerMaster.Log?.ProcessMessage(ex.ToString(),Logging.LogMessageType.Error);
+                ServerMaster.Log?.ProcessMessage(ex.ToString(), Logging.LogMessageType.Error);
             }
         }
 
-        /// <summary>
-        /// double click evet on the source table
-        /// событие двойного клика на таблицу источников
-        /// </summary>
-        void _gridSources_DoubleClick(object sender, EventArgs e)
+        private void _gridSources_DoubleClick(object sender, EventArgs e)
         {
             try
             {
@@ -298,7 +327,15 @@ namespace OsEngine.Market
                 }
 
                 ServerType type;
-                Enum.TryParse(_gridSources.SelectedRows[0].Cells[0].Value.ToString(), out type);
+
+                string serverNameFull = _gridSources.SelectedRows[0].Cells[0].Value.ToString();
+
+                if (serverNameFull.Split('_').Length == 3)
+                {
+                    serverNameFull = serverNameFull.Split('_')[0] + "_" + serverNameFull.Split('_')[1];
+                }
+
+                Enum.TryParse(serverNameFull.Split('_')[0], out type);
 
                 List<IServer> servers = ServerMaster.GetServers();
 
@@ -326,14 +363,31 @@ namespace OsEngine.Market
                     }
                 }
 
-                IServer myServer = servers.Find(serv => serv.ServerType == type);
+                List<IServer> myServers = servers.FindAll(serv => serv.ServerType == type);
 
-                if (myServer == null)
+                if (myServers == null
+                    || myServers.Count == 0)
                 {
                     return;
                 }
 
-                myServer.ShowDialog();
+                int myServerNum = 0;
+
+                for (int i = 0; i < myServers.Count; i++)
+                {
+                    if (myServers[i].GetType().BaseType.Name == "AServer")
+                    {
+                        AServer aServer = (AServer)myServers[i];
+
+                        if (aServer.ServerNameUnique == serverNameFull)
+                        {
+                            myServerNum = aServer.ServerNum;
+                            break;
+                        }
+                    }
+                }
+
+                myServers[0].ShowDialog(myServerNum);
             }
             catch (Exception ex)
             {
@@ -341,14 +395,33 @@ namespace OsEngine.Market
             }
         }
 
-        /// <summary>
-        /// change status event for server
-        /// событие измениня статуса сервера
-        /// </summary>
-        /// <param name="newState"></param>
-        void ServerStatusChangeEvent(string newState)
+        private void ServerStatusChangeEvent(string newState)
         {
             RePaintSourceGrid();
+        }
+
+        private void ServerMaster_ServerDeleteEvent()
+        {
+            try
+            {
+                List<IServer> servers = ServerMaster.GetServers();
+
+                for (int i = 0; i < servers.Count; i++)
+                {
+                    if (servers[i].ServerType == ServerType.Optimizer)
+                    {
+                        continue;
+                    }
+                    servers[i].ConnectStatusChangeEvent -= ServerStatusChangeEvent;
+                    servers[i].ConnectStatusChangeEvent += ServerStatusChangeEvent;
+                }
+
+                RePaintSourceGrid();
+            }
+            catch (Exception ex)
+            {
+                ServerMaster.Log?.ProcessMessage(ex.ToString(), Logging.LogMessageType.Error);
+            }
         }
 
         private void ServerMasterOnServerCreateEvent(IServer newServer)
@@ -383,69 +456,15 @@ namespace OsEngine.Market
         {
             try
             {
-                if (_boxCreateServerАutomatically.IsChecked.HasValue)
+                if (_boxCreateServerAutomatic.IsChecked.HasValue)
                 {
-                    ServerMaster.NeadToConnectAuto = _boxCreateServerАutomatically.IsChecked.Value;
+                    ServerMaster.NeedToConnectAuto = _boxCreateServerAutomatic.IsChecked.Value;
                 }
                 ServerMaster.Save();
             }
             catch (Exception ex)
             {
                 ServerMaster.Log?.ProcessMessage(ex.ToString(), Logging.LogMessageType.Error);
-            }
-        }
-
-        // Attaching servers on top
-
-        List<ServerType> _attachedServers = new List<ServerType>();
-
-        private void LoadAttachedServers()
-        {
-            if (!File.Exists(@"Engine\AttachedServers.txt"))
-            {
-                return;
-            }
-            try
-            {
-                using (StreamReader reader = new StreamReader(@"Engine\AttachedServers.txt"))
-                {
-                    while (reader.EndOfStream == false)
-                    {
-                        ServerType type = new ServerType();
-
-                        if (Enum.TryParse(reader.ReadLine(), true, out type))
-                        {
-                            _attachedServers.Add(type);
-                        }
-                    }
-
-                    reader.Close();
-                }
-            }
-            catch (Exception)
-            {
-                // ignore
-            }
-        }
-
-        private void SaveAttachedServers()
-        {
-            try
-            {
-                using (StreamWriter writer = new StreamWriter(@"Engine\AttachedServers.txt", false)
-                    )
-                {
-                    for (int i = 0; i < _attachedServers.Count; i++)
-                    {
-                        writer.WriteLine(_attachedServers[i].ToString());
-                    }
-
-                    writer.Close();
-                }
-            }
-            catch (Exception)
-            {
-                // ignore
             }
         }
 
@@ -626,7 +645,7 @@ namespace OsEngine.Market
                     return;
                 }
 
-                
+
 
                 myServer.StartServer();
             }
@@ -634,7 +653,7 @@ namespace OsEngine.Market
             {
                 ServerMaster.Log?.ProcessMessage(ex.ToString(), Logging.LogMessageType.Error);
             }
-           
+
         }
 
         private void _gridSources_Disconnect_Click(object sender, EventArgs e)
@@ -702,5 +721,287 @@ namespace OsEngine.Market
                 ServerMaster.Log?.ProcessMessage(ex.ToString(), Logging.LogMessageType.Error);
             }
         }
+
+        #region Search in grid
+
+        private System.Windows.Controls.TextBox _textBoxSearchSecurity;
+
+        private System.Windows.Controls.Button _buttonRightInSearchResults;
+
+        private System.Windows.Controls.Button _buttonLeftInSearchResults;
+
+        private System.Windows.Controls.Label _labelCurrentResultShow;
+
+        private System.Windows.Controls.Label _labelCommasResultShow;
+
+        private System.Windows.Controls.Label _labelCountResultsShow;
+
+        private void TextBoxSearchSecurity_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            try
+            {
+                if (_textBoxSearchSecurity.Text == ""
+                    && _textBoxSearchSecurity.IsKeyboardFocused == false)
+                {
+                    _textBoxSearchSecurity.Text = OsLocalization.Market.Label64;
+                }
+            }
+            catch (Exception ex)
+            {
+                ServerMaster.SendNewLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private void TextBoxSearchSecurity_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            try
+            {
+                if (_textBoxSearchSecurity.Text == OsLocalization.Market.Label64)
+                {
+                    _textBoxSearchSecurity.Text = "";
+                }
+            }
+            catch (Exception ex)
+            {
+                ServerMaster.SendNewLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private void TextBoxSearchSecurity_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            try
+            {
+                if (_textBoxSearchSecurity.Text == "")
+                {
+                    _textBoxSearchSecurity.Text = OsLocalization.Market.Label64;
+                }
+            }
+            catch (Exception ex)
+            {
+                ServerMaster.SendNewLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private List<int> _searchResults = new List<int>();
+
+        private void TextBoxSearchSecurity_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+      {
+            UpdateSearchResults();
+            UpdateSearchPanel();
+        }
+
+        private void UpdateSearchResults()
+        {
+            try
+            {
+                _searchResults.Clear();
+
+                string key = _textBoxSearchSecurity.Text;
+
+                if (key == "")
+                {
+                    UpdateSearchPanel();
+                    return;
+                }
+
+                key = key.ToLower();
+
+                int indexFirstSec = int.MaxValue;
+
+                for (int i = 0; i < _gridSources.Rows.Count; i++)
+                {
+                    string security = "";
+
+                    if (_gridSources.Rows[i].Cells[0].Value != null)
+                    {
+                        security = _gridSources.Rows[i].Cells[0].Value.ToString();
+                    }
+
+
+                    security = security.ToLower();
+
+                    if (security.Contains(key))
+                    {
+                        if (security.IndexOf(key) == 0)
+                        {
+                            indexFirstSec = i;
+                        }
+
+                        _searchResults.Add(i);
+                    }
+                }
+
+                if (_searchResults.Count > 1 && _searchResults.Contains(indexFirstSec) && _searchResults.IndexOf(indexFirstSec) != 0)
+                {
+                    int index = _searchResults.IndexOf(indexFirstSec);
+                    _searchResults.RemoveAt(index);
+                    _searchResults.Insert(0, indexFirstSec);
+                }
+            }
+            catch (Exception ex)
+            {
+                ServerMaster.SendNewLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private void UpdateSearchPanel()
+        {
+            try
+            {
+                if (_searchResults.Count == 0)
+                {
+                    _buttonRightInSearchResults.Visibility = Visibility.Hidden;
+                    _buttonLeftInSearchResults.Visibility = Visibility.Hidden;
+                    _labelCurrentResultShow.Visibility = Visibility.Hidden;
+                    _labelCommasResultShow.Visibility = Visibility.Hidden;
+                    _labelCountResultsShow.Visibility = Visibility.Hidden;
+                    return;
+                }
+
+                int firstRow = _searchResults[0];
+
+                _gridSources.Rows[firstRow].Selected = true;
+                _gridSources.FirstDisplayedScrollingRowIndex = firstRow;
+
+                if (_searchResults.Count < 2)
+                {
+                    _buttonRightInSearchResults.Visibility = Visibility.Hidden;
+                    _buttonLeftInSearchResults.Visibility = Visibility.Hidden;
+                    _labelCurrentResultShow.Visibility = Visibility.Hidden;
+                    _labelCommasResultShow.Visibility = Visibility.Hidden;
+                    _labelCountResultsShow.Visibility = Visibility.Hidden;
+                    return;
+                }
+
+                _labelCurrentResultShow.Content = 1.ToString();
+                _labelCountResultsShow.Content = (_searchResults.Count).ToString();
+
+                _buttonRightInSearchResults.Visibility = Visibility.Visible;
+                _buttonLeftInSearchResults.Visibility = Visibility.Visible;
+                _labelCurrentResultShow.Visibility = Visibility.Visible;
+                _labelCommasResultShow.Visibility = Visibility.Visible;
+                _labelCountResultsShow.Visibility = Visibility.Visible;
+            }
+            catch (Exception ex)
+            {
+                ServerMaster.SendNewLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private void ButtonLeftInSearchResults_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                int indexRow = Convert.ToInt32(_labelCurrentResultShow.Content) - 1;
+
+                int maxRowIndex = Convert.ToInt32(_labelCountResultsShow.Content);
+
+                if (indexRow <= 0)
+                {
+                    indexRow = maxRowIndex;
+                    _labelCurrentResultShow.Content = maxRowIndex.ToString();
+                }
+                else
+                {
+                    _labelCurrentResultShow.Content = (indexRow).ToString();
+                }
+
+                int realInd = _searchResults[indexRow - 1];
+
+                _gridSources.Rows[realInd].Selected = true;
+                _gridSources.FirstDisplayedScrollingRowIndex = realInd;
+            }
+            catch (Exception ex)
+            {
+                ServerMaster.SendNewLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private void ButtonRightInSearchResults_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                int indexRow = Convert.ToInt32(_labelCurrentResultShow.Content) - 1 + 1;
+
+                int maxRowIndex = Convert.ToInt32(_labelCountResultsShow.Content);
+
+                if (indexRow >= maxRowIndex)
+                {
+                    indexRow = 0;
+                    _labelCurrentResultShow.Content = 1.ToString();
+                }
+                else
+                {
+                    _labelCurrentResultShow.Content = (indexRow + 1).ToString();
+                }
+
+                int realInd = _searchResults[indexRow];
+
+                _gridSources.Rows[realInd].Selected = true;
+                _gridSources.FirstDisplayedScrollingRowIndex = realInd;
+            }
+            catch (Exception ex)
+            {
+                ServerMaster.SendNewLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+        }
+
+        #endregion
+
+        #region Attaching servers on top
+
+        private List<ServerType> _attachedServers = new List<ServerType>();
+
+        private void LoadAttachedServers()
+        {
+            if (!File.Exists(@"Engine\AttachedServers.txt"))
+            {
+                return;
+            }
+            try
+            {
+                using (StreamReader reader = new StreamReader(@"Engine\AttachedServers.txt"))
+                {
+                    while (reader.EndOfStream == false)
+                    {
+                        ServerType type = new ServerType();
+
+                        if (Enum.TryParse(reader.ReadLine(), true, out type))
+                        {
+                            _attachedServers.Add(type);
+                        }
+                    }
+
+                    reader.Close();
+                }
+            }
+            catch (Exception)
+            {
+                // ignore
+            }
+        }
+
+        private void SaveAttachedServers()
+        {
+            try
+            {
+                using (StreamWriter writer = new StreamWriter(@"Engine\AttachedServers.txt", false)
+                    )
+                {
+                    for (int i = 0; i < _attachedServers.Count; i++)
+                    {
+                        writer.WriteLine(_attachedServers[i].ToString());
+                    }
+
+                    writer.Close();
+                }
+            }
+            catch (Exception)
+            {
+                // ignore
+            }
+        }
+
+        #endregion
     }
 }

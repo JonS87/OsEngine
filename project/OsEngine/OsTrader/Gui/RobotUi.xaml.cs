@@ -56,7 +56,7 @@ namespace OsEngine.OsTrader.Gui
                 AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Trader.Label48);
                 ui.ShowDialog();
 
-                if (ui.UserAcceptActioin == false)
+                if (ui.UserAcceptAction == false)
                 {
                     e.Cancel = true;
                     return;
@@ -193,7 +193,7 @@ namespace OsEngine.OsTrader.Gui
         {
             try
             {
-                _strategyKeeper.DeleteActiv();
+                _strategyKeeper.DeleteActive();
             }
             catch (Exception ex)
             {
@@ -269,7 +269,7 @@ namespace OsEngine.OsTrader.Gui
         {
             try
             {
-                _strategyKeeper.BotShowParametrsDialog();
+                _strategyKeeper.BotShowParametersDialog();
             }
             catch (Exception ex)
             {

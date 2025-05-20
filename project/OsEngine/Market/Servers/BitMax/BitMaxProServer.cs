@@ -23,7 +23,7 @@ namespace OsEngine.Market.Servers.BitMax
             ServerRealization = realization;
 
             CreateParameterString(OsLocalization.Market.ServerParamPublicKey, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamSecretKey, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterSecretKey, "");
         }
 
         /// <summary>
@@ -81,7 +81,7 @@ namespace OsEngine.Market.Servers.BitMax
         /// connect to API
         /// подсоединиться к апи
         /// </summary>
-        public void Connect()
+        public void Connect(WebProxy proxy = null)
         {
             if (_client == null)
             {
@@ -307,6 +307,13 @@ namespace OsEngine.Market.Servers.BitMax
         {
             _client.SubscribeTradesAndDepths(security.Name);
         }
+
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
 
         private string GetNeedTimeFrameForServer(int tameFrame)
         {
@@ -900,6 +907,7 @@ namespace OsEngine.Market.Servers.BitMax
         public event Action<Order> MyOrderEvent;
         public event Action<MyTrade> MyTradeEvent;
         public event Action<List<Portfolio>> PortfolioEvent;
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         /// <summary>
         /// new securities

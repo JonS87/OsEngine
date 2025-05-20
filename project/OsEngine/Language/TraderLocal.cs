@@ -3,7 +3,6 @@
  * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
-
 namespace OsEngine.Language
 {
     public class TraderLocal
@@ -1165,7 +1164,7 @@ namespace OsEngine.Language
          "Ru:Начальные настройки_");
 
         public string Label316 => OsLocalization.ConvertToLocString(
-         "Eng:Comission settings_" +
+         "Eng:Commission settings_" +
          "Ru:Настроки комиссии_");
 
         public string Label317 => OsLocalization.ConvertToLocString(
@@ -1189,7 +1188,7 @@ namespace OsEngine.Language
          "Ru:Значение_");
 
         public string Label322 => OsLocalization.ConvertToLocString(
-         "Eng:Substract comissions in trading_" +
+         "Eng:Substract commissions in trading_" +
          "Ru:Вычитать комиссию в торговле_");
 
         public string Label323 => OsLocalization.ConvertToLocString(
@@ -1627,5 +1626,25 @@ namespace OsEngine.Language
         public string Label431 => OsLocalization.ConvertToLocString(
          "Eng:Normalize in %_" +
          "Ru:Нормализовать в %_");
+
+        public string Label432 => OsLocalization.ConvertToLocString(
+         "Eng:Time_" +
+         "Ru:Время_");
+
+        public string Label433 => OsLocalization.ConvertToLocString(
+         "Eng:Source_" +
+         "Ru:Источник_");
+
+        public string Label434 => OsLocalization.ConvertToLocString(
+         "Eng:News_" +
+         "Ru:Новости_");
+
+        public string Label435 => OsLocalization.ConvertToLocString(
+         "Eng:SOURCE IS OFF. NO CANDLES. NO MARKET DEPTHS. NONE._" +
+         "Ru:ИСТОЧНИК ВЫКЛЮЧЕН. НЕТ СВЕЧЕЙ. НЕТ СТАКАНОВ. НИЧЕГО НЕТ_");
+
+        public string Label436 => OsLocalization.ConvertToLocString(
+         "Eng:You need to give the robot a unique name_" +
+         "Ru:Нужно дать роботу уникальное имя_");
     }
 }

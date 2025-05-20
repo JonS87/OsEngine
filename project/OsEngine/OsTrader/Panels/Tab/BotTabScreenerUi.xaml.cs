@@ -12,13 +12,14 @@ using OsEngine.Logging;
 using OsEngine.Market;
 using OsEngine.Market.Connectors;
 using OsEngine.Market.Servers;
+using OsEngine.Market.Servers.Optimizer;
 using OsEngine.Market.Servers.Tester;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Windows;
 using System.Windows.Forms;
-using System.Windows.Forms.DataVisualization.Charting;
 using System.Windows.Input;
 using MessageBox = System.Windows.MessageBox;
 
@@ -45,7 +46,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                 List<IServer> servers = ServerMaster.GetServers();
 
                 if (servers == null)
-                {// if connection server to exhange hasn't been created yet
+                {// if connection server to exchange hasn't been created yet
                     Close();
                     return;
                 }
@@ -56,32 +57,45 @@ namespace OsEngine.OsTrader.Panels.Tab
                 // upload settings to controls
                 for (int i = 0; i < servers.Count; i++)
                 {
-                    ComboBoxTypeServer.Items.Add(servers[i].ServerType);
+                    ComboBoxTypeServer.Items.Add(servers[i].ServerNameAndPrefix);
+                }
+
+                if (servers.Count > 0
+                    && servers[0].ServerType == ServerType.Optimizer)
+                {
+                    _selectedServerType = ServerType.Optimizer;
+                    connectorBot.ServerType = ServerType.Optimizer;
+                    ComboBoxTypeServer.IsEnabled = false;
+                    CheckBoxIsEmulator.IsEnabled = false;
+                    ComboBoxTypeServer.SelectedItem = ServerType.Optimizer.ToString();
+                    ComboBoxPortfolio.SelectedItem = ServerMaster.GetServers()[0].Portfolios[0].Number;
+                    ComboBoxPortfolio.IsEnabled = false;
+                    _selectedServerName = ServerType.Optimizer.ToString();
+                }
+                else if (servers.Count > 0
+                     && servers[0].ServerType == ServerType.Tester)
+                {
+                    _selectedServerType = ServerType.Tester;
+                    connectorBot.ServerType = ServerType.Tester;
+                    ComboBoxTypeServer.IsEnabled = false;
+                    CheckBoxIsEmulator.IsEnabled = false;
+                    ComboBoxTypeServer.SelectedItem = ServerType.Tester.ToString();
+                    ComboBoxPortfolio.SelectedItem = ServerMaster.GetServers()[0].Portfolios[0].Number;
+                    ComboBoxPortfolio.IsEnabled = false;
+                    _selectedServerName = ServerType.Tester.ToString();
                 }
 
                 if (connectorBot.ServerType != ServerType.None)
                 {
-                    ComboBoxTypeServer.SelectedItem = connectorBot.ServerType;
+                    ComboBoxTypeServer.SelectedItem = connectorBot.ServerName;
                     _selectedServerType = connectorBot.ServerType;
+                    _selectedServerName = connectorBot.ServerName;
                 }
                 else
                 {
-                    ComboBoxTypeServer.SelectedItem = servers[0].ServerType;
+                    ComboBoxTypeServer.SelectedItem = servers[0].ServerType.ToString();
                     _selectedServerType = servers[0].ServerType;
-                }
-
-                if (connectorBot.StartProgram == StartProgram.IsTester)
-                {
-                    ComboBoxTypeServer.IsEnabled = false;
-                    CheckBoxIsEmulator.IsEnabled = false;
-                    ComboBoxTypeServer.SelectedItem = ServerType.Tester;
-                    //ComboBoxClass.SelectedItem = ServerMaster.GetServers()[0].Securities[0].NameClass;
-
-                    ComboBoxPortfolio.SelectedItem = ServerMaster.GetServers()[0].Portfolios[0].Number;
-                    ComboBoxPortfolio.IsEnabled = false;
-
-                    connectorBot.ServerType = ServerType.Tester;
-                    _selectedServerType = ServerType.Tester;
+                    _selectedServerName = servers[0].ServerNameAndPrefix;
                 }
 
                 CreateGrid();
@@ -98,19 +112,27 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                 ComboBoxTypeServer.SelectionChanged += ComboBoxTypeServer_SelectionChanged;
 
+                CheckBoxSaveTradeArrayInCandle.IsChecked = _screener.SaveTradesInCandles;
+                CheckBoxSaveTradeArrayInCandle.Click += CheckBoxSaveTradeArrayInCandle_Click;
+
                 ComboBoxCandleMarketDataType.Items.Add(CandleMarketDataType.Tick);
                 ComboBoxCandleMarketDataType.Items.Add(CandleMarketDataType.MarketDepth);
                 ComboBoxCandleMarketDataType.SelectedItem = _screener.CandleMarketDataType;
+                ComboBoxCandleMarketDataType.SelectionChanged += ComboBoxCandleMarketDataType_SelectionChanged;
 
-                ComboBoxComissionType.Items.Add(ComissionType.None.ToString());
-                ComboBoxComissionType.Items.Add(ComissionType.OneLotFix.ToString());
-                ComboBoxComissionType.Items.Add(ComissionType.Percent.ToString());
-                ComboBoxComissionType.SelectedItem = _screener.CommissionType.ToString();
+                if (_screener.CandleMarketDataType == CandleMarketDataType.MarketDepth)
+                {
+                    CheckBoxSaveTradeArrayInCandle.IsEnabled = false;
+                    CheckBoxSaveTradeArrayInCandle.IsChecked = false;
+                }
 
-                TextBoxComissionValue.Text = _screener.CommissionValue.ToString();
 
-                CheckBoxSaveTradeArrayInCandle.IsChecked = _screener.SaveTradesInCandles;
-                CheckBoxSaveTradeArrayInCandle.Click += CheckBoxSaveTradeArrayInCandle_Click;
+                ComboBoxCommissionType.Items.Add(CommissionType.None.ToString());
+                ComboBoxCommissionType.Items.Add(CommissionType.OneLotFix.ToString());
+                ComboBoxCommissionType.Items.Add(CommissionType.Percent.ToString());
+                ComboBoxCommissionType.SelectedItem = _screener.CommissionType.ToString();
+
+                TextBoxCommissionValue.Text = _screener.CommissionValue.ToString();
 
                 _saveTradesInCandles = _screener.SaveTradesInCandles;
 
@@ -124,8 +146,8 @@ namespace OsEngine.OsTrader.Panels.Tab
                 Label8.Content = OsLocalization.Market.Label8;
                 Label9.Content = OsLocalization.Market.Label9;
                 ButtonAccept.Content = OsLocalization.Market.ButtonAccept;
-                LabelComissionType.Content = OsLocalization.Market.LabelCommissionType;
-                LabelComissionValue.Content = OsLocalization.Market.LabelCommissionValue;
+                LabelCommissionType.Content = OsLocalization.Market.LabelCommissionType;
+                LabelCommissionValue.Content = OsLocalization.Market.LabelCommissionValue;
                 CheckBoxSaveTradeArrayInCandle.Content = OsLocalization.Market.Label59;
                 CheckBoxSelectAllCheckBox.Click += CheckBoxSelectAllCheckBox_Click;
                 CheckBoxSelectAllCheckBox.Content = OsLocalization.Trader.Label173;
@@ -146,6 +168,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                 Closed += BotTabScreenerUi_Closed;
 
                 ActivateCandlesTypesControls();
+                TryUpdateTimeFramePermissions();
             }
             catch (Exception error)
             {
@@ -247,15 +270,17 @@ namespace OsEngine.OsTrader.Panels.Tab
                     _screener.EmulatorIsOn = CheckBoxIsEmulator.IsChecked.Value;
                 }
 
-                Enum.TryParse(ComboBoxTypeServer.Text, true, out _screener.ServerType);
+                Enum.TryParse(ComboBoxTypeServer.Text.Split('_')[0], true, out _screener.ServerType);
+
+                _screener.ServerName = _selectedServerName;
 
                 CandleMarketDataType createType;
                 Enum.TryParse(ComboBoxCandleMarketDataType.Text, true, out createType);
                 _screener.CandleMarketDataType = createType;
 
-                ComissionType typeComission;
-                Enum.TryParse(ComboBoxComissionType.Text, true, out typeComission);
-                _screener.CommissionType = typeComission;
+                CommissionType typeCommission;
+                Enum.TryParse(ComboBoxCommissionType.Text, true, out typeCommission);
+                _screener.CommissionType = typeCommission;
 
                 if (ComboBoxClass.SelectedItem != null)
                 {
@@ -264,7 +289,7 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                 try
                 {
-                    _screener.CommissionValue = TextBoxComissionValue.Text.ToDecimal();
+                    _screener.CommissionValue = TextBoxCommissionValue.Text.ToDecimal();
                 }
                 catch
                 {
@@ -310,7 +335,7 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                                 if (Enum.TryParse(tfStr, out tf))
                                 {
-                                   _screener.TimeFrame = tf;
+                                    _screener.TimeFrame = tf;
                                 }
                             }
                         }
@@ -345,6 +370,32 @@ namespace OsEngine.OsTrader.Panels.Tab
             }
         }
 
+        private void ComboBoxCandleMarketDataType_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            try
+            {
+                CandleMarketDataType currentDataType;
+
+                if (Enum.TryParse(ComboBoxCandleMarketDataType.SelectedValue.ToString(), out currentDataType))
+                {
+                    if (currentDataType == CandleMarketDataType.MarketDepth)
+                    {
+                        CheckBoxSaveTradeArrayInCandle.IsEnabled = false;
+                        CheckBoxSaveTradeArrayInCandle.IsChecked = false;
+                    }
+                    else
+                    {
+                        CheckBoxSaveTradeArrayInCandle.IsEnabled = true;
+                        CheckBoxSaveTradeArrayInCandle.IsChecked = _screener.SaveTradesInCandles;
+                    }
+                }
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
         private void CheckBoxSaveTradeArrayInCandle_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -363,6 +414,22 @@ namespace OsEngine.OsTrader.Panels.Tab
         {
             try
             {
+                if (ComboBoxTypeServer.SelectedValue == null)
+                {
+                    return;
+                }
+
+                string serverName = ComboBoxTypeServer.SelectedValue.ToString();
+
+                ServerType serverType;
+                if (Enum.TryParse(serverName.Split('_')[0], out serverType) == false)
+                {
+                    return;
+                }
+
+                _selectedServerType = serverType;
+                _selectedServerName = serverName;
+
                 if (_selectedServerType == ServerType.None)
                 {
                     return;
@@ -376,28 +443,20 @@ namespace OsEngine.OsTrader.Panels.Tab
                     return;
                 }
 
-                if (ComboBoxTypeServer.SelectedItem == null)
-                {
-                    return;
-                }
-
-                IServer server = serversAll.Find(server1 => server1.ServerType == _selectedServerType);
+                IServer server =
+                    serversAll.Find(
+                        server1 =>
+                        server1.ServerType == _selectedServerType
+                        && server1.ServerNameAndPrefix == _selectedServerName);
 
                 if (server != null)
                 {
                     server.SecuritiesChangeEvent -= server_SecuritiesChangeEvent;
                     server.PortfoliosChangeEvent -= server_PortfoliosChangeEvent;
+                    server.SecuritiesChangeEvent += server_SecuritiesChangeEvent;
+                    server.PortfoliosChangeEvent += server_PortfoliosChangeEvent;
                 }
 
-                Enum.TryParse(ComboBoxTypeServer.SelectedItem.ToString(), true, out _selectedServerType);
-
-                IServer server2 = serversAll.Find(server1 => server1.ServerType == _selectedServerType);
-
-                if (server2 != null)
-                {
-                    server2.SecuritiesChangeEvent += server_SecuritiesChangeEvent;
-                    server2.PortfoliosChangeEvent += server_PortfoliosChangeEvent;
-                }
                 LoadPortfolioOnBox();
                 LoadClassOnBox();
                 LoadSecurityOnBox();
@@ -409,6 +468,8 @@ namespace OsEngine.OsTrader.Panels.Tab
         }
 
         private ServerType _selectedServerType;
+
+        private string _selectedServerName;
 
         #endregion
 
@@ -428,6 +489,7 @@ namespace OsEngine.OsTrader.Panels.Tab
         private void ComboBoxClass_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             LoadSecurityOnBox();
+            TryUpdateTimeFramePermissions();
         }
 
         private void LoadPortfolioOnBox()
@@ -436,7 +498,11 @@ namespace OsEngine.OsTrader.Panels.Tab
             {
                 List<IServer> serversAll = ServerMaster.GetServers();
 
-                IServer server = serversAll.Find(server1 => server1.ServerType == _selectedServerType);
+                IServer server =
+                  serversAll.Find(
+                  server1 =>
+                  server1.ServerType == _selectedServerType
+                  && server1.ServerNameAndPrefix == _selectedServerName);
 
                 if (server == null)
                 {
@@ -525,16 +591,30 @@ namespace OsEngine.OsTrader.Panels.Tab
                     ComboBoxClass.Dispatcher.Invoke(LoadClassOnBox);
                     return;
                 }
+
                 List<IServer> serversAll = ServerMaster.GetServers();
 
-                IServer server = serversAll.Find(server1 => server1.ServerType == _selectedServerType);
+                IServer server =
+                  serversAll.Find(
+                  server1 =>
+                  server1.ServerType == _selectedServerType
+                  && server1.ServerNameAndPrefix == _selectedServerName);
 
                 if (server == null)
                 {
                     return;
                 }
 
-                var securities = server.Securities;
+                List<Security> securities = null;
+
+                if (server.ServerType == ServerType.Optimizer)
+                {
+                    securities = ((OptimizerServer)server).SecuritiesFromStorage;
+                }
+                else
+                {
+                    securities = server.Securities;
+                }
 
                 ComboBoxClass.Items.Clear();
 
@@ -582,9 +662,20 @@ namespace OsEngine.OsTrader.Panels.Tab
         {
             try
             {
+                if (CheckBoxSaveTradeArrayInCandle.Dispatcher.CheckAccess() == false)
+                {
+                    CheckBoxSaveTradeArrayInCandle.Dispatcher.Invoke(
+                        new Action(LoadSecurityOnBox));
+                    return;
+                }
+
+
                 List<IServer> serversAll = ServerMaster.GetServers();
 
-                IServer server = serversAll.Find(server1 => server1.ServerType == _selectedServerType);
+                IServer server =
+                serversAll.Find(server1 =>
+                server1.ServerType == _selectedServerType
+                && server1.ServerNameAndPrefix == _selectedServerName);
 
                 if (server == null)
                 {
@@ -594,7 +685,16 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                 // download available instruments
 
-                var securities = server.Securities;
+                List<Security> securities = null;
+
+                if (server.ServerType == ServerType.Optimizer)
+                {
+                    securities = ((OptimizerServer)server).SecuritiesFromStorage;
+                }
+                else
+                {
+                    securities = server.Securities;
+                }
 
                 List<Security> securitiesToLoad = new List<Security>();
 
@@ -804,7 +904,10 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                 for (int i = 0; i < _gridSecurities.Rows.Count; i++)
                 {
-                    _gridSecurities.Rows[i].Cells[6].Value = isCheck;
+                    if(_gridSecurities.Rows[i].Cells[6].ReadOnly == false)
+                    {
+                        _gridSecurities.Rows[i].Cells[6].Value = isCheck;
+                    }
                 }
             }
             catch (Exception ex)
@@ -825,6 +928,166 @@ namespace OsEngine.OsTrader.Panels.Tab
             }
 
             return sec;
+        }
+
+        private void TryUpdateTimeFramePermissions()
+        {
+            try
+            {
+                if(_candlesRealizationGrid == null)
+                {
+                    return;
+                }
+
+                if (_screener.StartProgram != StartProgram.IsOsOptimizer
+                     && _screener.StartProgram != StartProgram.IsTester)
+                {
+                    return;
+                }
+
+                if (CheckBoxSaveTradeArrayInCandle.Dispatcher.CheckAccess() == false)
+                {
+                    CheckBoxSaveTradeArrayInCandle.Dispatcher.Invoke(
+                        new Action(TryUpdateTimeFramePermissions));
+                    return;
+                }
+
+                for (int i = 0; i < _candlesRealizationGrid.Rows.Count; i++)
+                {
+                    DataGridViewRow row = _candlesRealizationGrid.Rows[i];
+
+                    TimeFrame currentTf;
+
+                    if (Enum.TryParse(row.Cells[1].Value.ToString(), out currentTf) == false)
+                    {
+                        continue;
+                    }
+
+                    DataGridViewComboBoxCell cell = (DataGridViewComboBoxCell)row.Cells[1];
+                    CheckCurrentTfInSecuritiesForTesterOrOptimizer(cell);
+                }
+            }
+            catch(Exception ex)
+            {
+                SendNewLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private void CheckCurrentTfInSecuritiesForTesterOrOptimizer(DataGridViewComboBoxCell box)
+        {
+            try
+            {
+                if (_screener.StartProgram != StartProgram.IsOsOptimizer
+                && _screener.StartProgram != StartProgram.IsTester)
+                {
+                    return;
+                }
+
+                if (_gridSecurities.Rows.Count == 0)
+                {
+                    return;
+                }
+
+                if (box.Value == null)
+                {
+                    return;
+                }
+
+                // 1 берём текущий выбранный ТФ
+
+                TimeFrame currentTf;
+
+                if (Enum.TryParse(box.Value.ToString(), out currentTf) == false)
+                {
+                    return;
+                }
+
+                // 2 берём все доступные данные из сервера
+
+                TesterServer serverTester = null;
+                OptimizerServer serverOpt = null;
+
+                IServer serverI = ServerMaster.GetServers()[0];
+
+                if (serverI.ServerType == ServerType.Tester)
+                {
+                    serverTester = (TesterServer)serverI;
+
+                    if (serverTester.TypeTesterData != TesterDataType.Candle)
+                    {
+                        return;
+                    }
+                }
+                else if (serverI.ServerType == ServerType.Optimizer)
+                {
+                    serverOpt = (OptimizerServer)serverI;
+
+                    if (serverOpt.TypeTesterData != TesterDataType.Candle)
+                    {
+                        return;
+                    }
+                }
+
+                List<SecurityTester> securities = null;
+
+                if (serverTester != null)
+                {
+                    securities = serverTester.SecuritiesTester;
+                }
+                else if (serverOpt != null)
+                {
+                    securities = serverOpt.SecuritiesTester;
+                }
+
+                // 3 бежим по таблице бумаг и запрещаем те по которым нет этого таймфрейма
+
+                for (int i = 0; i < _gridSecurities.Rows.Count; i++)
+                {
+                    string currentSecurity = _gridSecurities.Rows[i].Cells[3].Value.ToString();
+
+                    bool haveThisTf = false;
+
+                    for (int i2 = 0; i2 < securities.Count; i2++)
+                    {
+                        if (securities[i2].Security.Name == currentSecurity
+                            && securities[i2].TimeFrame == currentTf)
+                        {
+                            haveThisTf = true;
+                            break;
+                        }
+                    }
+
+                    if (haveThisTf == true)
+                    {
+                        _gridSecurities.Rows[i].Cells[6].ReadOnly = false;
+
+                        _gridSecurities.Rows[i].Cells[6].Style.BackColor
+                            = _gridSecurities.Columns[0].DefaultCellStyle.BackColor;
+
+                        _gridSecurities.Rows[i].Cells[6].Style.SelectionBackColor
+                             = _gridSecurities.Columns[0].DefaultCellStyle.SelectionBackColor;
+
+                    }
+                    else if (haveThisTf == false)
+                    {
+                        _gridSecurities.Rows[i].Cells[6].ReadOnly = true;
+                        _gridSecurities.Rows[i].Cells[6].Style.BackColor = Color.DarkGray;
+                        _gridSecurities.Rows[i].Cells[6].Style.SelectionBackColor = Color.DarkGray;
+
+                        DataGridViewCheckBoxCell cellIsOn = (DataGridViewCheckBoxCell)_gridSecurities.Rows[i].Cells[6];
+
+                        if (cellIsOn.Value != null
+                            && cellIsOn.Value.ToString() == "True")
+                        {
+                            cellIsOn.Value = false;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SendNewLogMessage(ex.ToString(), LogMessageType.Error);
+            }
         }
 
         #endregion
@@ -908,6 +1171,8 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                 key = key.ToLower();
 
+                int indexFirstSec = int.MaxValue;
+
                 for (int i = 0; i < _gridSecurities.Rows.Count; i++)
                 {
                     string security = "";
@@ -926,11 +1191,22 @@ namespace OsEngine.OsTrader.Panels.Tab
                     security = security.ToLower();
                     secSecond = secSecond.ToLower();
 
-                    if (security.Contains(key) ||
-                        secSecond.Contains(key))
+                    if (security.Contains(key) || secSecond.Contains(key))
                     {
+                        if (security.IndexOf(key) == 0 || secSecond.IndexOf(key) == 0)
+                        {
+                            indexFirstSec = i;
+                        }
+
                         _searchResults.Add(i);
                     }
+                }
+
+                if (_searchResults.Count > 1 && _searchResults.Contains(indexFirstSec) && _searchResults.IndexOf(indexFirstSec) != 0)
+                {
+                    int index = _searchResults.IndexOf(indexFirstSec);
+                    _searchResults.RemoveAt(index);
+                    _searchResults.Insert(0, indexFirstSec);
                 }
             }
             catch (Exception ex)
@@ -1192,9 +1468,9 @@ namespace OsEngine.OsTrader.Panels.Tab
             Enum.TryParse(ComboBoxCandleMarketDataType.Text, true, out createType);
             curCreator.CandleMarketDataType = createType;
 
-            ComissionType typeComission;
-            Enum.TryParse(ComboBoxComissionType.Text, true, out typeComission);
-            curCreator.CommissionType = typeComission;
+            CommissionType typeCommission;
+            Enum.TryParse(ComboBoxCommissionType.Text, true, out typeCommission);
+            curCreator.CommissionType = typeCommission;
 
             if (ComboBoxClass.SelectedItem != null)
             {
@@ -1203,7 +1479,7 @@ namespace OsEngine.OsTrader.Panels.Tab
 
             try
             {
-                curCreator.CommissionValue = TextBoxComissionValue.Text.ToDecimal();
+                curCreator.CommissionValue = TextBoxCommissionValue.Text.ToDecimal();
             }
             catch
             {
@@ -1276,9 +1552,9 @@ namespace OsEngine.OsTrader.Panels.Tab
                 ComboBoxTypeServer.Text = curCreator.ServerType.ToString();
                 ComboBoxCandleMarketDataType.Text = curCreator.CandleMarketDataType.ToString();
                 ComboBoxCandleCreateMethodType.Text = curCreator.CandleCreateMethodType.ToString();
-                ComboBoxComissionType.Text = curCreator.CommissionType.ToString();
+                ComboBoxCommissionType.Text = curCreator.CommissionType.ToString();
                 ComboBoxClass.SelectedItem = curCreator.SecuritiesClass.ToString();
-                TextBoxComissionValue.Text = curCreator.CommissionValue.ToString();
+                TextBoxCommissionValue.Text = curCreator.CommissionValue.ToString();
 
                 for (int i = 0; i < _gridSecurities.Rows.Count; i++)
                 {
@@ -1418,25 +1694,26 @@ namespace OsEngine.OsTrader.Panels.Tab
             {
                 DataGridViewComboBoxCell cell = new DataGridViewComboBoxCell();
 
-                CandlesParameterString paramStr = (CandlesParameterString)param;
+                CandlesParameterString parameterStr = (CandlesParameterString)param;
 
-                if (paramStr.SysName == "TimeFrame")
+                if (parameterStr.SysName == "TimeFrame")
                 {
                     LoadTimeFrameBox(cell);
+                    CheckCurrentTfInSecuritiesForTesterOrOptimizer(cell);
                 }
                 else
                 {
-                    for (int i = 0; i < paramStr.ValuesString.Count; i++)
+                    for (int i = 0; i < parameterStr.ValuesString.Count; i++)
                     {
-                        cell.Items.Add(paramStr.ValuesString[i]);
+                        cell.Items.Add(parameterStr.ValuesString[i]);
                     }
                 }
 
                 for (int i = 0; i < cell.Items.Count; i++)
                 {
-                    if (cell.Items[i].ToString() == paramStr.ValueString)
+                    if (cell.Items[i].ToString() == parameterStr.ValueString)
                     {
-                        cell.Value = paramStr.ValueString;
+                        cell.Value = parameterStr.ValueString;
                         break;
                     }
                 }
@@ -1445,7 +1722,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                     cell.Items.Count > 0)
                 {
                     cell.Value = cell.Items[0].ToString();
-                    paramStr.ValueString = cell.Items[0].ToString();
+                    parameterStr.ValueString = cell.Items[0].ToString();
                 }
 
                 row.Cells.Add(cell);
@@ -1465,8 +1742,26 @@ namespace OsEngine.OsTrader.Panels.Tab
             {
                 // Timeframe
                 // таймФрейм
-                TesterServer server = (TesterServer)ServerMaster.GetServers()[0];
-                if (server.TypeTesterData != TesterDataType.Candle)
+
+                TesterServer serverTester = null;
+                OptimizerServer serverOpt = null;
+
+                IServer serverI = ServerMaster.GetServers()[0];
+
+                if (serverI.ServerType == ServerType.Tester)
+                {
+                    serverTester = (TesterServer)serverI;
+                }
+                else if (serverI.ServerType == ServerType.Optimizer)
+                {
+                    serverOpt = (OptimizerServer)serverI;
+                }
+
+                if ((serverTester != null &&
+                    serverTester.TypeTesterData != TesterDataType.Candle)
+                    ||
+                    (serverOpt != null &&
+                    serverOpt.TypeTesterData != TesterDataType.Candle))
                 {
                     // if we build data on ticks or depths, then any Timeframe can be used
                     // candle manager builds any Timeframe
@@ -1503,14 +1798,16 @@ namespace OsEngine.OsTrader.Panels.Tab
                     // далее, если используем готовые свечки, то нужно ставить только те ТФ, которые есть
                     // и вставляются они только когда мы выбираем бумагу в методе 
 
-                    TesterServer serverr = (TesterServer)ServerMaster.GetServers()[0];
+                    List<SecurityTester> securities = null;
 
-                    if (serverr.TypeTesterData != TesterDataType.Candle)
+                    if (serverTester != null)
                     {
-                        return;
+                        securities = serverTester.SecuritiesTester;
                     }
-
-                    List<SecurityTester> securities = serverr.SecuritiesTester;
+                    else if (serverOpt != null)
+                    {
+                        securities = serverOpt.SecuritiesTester;
+                    }
 
                     if (securities == null ||
                         securities.Count == 0)
@@ -1518,14 +1815,32 @@ namespace OsEngine.OsTrader.Panels.Tab
                         return;
                     }
 
-                    string name = securities[0].Security.Name;
+                    List<string> timeFramesArray = new List<string>();
 
                     for (int i = 0; i < securities.Count; i++)
                     {
-                        if (name == securities[i].Security.Name)
+                        TimeFrame curTf = securities[i].TimeFrame;
+
+                        bool isInArray = false;
+
+                        for(int i2 = 0;i2 < timeFramesArray.Count;i2++)
                         {
-                            box.Items.Add(securities[i].TimeFrame.ToString());
+                            if (timeFramesArray[i2] == curTf.ToString())
+                            {
+                                isInArray = true;
+                                break;
+                            }
                         }
+
+                        if(isInArray == false)
+                        {
+                            timeFramesArray.Add(curTf.ToString());
+                        }
+                    }
+
+                    for (int i = 0; i < timeFramesArray.Count; i++)
+                    {
+                        box.Items.Add(timeFramesArray[i]);
                     }
 
                     ComboBoxCandleCreateMethodType.SelectedItem = CandleCreateMethodType.Simple;
@@ -1539,11 +1854,14 @@ namespace OsEngine.OsTrader.Panels.Tab
             {
                 List<IServer> serversAll = ServerMaster.GetServers();
 
-                IServer serverr = serversAll.Find(server1 => server1.ServerType == _selectedServerType);
+                IServer server =
+                  serversAll.Find(server1 =>
+                  server1.ServerType == _selectedServerType
+                  && server1.ServerNameAndPrefix == _selectedServerName);
 
                 IServerPermission permission = ServerMaster.GetServerPermission(_selectedServerType);
 
-                if (serverr == null
+                if (server == null
                     || permission == null)
                 {
                     box.Items.Add(TimeFrame.Day.ToString());
@@ -1733,6 +2051,14 @@ namespace OsEngine.OsTrader.Panels.Tab
                 else if (param.Type == CandlesParameterType.StringCollection)
                 {
                     ((CandlesParameterString)param).ValueString = value;
+
+                    if (param.SysName == "TimeFrame")
+                    {
+                        DataGridViewComboBoxCell cell = (DataGridViewComboBoxCell)_candlesRealizationGrid.Rows[row].Cells[1];
+
+                        CheckCurrentTfInSecuritiesForTesterOrOptimizer(cell);
+                    }
+
                 }
             }
             catch (Exception ex)

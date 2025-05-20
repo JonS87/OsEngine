@@ -35,7 +35,7 @@ using OsEngine.Market.Servers.ZB;
 using OsEngine.Market.Servers.Hitbtc;
 using OsEngine.Market.Servers.MFD;
 using OsEngine.Market.Servers.MOEX;
-using OsEngine.Market.Servers.TinkoffInvestments;
+using OsEngine.Market.Servers.TInvest;
 using MessageBox = System.Windows.MessageBox;
 using OsEngine.Market.Servers.Bybit;
 using OsEngine.Market.Servers.OKX;
@@ -67,6 +67,16 @@ using OsEngine.Market.Servers.TraderNet;
 using OsEngine.Market.Servers.Mexc;
 using OsEngine.Market.Servers.KiteConnect;
 using OsEngine.Market.Servers.YahooFinance;
+using OsEngine.Market.Servers.Atp;
+using OsEngine.Market.Servers.Polygon;
+using OsEngine.Market.Servers.CoinEx.Spot;
+using OsEngine.Market.Servers.CoinEx.Futures;
+using OsEngine.Market.Servers.RSSNews;
+using OsEngine.Market.Servers.SmartLabNews;
+using OsEngine.Market.Servers.AE;
+using OsEngine.Market.Proxy;
+using System.Net;
+using OsEngine.Market.Servers.BloFin;
 
 
 namespace OsEngine.Market
@@ -79,6 +89,11 @@ namespace OsEngine.Market
     {
 
         #region Service
+
+        public static void Activate()
+        {
+            ActivateLogging();
+        }
 
         /// <summary>
         /// show settings
@@ -117,7 +132,7 @@ namespace OsEngine.Market
             {
                 using (StreamWriter writer = new StreamWriter(@"Engine\" + @"ServerMaster.txt", false))
                 {
-                    writer.WriteLine(NeadToConnectAuto);
+                    writer.WriteLine(NeedToConnectAuto);
                     writer.Close();
                 }
             }
@@ -140,13 +155,90 @@ namespace OsEngine.Market
             {
                 using (StreamReader reader = new StreamReader(@"Engine\" + @"ServerMaster.txt"))
                 {
-                    NeadToConnectAuto = Convert.ToBoolean(reader.ReadLine());
+                    NeedToConnectAuto = Convert.ToBoolean(reader.ReadLine());
                     reader.Close();
                 }
             }
             catch (Exception error)
             {
                 SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private static List<ServerType> _loadServerInstance = new List<ServerType>();
+
+        private static void TryLoadServerInstance(ServerType serverType)
+        {
+            IServerPermission serverPermission = GetServerPermission(serverType);
+
+            if (serverPermission == null
+                || serverPermission.IsSupports_MultipleInstances == false)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _loadServerInstance.Count; i++)
+            {
+                if (_loadServerInstance[i] == serverType)
+                {
+                    return;
+                }
+            }
+
+            _loadServerInstance.Add(serverType);
+
+            if (!File.Exists(@"Engine\" + serverType + @"ServerInstanceNumbers.txt"))
+            {
+                return;
+            }
+            try
+            {
+                using (StreamReader reader = new StreamReader(@"Engine\" + serverType + @"ServerInstanceNumbers.txt"))
+                {
+                    while (reader.EndOfStream == false)
+                    {
+                        int currentNumber = Convert.ToInt32(reader.ReadLine());
+
+                        if (currentNumber != 0)
+                        {
+                            CreateServer(serverType, false, currentNumber);
+                        }
+                    }
+
+                    reader.Close();
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        public static void TrySaveServerInstance(List<AServer> servers)
+        {
+            try
+            {
+                if (servers == null
+                    || servers.Count == 0)
+                {
+                    return;
+                }
+
+                ServerType serverType = servers[0].ServerType;
+
+                using (StreamWriter writer = new StreamWriter(@"Engine\" + serverType + @"ServerInstanceNumbers.txt", false))
+                {
+                    for (int i = 0; i < servers.Count; i++)
+                    {
+                        writer.WriteLine(servers[i].ServerNum);
+                    }
+
+                    writer.Close();
+                }
+            }
+            catch
+            {
+                // ignore
             }
         }
 
@@ -168,16 +260,24 @@ namespace OsEngine.Market
             {
                 List<ServerType> serverTypes = new List<ServerType>();
 
-                
+
                 serverTypes.Add(ServerType.Alor);
                 serverTypes.Add(ServerType.QuikDde);
                 serverTypes.Add(ServerType.QuikLua);
                 serverTypes.Add(ServerType.Plaza);
                 serverTypes.Add(ServerType.Transaq);
-                serverTypes.Add(ServerType.TinkoffInvestments);
+                serverTypes.Add(ServerType.TInvest);
                 serverTypes.Add(ServerType.Finam);
                 serverTypes.Add(ServerType.MoexDataServer);
                 serverTypes.Add(ServerType.MfdWeb);
+                serverTypes.Add(ServerType.MoexAlgopack);
+                serverTypes.Add(ServerType.MoexFixFastSpot);
+
+                serverTypes.Add(ServerType.Atp);
+                serverTypes.Add(ServerType.KiteConnect);
+                serverTypes.Add(ServerType.TraderNet);
+                serverTypes.Add(ServerType.InteractiveBrokers);
+                serverTypes.Add(ServerType.NinjaTrader);
 
                 serverTypes.Add(ServerType.GateIoSpot);
                 serverTypes.Add(ServerType.GateIoFutures);
@@ -187,7 +287,7 @@ namespace OsEngine.Market
                 serverTypes.Add(ServerType.BinanceFutures);
                 serverTypes.Add(ServerType.BitMex);
                 serverTypes.Add(ServerType.BitStamp);
-                serverTypes.Add(ServerType.Bitfinex);
+                serverTypes.Add(ServerType.BitfinexSpot);
                 serverTypes.Add(ServerType.Kraken);
                 serverTypes.Add(ServerType.KuCoinSpot);
                 serverTypes.Add(ServerType.KuCoinFutures);
@@ -207,20 +307,20 @@ namespace OsEngine.Market
                 serverTypes.Add(ServerType.XTSpot);
                 serverTypes.Add(ServerType.PionexSpot);
                 serverTypes.Add(ServerType.Woo);
-                serverTypes.Add(ServerType.MoexAlgopack);
-                serverTypes.Add(ServerType.MoexFixFastSpot);
-                serverTypes.Add(ServerType.InteractiveBrokers);
-                serverTypes.Add(ServerType.NinjaTrader);
+
                 serverTypes.Add(ServerType.Lmax);
                 serverTypes.Add(ServerType.BitMart);
                 serverTypes.Add(ServerType.BitMartFutures);
                 serverTypes.Add(ServerType.MoexFixFastCurrency);
                 serverTypes.Add(ServerType.MoexFixFastTwimeFutures);
-                serverTypes.Add(ServerType.TraderNet);
-                serverTypes.Add(ServerType.Mexc);
-                serverTypes.Add(ServerType.KiteConnect);
+                serverTypes.Add(ServerType.MexcSpot);
                 serverTypes.Add(ServerType.AstsBridge);
-
+                serverTypes.Add(ServerType.CoinExSpot);
+                serverTypes.Add(ServerType.CoinExFutures);
+                serverTypes.Add(ServerType.RSSNews);
+                serverTypes.Add(ServerType.SmartLabNews);
+                serverTypes.Add(ServerType.AExchange);
+                serverTypes.Add(ServerType.BloFinFutures);
 
                 // а теперь сортируем в зависимости от предпочтений пользователя
 
@@ -228,9 +328,9 @@ namespace OsEngine.Market
 
                 for (int i = 0; i < popularity.Count; i++)
                 {
-                    for(int i2 = 0;i2 < serverTypes.Count;i2++)
+                    for (int i2 = 0; i2 < serverTypes.Count; i2++)
                     {
-                        if(serverTypes[i2] == popularity[i].ServerType)
+                        if (serverTypes[i2] == popularity[i].ServerType)
                         {
                             serverTypes.RemoveAt(i2);
                             i2--;
@@ -255,14 +355,14 @@ namespace OsEngine.Market
 
                     for (int i2 = 0; i2 < serverTypes.Count; i2++)
                     {
-                        if(serverTypes[i2].ToString() == popularity[i].ServerType.ToString())
+                        if (serverTypes[i2].ToString() == popularity[i].ServerType.ToString())
                         {
                             isInArray = true;
                             break;
                         }
                     }
 
-                    if(isInArray)
+                    if (isInArray)
                     {
                         continue;
                     }
@@ -272,7 +372,7 @@ namespace OsEngine.Market
 
                 for (int i = 0; i < serverTypes.Count; i++)
                 {
-                    if(serverTypes[i].ToString() == "None")
+                    if (serverTypes[i].ToString() == "None")
                     {
                         serverTypes.RemoveAt(i);
                         break;
@@ -292,7 +392,7 @@ namespace OsEngine.Market
             {
                 List<ServerType> serverTypes = new List<ServerType>();
 
-                serverTypes.Add(ServerType.TinkoffInvestments);
+                serverTypes.Add(ServerType.TInvest);
                 serverTypes.Add(ServerType.XTSpot);
                 serverTypes.Add(ServerType.Deribit);
                 serverTypes.Add(ServerType.KuCoinSpot);
@@ -308,10 +408,9 @@ namespace OsEngine.Market
                 serverTypes.Add(ServerType.BingXFutures);
                 serverTypes.Add(ServerType.BitMex);
                 serverTypes.Add(ServerType.BitStamp);
-                serverTypes.Add(ServerType.Bitfinex);
+                serverTypes.Add(ServerType.BitfinexSpot);
                 serverTypes.Add(ServerType.Kraken);
                 serverTypes.Add(ServerType.Exmo);
-                serverTypes.Add(ServerType.HTXSpot);
                 serverTypes.Add(ServerType.HTXFutures);
                 serverTypes.Add(ServerType.HTXSwap);
                 serverTypes.Add(ServerType.Bybit);
@@ -322,6 +421,9 @@ namespace OsEngine.Market
                 serverTypes.Add(ServerType.TraderNet);
                 serverTypes.Add(ServerType.KiteConnect);
                 serverTypes.Add(ServerType.YahooFinance);
+                serverTypes.Add(ServerType.Polygon);
+                serverTypes.Add(ServerType.CoinExSpot);
+                serverTypes.Add(ServerType.CoinExFutures);
 
                 return serverTypes;
             }
@@ -375,18 +477,16 @@ namespace OsEngine.Market
             }
             catch (Exception error)
             {
-                SendNewLogMessage(error.ToString(),LogMessageType.Error);
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
             }
         }
-
-        private static List<ServerType> _alreadyCreatedServers = new List<ServerType>(); 
 
         /// <summary>
         /// create server
         /// </summary>
         /// <param name="type"> server type / тип сервера </param>
-        /// <param name="neadLoadTicks"> shows whether upload ticks from storage. this is need for bots with QUIK or Plaza2 servers / нужно ли подгружать тики из хранилища. Актуально в режиме робота для серверов Квик, Плаза 2 </param>
-        public static void CreateServer(ServerType type, bool neadLoadTicks)
+        /// <param name="needLoadTicks"> shows whether upload ticks from storage. this is need for bots with QUIK or Plaza2 servers / нужно ли подгружать тики из хранилища. Актуально в режиме робота для серверов Квик, Плаза 2 </param>
+        public static void CreateServer(ServerType type, bool needLoadTicks, int uniqueNum = 0)
         {
             try
             {
@@ -395,29 +495,48 @@ namespace OsEngine.Market
                     _servers = new List<IServer>();
                 }
 
-                if (_servers.Find(server => server.ServerType == type) != null)
+                for (int i = 0; i < _servers.Count; i++)
                 {
-                    return;
-                }
+                    if (_servers[i].GetType().BaseType.Name.ToString() == "AServer")
+                    {
+                        AServer serverCurrent = (AServer)_servers[i];
 
-                for(int i = 0;i < _alreadyCreatedServers.Count;i++)
-                {
-                    if (_alreadyCreatedServers[i] == type)
+                        if (serverCurrent.ServerType == type
+                            && serverCurrent.ServerNum == uniqueNum)
+                        {
+                            return;
+                        }
+
+                    }
+                    else if (_servers[i].ServerType == type)
                     {
                         return;
                     }
                 }
 
-                _alreadyCreatedServers.Add(type);  
-
                 SaveMostPopularServers(type);
 
                 IServer newServer = null;
 
-
+                if (type == ServerType.AExchange)
+                {
+                    newServer = new AExchangeServer();
+                }
+                if (type == ServerType.SmartLabNews)
+                {
+                    newServer = new SmartLabNewsServer();
+                }
+                if (type == ServerType.RSSNews)
+                {
+                    newServer = new RSSNewsServer(uniqueNum);
+                }
                 if (type == ServerType.MoexFixFastTwimeFutures)
                 {
                     newServer = new MoexFixFastTwimeFuturesServer();
+                }
+                if (type == ServerType.Atp)
+                {
+                    newServer = new AtpServer();
                 }
                 if (type == ServerType.MoexFixFastCurrency)
                 {
@@ -425,7 +544,7 @@ namespace OsEngine.Market
                 }
                 if (type == ServerType.BingXSpot)
                 {
-                    newServer = new BingXServerSpot();
+                    newServer = new BingXServerSpot(uniqueNum);
                 }
                 if (type == ServerType.MoexAlgopack)
                 {
@@ -437,31 +556,31 @@ namespace OsEngine.Market
                 }
                 if (type == ServerType.XTSpot)
                 {
-                    newServer = new XTServerSpot();
+                    newServer = new XTServerSpot(uniqueNum);
                 }
                 if (type == ServerType.BingXFutures)
                 {
-                    newServer = new BingXServerFutures();
+                    newServer = new BingXServerFutures(uniqueNum);
                 }
                 if (type == ServerType.KuCoinFutures)
                 {
-                    newServer = new KuCoinFuturesServer();
+                    newServer = new KuCoinFuturesServer(uniqueNum);
                 }
                 if (type == ServerType.KuCoinSpot)
                 {
-                    newServer = new KuCoinSpotServer();
+                    newServer = new KuCoinSpotServer(uniqueNum);
                 }
                 if (type == ServerType.Alor)
                 {
-                    newServer = new AlorServer();
+                    newServer = new AlorServer(uniqueNum);
                 }
                 if (type == ServerType.BitGetFutures)
                 {
-                    newServer = new BitGetServerFutures();
+                    newServer = new BitGetServerFutures(uniqueNum);
                 }
                 if (type == ServerType.BitGetSpot)
                 {
-                    newServer = new BitGetServerSpot();
+                    newServer = new BitGetServerSpot(uniqueNum);
                 }
                 if (type == ServerType.Bitmax_AscendexFutures)
                 {
@@ -469,7 +588,7 @@ namespace OsEngine.Market
                 }
                 if (type == ServerType.OKX)
                 {
-                    newServer = new OkxServer();
+                    newServer = new OkxServer(uniqueNum);
                 }
                 if (type == ServerType.MfdWeb)
                 {
@@ -479,9 +598,9 @@ namespace OsEngine.Market
                 {
                     newServer = new MoexDataServer();
                 }
-                if (type == ServerType.TinkoffInvestments)
+                if (type == ServerType.TInvest)
                 {
-                    newServer = new TinkoffInvestmentsServer();
+                    newServer = new TInvestServer();
                 }
                 if (type == ServerType.Hitbtc)
                 {
@@ -489,15 +608,15 @@ namespace OsEngine.Market
                 }
                 if (type == ServerType.GateIoSpot)
                 {
-                    newServer = new GateIoServerSpot();
+                    newServer = new GateIoServerSpot(uniqueNum);
                 }
                 if (type == ServerType.GateIoFutures)
                 {
-                    newServer = new GateIoServerFutures();
+                    newServer = new GateIoServerFutures(uniqueNum);
                 }
                 if (type == ServerType.Bybit)
                 {
-                    newServer = new BybitServer();
+                    newServer = new BybitServer(uniqueNum);
                 }
                 if (type == ServerType.Zb)
                 {
@@ -519,17 +638,17 @@ namespace OsEngine.Market
                 {
                     newServer = new LmaxServer();
                 }
-                if (type == ServerType.Bitfinex)
+                if (type == ServerType.BitfinexSpot)
                 {
-                    newServer = new BitfinexServer();
+                    newServer = new BitfinexSpotServer(uniqueNum);
                 }
                 if (type == ServerType.Binance)
                 {
-                    newServer = new BinanceServerSpot();
+                    newServer = new BinanceServerSpot(uniqueNum);
                 }
                 if (type == ServerType.BinanceFutures)
                 {
-                    newServer = new BinanceServerFutures();
+                    newServer = new BinanceServerFutures(uniqueNum);
                 }
                 if (type == ServerType.NinjaTrader)
                 {
@@ -565,7 +684,7 @@ namespace OsEngine.Market
                 }
                 else if (type == ServerType.AstsBridge)
                 {
-                    newServer = new AstsBridgeServer(neadLoadTicks);
+                    newServer = new AstsBridgeServer(needLoadTicks);
                 }
                 else if (type == ServerType.Tester)
                 {
@@ -589,15 +708,15 @@ namespace OsEngine.Market
                 }
                 else if (type == ServerType.HTXSpot)
                 {
-                    newServer = new HTXSpotServer();
+                    newServer = new HTXSpotServer(uniqueNum);
                 }
                 else if (type == ServerType.HTXFutures)
                 {
-                    newServer = new HTXFuturesServer();
+                    newServer = new HTXFuturesServer(uniqueNum);
                 }
                 else if (type == ServerType.HTXSwap)
                 {
-                    newServer = new HTXSwapServer();
+                    newServer = new HTXSwapServer(uniqueNum);
                 }
                 else if (type == ServerType.BitMart)
                 {
@@ -611,9 +730,9 @@ namespace OsEngine.Market
                 {
                     newServer = new TraderNetServer();
                 }
-                else if (type == ServerType.Mexc)
+                else if (type == ServerType.MexcSpot)
                 {
-                    newServer = new MexcServer();
+                    newServer = new MexcSpotServer(uniqueNum);
                 }
                 else if (type == ServerType.KiteConnect)
                 {
@@ -622,6 +741,22 @@ namespace OsEngine.Market
                 else if (type == ServerType.YahooFinance)
                 {
                     newServer = new YahooServer();
+                }
+                else if (type == ServerType.Polygon)
+                {
+                    newServer = new PolygonServer();
+                }
+                else if (type == ServerType.CoinExSpot)
+                {
+                    newServer = new CoinExServerSpot();
+                }
+                else if (type == ServerType.CoinExFutures)
+                {
+                    newServer = new CoinExServerFutures();
+                }
+                else if (type == ServerType.BloFinFutures)
+                {
+                    newServer = new BloFinFuturesServer(uniqueNum);
                 }
 
                 if (newServer == null)
@@ -637,10 +772,48 @@ namespace OsEngine.Market
                 }
 
                 SendNewLogMessage(OsLocalization.Market.Message3 + _servers[_servers.Count - 1].ServerType, LogMessageType.System);
+
+                TryLoadServerInstance(type);
             }
             catch (Exception error)
             {
                 SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
+        /// <summary>
+        /// delete server
+        /// </summary>
+        /// <param name="type"> server type </param>
+        /// <param name="uniqueNum"> server number </param>
+        public static void DeleteServer(ServerType type, int uniqueNum)
+        {
+            if (uniqueNum < 1)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _servers.Count; i++)
+            {
+                if (_servers[i].GetType().BaseType.Name.ToString() == "AServer")
+                {
+                    AServer serverCurrent = (AServer)_servers[i];
+
+                    if (serverCurrent.ServerType == type
+                        && serverCurrent.ServerNum == uniqueNum)
+                    {
+                        serverCurrent.Delete();
+
+                        _servers.RemoveAt(i);
+
+                        if (ServerDeleteEvent != null)
+                        {
+                            ServerDeleteEvent();
+                        }
+
+                        return;
+                    }
+                }
             }
         }
 
@@ -653,9 +826,9 @@ namespace OsEngine.Market
 
             bool isInArray = false;
 
-            for(int i = 0;i < servers.Count;i++)
+            for (int i = 0; i < servers.Count; i++)
             {
-                if(servers[i].ServerType == type)
+                if (servers[i].ServerType == type)
                 {
                     servers[i].CountOfCreation += 1;
                     isInArray = true;
@@ -677,19 +850,19 @@ namespace OsEngine.Market
                 {
                     List<ServerType> alreadySaveServers = new List<ServerType>();
 
-                    for(int i = 0;i < servers.Count;i++)
+                    for (int i = 0; i < servers.Count; i++)
                     {
                         bool isSaved = false;
-                        for(int i2 = 0; i2 < alreadySaveServers.Count;i2++)
+                        for (int i2 = 0; i2 < alreadySaveServers.Count; i2++)
                         {
-                            if(alreadySaveServers[i2] == servers[i].ServerType)
+                            if (alreadySaveServers[i2] == servers[i].ServerType)
                             {
                                 isSaved = true;
                                 break;
                             }
                         }
 
-                        if(isSaved)
+                        if (isSaved)
                         {
                             continue;
                         }
@@ -723,11 +896,11 @@ namespace OsEngine.Market
             {
                 using (StreamReader reader = new StreamReader(@"Engine\" + @"MostPopularServers.txt"))
                 {
-                    while(reader.EndOfStream == false)
+                    while (reader.EndOfStream == false)
                     {
                         string res = reader.ReadLine();
 
-                        if(res.Split('&').Length <= 1)
+                        if (res.Split('&').Length <= 1)
                         {
                             continue;
                         }
@@ -750,16 +923,16 @@ namespace OsEngine.Market
                 // ignore
             }
 
-            if(servers.Count > 1)
+            if (servers.Count > 1)
             {
 
-                for(int i = 0;i < servers.Count;i++)
+                for (int i = 0; i < servers.Count; i++)
                 {
                     ServerPop curServ = servers[i];
 
-                    for(int i2 = i;i2 < servers.Count;i2++)
+                    for (int i2 = i; i2 < servers.Count; i2++)
                     {
-                        if(servers[i2].CountOfCreation < curServ.CountOfCreation)
+                        if (servers[i2].CountOfCreation < curServ.CountOfCreation)
                         {
                             servers[i] = servers[i2];
                             servers[i2] = curServ;
@@ -855,6 +1028,11 @@ namespace OsEngine.Market
         /// </summary>
         public static event Action<IServer> ServerCreateEvent;
 
+        /// <summary>
+        /// server deleted
+        /// </summary>
+        public static event Action ServerDeleteEvent;
+
         #endregion
 
         #region Automatic creation servers
@@ -873,24 +1051,39 @@ namespace OsEngine.Market
         /// <summary>
         /// shows whether the server-master can be deployed in automatic mode  
         /// </summary>
-        public static bool NeadToConnectAuto;
+        public static bool NeedToConnectAuto;
 
-        private static string _startServerLocker = "startServLocker";
+        private static string _startServerLocker = "startServerLocker";
 
         /// <summary>
         /// select a specific server type for auto connection
         /// </summary>
-        public static void SetServerToAutoConnection(ServerType type)
+        public static void SetServerToAutoConnection(ServerType type, string serverName)
         {
             lock (_startServerLocker)
             {
-                if (_needServerTypes == null)
-                {
-                    _needServerTypes = new List<ServerType>();
-                }
-
                 try
                 {
+                    bool isInArray = false;
+
+                    if(string.IsNullOrEmpty(serverName))
+                    {
+                        serverName = type.ToString();
+                    }
+
+                    for (int i = 0; i < _needServerNames.Count; i++)
+                    {
+                        if (_needServerNames[i] == serverName)
+                        {
+                            isInArray = true;
+                            break;
+                        }
+                    }
+                    if(isInArray == false)
+                    {
+                        _needServerNames.Add(serverName);
+                    }
+                    
                     for (int i = 0; i < _needServerTypes.Count; i++)
                     {
                         if (_needServerTypes[i] == type)
@@ -900,6 +1093,7 @@ namespace OsEngine.Market
                     }
 
                     _needServerTypes.Add(type);
+                
                 }
                 catch (Exception error)
                 {
@@ -911,7 +1105,9 @@ namespace OsEngine.Market
         /// <summary>
         /// selected bot servers for auto connection
         /// </summary>
-        private static List<ServerType> _needServerTypes;
+        private static List<ServerType> _needServerTypes = new List<ServerType>();
+
+        private static List<string> _needServerNames = new List<string>();
 
         /// <summary>
         /// servers that we have already treid to connect
@@ -936,7 +1132,7 @@ namespace OsEngine.Market
                         return;
                     }
 
-                    if (NeadToConnectAuto == false)
+                    if (NeedToConnectAuto == false)
                     {
                         continue;
                     }
@@ -957,9 +1153,9 @@ namespace OsEngine.Market
                         TryStartThisServerInAutoType(_needServerTypes[i]);
                     }
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
-                    SendNewLogMessage(ex.ToString(),LogMessageType.Error);
+                    SendNewLogMessage(ex.ToString(), LogMessageType.Error);
                 }
             }
         }
@@ -981,7 +1177,8 @@ namespace OsEngine.Market
 
                 _tryActivateServerTypes.Add(type);
 
-                if (GetServers() == null || GetServers().Find(server1 => server1.ServerType == type) == null)
+                if (GetServers() == null 
+                    || GetServers().Find(server1 => server1.ServerType == type) == null)
                 { // if we don't have our server, create a new one / если у нас нашего сервера нет - создаём его
                     CreateServer(type, true);
                 }
@@ -993,21 +1190,40 @@ namespace OsEngine.Market
                     return;
                 }
 
-                IServer server = servers.Find(server1 => server1.ServerType == type);
-
-                if (server == null)
+                for (int i = 0; i < servers.Count; i++)
                 {
-                    return;
-                }
+                    IServer currentServer = servers[i];
 
-                if (server.ServerStatus != ServerConnectStatus.Connect)
-                {
-                    server.StartServer();
+                    if (currentServer.ServerType != type)
+                    {
+                        continue;
+                    }
+
+                    bool isInArray = false;
+
+                    for (int j = 0; j < _needServerNames.Count; j++)
+                    {
+                        if (_needServerNames[j] == currentServer.ServerNameAndPrefix)
+                        {
+                            isInArray = true;
+                            break;
+                        }
+                    }
+
+                    if(isInArray == false)
+                    {
+                        continue;
+                    }
+
+                    if (currentServer.ServerStatus != ServerConnectStatus.Connect)
+                    {
+                        currentServer.StartServer();
+                    }
                 }
             }
             catch (Exception ex)
             {
-                SendNewLogMessage(ex.ToString(),LogMessageType.Error);
+                SendNewLogMessage(ex.ToString(), LogMessageType.Error);
             }
         }
 
@@ -1035,7 +1251,7 @@ namespace OsEngine.Market
         /// </summary>
         public static IServerPermission GetServerPermission(ServerType type)
         {
-            for(int i = 0;i < _serversPermissions.Count;i++)
+            for (int i = 0; i < _serversPermissions.Count; i++)
             {
                 if (_serversPermissions[i] == null)
                 {
@@ -1047,7 +1263,7 @@ namespace OsEngine.Market
                 }
             }
 
-            for(int i = 0;i < _noServerPermissionServers.Count;i++)
+            for (int i = 0; i < _noServerPermissionServers.Count; i++)
             {
                 if (_noServerPermissionServers[i] == type)
                 {
@@ -1055,7 +1271,7 @@ namespace OsEngine.Market
                 }
             }
 
-            lock(_serverPermissionGeterLocker)
+            lock (_serverPermissionGeterLocker)
             {
                 for (int i = 0; i < _serversPermissions.Count; i++)
                 {
@@ -1086,6 +1302,10 @@ namespace OsEngine.Market
                 else if (type == ServerType.QuikLua)
                 {
                     serverPermission = new QuikLuaServerPermission();
+                }
+                else if (type == ServerType.Atp)
+                {
+                    serverPermission = new AtpServerPermission();
                 }
                 else if (type == ServerType.KuCoinFutures)
                 {
@@ -1143,9 +1363,9 @@ namespace OsEngine.Market
                 {
                     serverPermission = new BinanceFuturesServerPermission();
                 }
-                else if (type == ServerType.Bitfinex)
+                else if (type == ServerType.BitfinexSpot)
                 {
-                    serverPermission = new BitFinexServerPermission();
+                    serverPermission = new BitfinexSpotServerPermission();
                 }
                 else if (type == ServerType.Kraken)
                 {
@@ -1163,9 +1383,9 @@ namespace OsEngine.Market
                 {
                     serverPermission = new FinamServerPermission();
                 }
-                else if (type == ServerType.TinkoffInvestments)
+                else if (type == ServerType.TInvest)
                 {
-                    serverPermission = new TinkoffInvestmentsServerPermission();
+                    serverPermission = new TInvestServerPermission();
                 }
                 else if (type == ServerType.GateIoFutures)
                 {
@@ -1235,9 +1455,9 @@ namespace OsEngine.Market
                 {
                     serverPermission = new TraderNetServerPermission();
                 }
-                else if (type == ServerType.Mexc)
+                else if (type == ServerType.MexcSpot)
                 {
-                    serverPermission = new MexcServerPermission();
+                    serverPermission = new MexcSpotServerPermission();
                 }
                 else if (type == ServerType.KiteConnect)
                 {
@@ -1246,6 +1466,34 @@ namespace OsEngine.Market
                 else if (type == ServerType.YahooFinance)
                 {
                     serverPermission = new YahooServerPermission();
+                }
+                else if (type == ServerType.Polygon)
+                {
+                    serverPermission = new PolygonServerPermission();
+                }
+                else if (type == ServerType.CoinExSpot)
+                {
+                    serverPermission = new CoinExServerSpotPermission();
+                }
+                else if (type == ServerType.CoinExFutures)
+                {
+                    serverPermission = new CoinExServerFuturesPermission();
+                }
+                else if (type == ServerType.RSSNews)
+                {
+                    serverPermission = new RSSNewsServerPermission();
+                }
+                else if (type == ServerType.SmartLabNews)
+                {
+                    serverPermission = new SmartLabNewsServerPermission();
+                }
+                else if (type == ServerType.AExchange)
+                {
+                    serverPermission = new AExchangeServerPermission();
+                }
+                else if (type == ServerType.BloFinFutures)
+                {
+                    serverPermission = new BloFinFuturesServerPermission();
                 }
 
                 if (serverPermission != null)
@@ -1264,6 +1512,60 @@ namespace OsEngine.Market
 
         #endregion
 
+        #region Proxy 
+
+        private static ProxyMaster _proxyMaster;
+
+        public static void ActivateProxy()
+        {
+            if (_proxyMaster == null)
+            {
+                _proxyMaster = new ProxyMaster();
+                _proxyMaster.LogMessageEvent += SendNewLogMessage;
+                _proxyMaster.Activate();
+            }
+        }
+
+        public static WebProxy GetProxyAutoRegime(ServerType serverType, string serverName)
+        {
+            try
+            {
+                return _proxyMaster.GetProxyAutoRegime(serverType, serverName);
+            }
+            catch (Exception ex)
+            {
+                SendNewLogMessage(ex.ToString(),LogMessageType.Error);
+                return null;
+            }
+        }
+
+        public static WebProxy GetProxyManualRegime(string userValue)
+        {
+            try
+            {
+                return _proxyMaster.GetProxyManualRegime(userValue);
+            }
+            catch (Exception ex)
+            {
+                SendNewLogMessage(ex.ToString(), LogMessageType.Error);
+                return null;
+            }
+        }
+
+        public static void ShowProxyDialog()
+        {
+            try
+            {
+                _proxyMaster.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                SendNewLogMessage(ex.ToString(), LogMessageType.Error); 
+            }
+        }
+
+        #endregion
+
         #region Access to portfolio, orders and its drawing
 
         /// <summary>
@@ -1271,7 +1573,7 @@ namespace OsEngine.Market
         /// </summary>
         public static void StartPaint()
         {
-             _painterPortfolios.StartPaint();
+            _painterPortfolios.StartPaint();
             _ordersStorage.StartPaint();
         }
 
@@ -1303,7 +1605,7 @@ namespace OsEngine.Market
         /// <summary>
         /// add items on which portfolios and orders will be drawn
         /// </summary>
-        public static void SetHostTable(WindowsFormsHost hostPortfolio, WindowsFormsHost hostActiveOrders, 
+        public static void SetHostTable(WindowsFormsHost hostPortfolio, WindowsFormsHost hostActiveOrders,
             WindowsFormsHost hostHistoricalOrders)
         {
             if (_painterPortfolios == null)
@@ -1314,7 +1616,7 @@ namespace OsEngine.Market
                 _painterPortfolios.SetHostTable(hostPortfolio);
             }
 
-            if(_ordersStorage == null)
+            if (_ordersStorage == null)
             {
                 _ordersStorage = new ServerMasterOrdersPainter();
                 _ordersStorage.LogMessageEvent += SendNewLogMessage;
@@ -1336,7 +1638,7 @@ namespace OsEngine.Market
 
         private static void _painterPortfolios_ClearPositionOnBoardEvent(string sec, IServer server, string fullName)
         {
-            if(ClearPositionOnBoardEvent != null)
+            if (ClearPositionOnBoardEvent != null)
             {
                 ClearPositionOnBoardEvent(sec, server, fullName);
             }
@@ -1344,7 +1646,7 @@ namespace OsEngine.Market
 
         private static void _ordersStorage_RevokeOrderToEmulatorEvent(Order order)
         {
-            if(RevokeOrderToEmulatorEvent != null)
+            if (RevokeOrderToEmulatorEvent != null)
             {
                 RevokeOrderToEmulatorEvent(order);
             }
@@ -1361,11 +1663,11 @@ namespace OsEngine.Market
         /// <summary>
         /// enable object logging
         /// </summary>
-        public static void ActivateLogging()
+        private static void ActivateLogging()
         {
             if (Log == null)
             {
-                Log = new Log("ServerMaster",StartProgram.IsOsTrader);
+                Log = new Log("ServerMaster", StartProgram.IsOsTrader);
                 Log.ListenServerMaster();
             }
         }
@@ -1420,10 +1722,10 @@ namespace OsEngine.Market
         None,
 
         /// <summary>
-        /// connection to Russian broker Tinkoff Investments
-        /// подключение к Тинькофф Инвестициям (версия 3 коннектора)
+        /// connection to Russian broker T-Invest
+        /// подключение к Т-Инвестициям (версия 3 коннектора)
         /// </summary>
-        TinkoffInvestments,
+        TInvest,
 
         /// <summary>
         /// cryptocurrency exchange Hitbtc
@@ -1468,10 +1770,10 @@ namespace OsEngine.Market
         Lmax,
 
         /// <summary>
-        /// cryptocurrency exchange Bitfinex
-        /// биржа криптовалют Bitfinex
+        /// cryptocurrency exchange BitfinexSpot
+        /// биржа криптовалют BitfinexSpot
         /// </summary>
-        Bitfinex,
+        BitfinexSpot,
 
         /// <summary>
         /// cryptocurrency exchange Binance
@@ -1602,7 +1904,7 @@ namespace OsEngine.Market
         /// BitGetFutures exchange
         /// </summary>
         BitGetFutures,
-        
+
         /// <summary>
         /// Alor OpenAPI & Websocket
         /// </summary>
@@ -1699,7 +2001,7 @@ namespace OsEngine.Market
         /// <summary>
         /// Mexc Spot
         /// </summary>
-        Mexc,
+        MexcSpot,
 
         /// <summary>
         /// Mexc Spot
@@ -1710,5 +2012,50 @@ namespace OsEngine.Market
         /// Yahoo Finance
         /// </summary>
         YahooFinance,
+
+        /// <summary>
+        /// ATPlatform
+        /// </summary>
+        Atp,
+
+        /// <summary>
+        /// Polygon.io
+        /// </summary>
+        Polygon,
+
+        /// <summary>
+        /// Spot for cryptocurrency exchange CoinEx.com
+        /// Спот биржи криптовалют CoinEx.com
+        /// </summary>
+        CoinExSpot,
+
+        /// <summary>
+        /// Futures for cryptocurrency exchange CoinEx.com
+        /// Фьюючерсы биржи криптовалют CoinEx.com
+        /// </summary>
+        CoinExFutures,
+
+        /// <summary>
+        /// Reading news from RSS feeds
+        /// Чтение новостей с RSS лент
+        /// </summary>
+        RSSNews,
+
+        /// <summary>
+        /// Reading news from smart-lab.ru
+        /// Чтение новостей с сайта smart-lab.ru
+        /// </summary>
+        SmartLabNews,
+
+        /// <summary>
+        /// Options exchange Alternative Exchange ae.exchange
+        /// Опционная биржа Alternative Exchange ae.exchange
+        /// </summary>
+        AExchange,
+
+        /// <summary>
+        /// BloFinFutures exchange
+        /// </summary>
+        BloFinFutures,
     }
 }

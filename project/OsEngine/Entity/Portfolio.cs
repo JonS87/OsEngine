@@ -34,14 +34,19 @@ namespace OsEngine.Entity
         public decimal ValueBlocked;
 
         /// <summary>
-        /// Session profit
+        /// Profit or loss on open positions
         /// </summary>
-        public decimal Profit;
+        public decimal UnrealizedPnl;
 
         /// <summary>
         /// Connector to which the portfolio belongs
         /// </summary>
         public ServerType ServerType;
+
+        /// <summary>
+        /// Connector unique name in multi-connection mode
+        /// </summary>
+        public string ServerUniqueName;
 
         // then goes the storage of open positions in the system by portfolio
 
@@ -78,6 +83,7 @@ namespace OsEngine.Entity
                     {
                         _positionOnBoard[i].ValueCurrent = position.ValueCurrent;
                         _positionOnBoard[i].ValueBlocked = position.ValueBlocked;
+                        _positionOnBoard[i].UnrealizedPnl = position.UnrealizedPnl;
 
                         return;
                     }

@@ -12,6 +12,7 @@ using OsEngine.Market.Servers.Woo.Entity;
 using System.Security.Cryptography;
 using System.Collections;
 using RestSharp;
+using System.Net;
 
 namespace OsEngine.Market.Servers.Woo
 {
@@ -49,7 +50,7 @@ namespace OsEngine.Market.Servers.Woo
 
         public DateTime ServerTime { get; set; }
 
-        public void Connect()
+        public void Connect(WebProxy proxy)
         {
             _apiKey = ((ServerParameterString)ServerParameters[0]).Value;
             _secretKey = ((ServerParameterString)ServerParameters[1]).Value;
@@ -669,10 +670,17 @@ namespace OsEngine.Market.Servers.Woo
             }
         }
 
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
+
         #endregion
 
         #region 10 WebSocket parsing the messages
-       
+
         private void MessageReaderPublic()
         {
             Thread.Sleep(1000);
@@ -1111,6 +1119,8 @@ namespace OsEngine.Market.Servers.Woo
         public event Action<MarketDepth> MarketDepthEvent;
 
         public event Action<Trade> NewTradesEvent;
+
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         #endregion
 

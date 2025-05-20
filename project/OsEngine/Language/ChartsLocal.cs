@@ -3,12 +3,6 @@
  * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace OsEngine.Language
 {
     public class ChartsLocal
@@ -178,6 +172,10 @@ namespace OsEngine.Language
         public string ChartMenuItem14 => OsLocalization.ConvertToLocString(
             "Eng:Create indicator_" +
             "Ru:Добавить индикатор_");
+
+        public string ChartMenuItem15 => OsLocalization.ConvertToLocString(
+           "Eng:Auto_" +
+           "Ru:Авто_");
 
         public string Label1 => OsLocalization.ConvertToLocString(
             "Eng: Settings _" +

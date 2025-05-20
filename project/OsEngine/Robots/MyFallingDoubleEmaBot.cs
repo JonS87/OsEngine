@@ -82,8 +82,8 @@ namespace OsEngine.Robots
             UsePriceDropFilter = CreateParameter("Use Price Drop Filter", true);
             PriceDropPercent = CreateParameter("Price drop % to enter", 2m, 0.1m, 10m, 0.1m);
             LookbackCandles = CreateParameter("Lookback candles", 10, 5, 50, 1);
-            VolumeIncreaseThreshold = CreateParameter("Volume increase %", 20m, 5m, 100m, 5m);
             UseVolumeConfirmation = CreateParameter("Use volume confirm", true);
+            VolumeIncreaseThreshold = CreateParameter("Volume increase %", 20m, 5m, 100m, 5m);
             EmaIncline = CreateParameter("Ema Incline Regime", true);
 
             TimeStart = CreateParameterTimeOfDay("Start Trade Time", 10, 32, 0, 0);
@@ -119,6 +119,11 @@ namespace OsEngine.Robots
         {
             if (Regime.ValueString == "Off" || candles.Count < LookbackCandles.ValueInt + 5)
                 return;
+
+            if (EmaShortLen.ValueInt >= EmaLongLen.ValueInt)
+            {
+                return;
+            }
 
             UpdateIndicatorsValues(candles);
             UpdatePriceAndVolumeHistory(candles);
@@ -232,12 +237,23 @@ namespace OsEngine.Robots
 
         private void CheckForEntrySignals(List<Candle> candles)
         {
+            if (TimeStart.Value > TabToTrade.TimeServerCurrent ||
+                TimeEnd.Value < TabToTrade.TimeServerCurrent)
+            {
+                return;
+            }
+
+            if (_preLastEmaLong <= 0)
+            {
+                return;
+            }
+
             // Проверяет условия для открытия позиций
             decimal currentPrice = candles[candles.Count - 1].Close;
 
             // Логика для лонга
             if (Regime.ValueString != "OnlyShort" &&
-                (!UsePriceDropFilter.ValueBool ||  IsPriceDroppedFromHigh(currentPrice)) &&
+                (!UsePriceDropFilter.ValueBool || IsPriceDroppedFromHigh(currentPrice)) &&
                 _lastEmaShort > _lastEmaLong &&
                 _preLastEmaShort <= _preLastEmaLong)
             {
@@ -271,15 +287,17 @@ namespace OsEngine.Robots
         private void CheckForExitSignals(Position position)
         {
             // Определяет условия для закрытия позиции
-            if (position.State != PositionStateType.Open ||
-                (position.CloseOrders != null && position.CloseOrders.Count > 0))
+            if (position.State != PositionStateType.Open 
+                ||
+                (position.CloseOrders != null 
+                 && position.CloseOrders.Count > 0))
                 return;
 
             decimal currentPrice = TabToTrade.PriceBestBid;
 
             if (position.Direction == Side.Buy)
             {
-                if (_lastEmaShort < _lastEmaLong ||
+                if (// _lastEmaShort < _lastEmaLong ||
                     currentPrice <= maxLastEmaShort * (1 - DrawdownPercent.ValueDecimal / 100)) // currentPrice <= position.EntryPrice * (1 - DrawdownPercent.ValueDecimal))
                 {
                     TabToTrade.CloseAtLimit(position, currentPrice - currentPrice * (Slippage.ValueDecimal / 100), position.OpenVolume);
@@ -287,7 +305,7 @@ namespace OsEngine.Robots
             }
             else if (position.Direction == Side.Sell)
             {
-                if (_lastEmaShort > _lastEmaLong ||
+                if (// _lastEmaShort > _lastEmaLong ||
                     currentPrice >= minLastEmaShort * (1 + DrawdownPercent.ValueDecimal / 100)) // currentPrice >= position.EntryPrice * (1 + DrawdownPercent.ValueDecimal))
                 {
                     TabToTrade.CloseAtLimit(position, currentPrice + currentPrice * (Slippage.ValueDecimal / 100), position.OpenVolume);

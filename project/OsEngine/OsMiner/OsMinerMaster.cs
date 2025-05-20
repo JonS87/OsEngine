@@ -103,7 +103,7 @@ namespace OsEngine.OsMiner
             PaintSetsDataGrid();
             PaintActivSet();
             Save();
-            set.NeadToSaveEvent += set_NeadToSaveEvent;
+            set.NeedToSaveEvent += set_NeedToSaveEvent;
             set.LogMessageEvent += SendNewLogMessage;
         }
 
@@ -111,7 +111,7 @@ namespace OsEngine.OsMiner
         /// incoming event that you need to resave everything
         /// входящее событие о том что нужно всё пересохранить
         /// </summary>
-        void set_NeadToSaveEvent()
+        void set_NeedToSaveEvent()
         {
             Save();
         }
@@ -130,7 +130,7 @@ namespace OsEngine.OsMiner
             AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Miner.Message3);
             ui.ShowDialog();
 
-            if (ui.UserAcceptActioin == false)
+            if (ui.UserAcceptAction == false)
             {
                 return;
             }
@@ -201,7 +201,7 @@ namespace OsEngine.OsMiner
                             OsMinerSet set = new OsMinerSet();
                             set.Load(save[i]);
                             Sets.Add(set);
-                            set.NeadToSaveEvent += set_NeadToSaveEvent;
+                            set.NeedToSaveEvent += set_NeedToSaveEvent;
                             set.LogMessageEvent += SendNewLogMessage;
                         }
                     }

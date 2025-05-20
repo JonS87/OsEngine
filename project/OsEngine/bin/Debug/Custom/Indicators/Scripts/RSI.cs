@@ -28,9 +28,14 @@ namespace OsEngine.Indicators
 
             int startIndex = 1;
 
-            if (index > 150)
+            if (index > _length.ValueInt)
             {
-                startIndex = index - 150;
+                startIndex = index - _length.ValueInt - 20;
+
+                if (startIndex - 1 < 0)
+                {
+                    startIndex = index - _length.ValueInt + 1;
+                }
             }
 
             List<decimal> priceChangeHigh = new List<decimal>();
@@ -56,8 +61,13 @@ namespace OsEngine.Indicators
                 MovingAverageHard(priceChangeLow, priceChangeLowAverage, _length.ValueInt, valueInd);
             }
 
+            if (priceChangeHighAverage.Count == 0)
+            {
+                return;
+            }
+
             decimal averageHigh = priceChangeHighAverage[priceChangeHighAverage.Count - 1];
-            decimal averageLow = priceChangeLowAverage[priceChangeHighAverage.Count - 1];
+            decimal averageLow = priceChangeLowAverage[priceChangeLowAverage.Count - 1];
 
             decimal rsi;
 

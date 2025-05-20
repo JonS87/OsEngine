@@ -13,7 +13,6 @@ using OsEngine.Market.Connectors;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Threading;
 using System.Windows.Controls;
 using System.Windows.Forms.Integration;
@@ -102,6 +101,11 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// </summary>
         public void Delete()
         {
+            if (_ui != null)
+            {
+                _ui.Close();
+            }
+
             _chartMaster.Delete();
             _chartMaster = null;
 
@@ -122,6 +126,11 @@ namespace OsEngine.OsTrader.Panels.Tab
             if (TabDeletedEvent != null)
             {
                 TabDeletedEvent();
+            }
+
+            if(UiSecuritiesSelection != null)
+            {
+                UiSecuritiesSelection.Close();
             }
         }
 
@@ -189,15 +198,44 @@ namespace OsEngine.OsTrader.Panels.Tab
                 return;
             }
 
-            BotTabIndexUi ui = new BotTabIndexUi(this);
-            ui.ShowDialog();
-
-            if (Tabs.Count == 0)
+            if(_ui == null)
             {
-                _chartMaster.Clear();
-                //_chartMaster.SetNewSecurity("Index on: " + _userFormula, Tabs[0].TimeFrameBuilder, null, Tabs[0].ServerType);
+                _ui = new BotTabIndexUi(this);
+                _ui.Closed += _ui_Closed;
+                _ui.Show();
+            }
+            else
+            {
+                _ui.Activate();
             }
         }
+
+        private void _ui_Closed(object sender, EventArgs e)
+        {
+            try
+            {
+                if (Tabs.Count == 0)
+                {
+                    _chartMaster.Clear();
+                }
+
+                _ui.Closed -= _ui_Closed;
+                _ui = null;
+
+                if(DialogClosed != null)
+                {
+                    DialogClosed();
+                }
+            }
+            catch(Exception ex)
+            {
+                SendNewLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+        }
+
+        public event Action DialogClosed;
+
+        private BotTabIndexUi _ui;
 
         /// <summary>
         /// show connector GUI
@@ -216,54 +254,85 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// <summary>
         /// add new security to the list
         /// </summary>
-        public void ShowNewSecurityDialog()
+        public bool ShowNewSecurityDialog()
         {
-            MassSourcesCreator creator = GetCurrentCreator();
-
-            MassSourcesCreateUi ui = new MassSourcesCreateUi(creator);
-            ui.LogMessageEvent += SendNewLogMessage;
-            ui.ShowDialog();
-
-            ui.LogMessageEvent -= SendNewLogMessage;
-            if (ui.IsAccepted == false)
+            if(UiSecuritiesSelection == null)
             {
-                return;
+                _creator = GetCurrentCreator();
+                UiSecuritiesSelection = new MassSourcesCreateUi(_creator);
+                UiSecuritiesSelection.LogMessageEvent += SendNewLogMessage;
+                UiSecuritiesSelection.Closed += _uiSecuritiesSelection_Closed;
+                UiSecuritiesSelection.Show();
+                return true;
+            }
+            else
+            {
+                UiSecuritiesSelection.Activate();
             }
 
-            // 1 удаляем источники с другим ТФ, от того что сейчас выбрал юзер
-
-            bool isDeleteTab = false;
-
-            for (int i = 0; i < Tabs.Count; i++)
-            {
-                if (Tabs[i].TimeFrame != creator.TimeFrame)
-                {
-                    Tabs[i].Delete();
-                    Tabs.RemoveAt(i);
-                    isDeleteTab = true;
-                }
-            }
-
-            if (isDeleteTab == true)
-            {
-                Save();
-            }
-
-            // 2 создаём источники которые выбрал пользователь
-            creator = ui.SourcesCreator;
-            if (creator.SecuritiesNames != null &&
-                creator.SecuritiesNames.Count != 0)
-            {
-                for (int i = 0; i < creator.SecuritiesNames.Count; i++)
-                {
-                    TryRunSecurity(creator.SecuritiesNames[i], creator);
-                }
-
-                Save();
-            }
-
-            ui.SourcesCreator = null;
+            return false;
         }
+
+        private void _uiSecuritiesSelection_Closed(object sender, EventArgs e)
+        {
+            try
+            {
+                UiSecuritiesSelection.LogMessageEvent -= SendNewLogMessage;
+                UiSecuritiesSelection.Closed -= _uiSecuritiesSelection_Closed;
+
+                if (UiSecuritiesSelection.IsAccepted == false)
+                {
+                    UiSecuritiesSelection = null;
+                    return;
+                }
+
+                // 1 удаляем источники с другим ТФ, от того что сейчас выбрал юзер
+
+                bool isDeleteTab = false;
+
+                for (int i = 0; i < Tabs.Count; i++)
+                {
+                    if (Tabs[i].TimeFrame != _creator.TimeFrame)
+                    {
+                        Tabs[i].Delete();
+                        Tabs.RemoveAt(i);
+                        isDeleteTab = true;
+                    }
+                }
+
+                if (isDeleteTab == true)
+                {
+                    Save();
+                }
+
+                // 2 создаём источники которые выбрал пользователь
+
+                _creator = UiSecuritiesSelection.SourcesCreator;
+
+                if (_creator.SecuritiesNames != null &&
+                    _creator.SecuritiesNames.Count != 0)
+                {
+                    for (int i = 0; i < _creator.SecuritiesNames.Count; i++)
+                    {
+                        TryRunSecurity(_creator.SecuritiesNames[i], _creator);
+                    }
+
+                    Save();
+                }
+
+                UiSecuritiesSelection.SourcesCreator = null;
+            }
+            catch (Exception ex) 
+            {
+                SendNewLogMessage(ex.ToString(),LogMessageType.Error);
+            }
+
+            UiSecuritiesSelection = null;
+        }
+
+        public MassSourcesCreateUi UiSecuritiesSelection;
+
+        private MassSourcesCreator _creator;
 
         /// <summary>
         /// request a class that stores a list of sources to be deployed for the index
@@ -286,6 +355,7 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                 ConnectorCandles connector = Tabs[0];
                 creator.ServerType = connector.ServerType;
+                creator.ServerName = connector.ServerFullName;
                 creator.TimeFrame = connector.TimeFrame;
                 creator.EmulatorIsOn = connector.EmulatorIsOn;
                 creator.SecuritiesClass = connector.SecurityClass;
@@ -370,6 +440,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             {
                 if (Tabs[i].SecurityName == security.SecurityName &&
                     Tabs[i].ServerType == creator.ServerType &&
+                    Tabs[i].ServerFullName == creator.ServerName &&
                     Tabs[i].TimeFrame == creator.TimeFrame)
                 {
                     return;
@@ -410,6 +481,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             connector.SaveTradesInCandles = false;
 
             connector.ServerType = creator.ServerType;
+            connector.ServerFullName = creator.ServerName;
             connector.SecurityName = security.SecurityName;
             connector.SecurityClass = security.SecurityClass;
             connector.TimeFrame = creator.TimeFrame;
@@ -1089,6 +1161,52 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// <param name="sign">sign</param>
         private string Concate(string valOne, string valTwo, string sign)
         {
+            if (string.IsNullOrWhiteSpace(valOne) == false
+                && string.IsNullOrWhiteSpace(valTwo) == true
+                && string.IsNullOrWhiteSpace(sign) == true
+                && (valOne.Length == 2 || valOne.Length == 3)
+                && valOne[0] == 'A')
+            {// выбран один инструмент в качестве индекса
+                ValueSave exitVal = _valuesToFormula.Find(val => val.Name == valOne);
+
+                if (exitVal == null)
+                {
+                    exitVal = new ValueSave();
+                    exitVal.Name = valOne;
+                    exitVal.ValueCandles = new List<Candle>();
+                    _valuesToFormula.Add(exitVal);
+                }
+
+                if (valOne[0] == 'A')
+                {
+                    int iOne = Convert.ToInt32(valOne.Split('A')[1]);
+
+                    if (iOne >= Tabs.Count)
+                    {
+                        return "";
+                    }
+
+                    List<Candle> candlesOne = Tabs[iOne].Candles(true);
+
+                    if (candlesOne != null
+                        && candlesOne.Count > CalculationDepth)
+                    {
+                        candlesOne = candlesOne.GetRange(candlesOne.Count - CalculationDepth, CalculationDepth);
+                    }
+
+                    TryAddTradeSecurity(Tabs[iOne].Security);
+
+                    if (PercentNormalization)
+                    {
+                        candlesOne = Normalization(candlesOne, valOne);
+                    }
+
+                    exitVal.ValueCandles = candlesOne;
+                }
+
+                return valOne;
+            }
+
             if (string.IsNullOrWhiteSpace(valOne))
             {
                 return valTwo;
@@ -1185,7 +1303,6 @@ namespace OsEngine.OsTrader.Panels.Tab
                 {
                     candlesOne = Normalization(candlesOne, valOne);
                 }
-
             }
             if (candlesOne == null)
             {
@@ -1997,7 +2114,7 @@ namespace OsEngine.OsTrader.Panels.Tab
 
         #endregion
 
-        #region Log 
+        #region Log
 
         /// <summary>
         /// send log message

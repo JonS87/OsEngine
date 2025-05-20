@@ -65,6 +65,10 @@ namespace OsEngine.Market.Servers.BingX.BingXFutures.Entity
         public string quantityPrecision { get; set; } // transaction quantity precision
         public string pricePrecision { get; set; } // price precision
         public string feeRate { get; set; } // transaction fee
+        public string takerFeeRate { get; set; } // take transaction fee
+        public string makerFeeRate { get; set; } // make transaction fee
+        public string tradeMinQuantity { get; set; } // The minimum trading unit(COIN)
+        public string tradeMinUSDT { get; set; } // The minimum trading unit(USDT)
         public string tradeMinLimit { get; set; } // The smallest trading unit
         public string maxLongLeverage { get; set; }
         public string maxShortLeverage { get; set; }
@@ -86,6 +90,7 @@ namespace OsEngine.Market.Servers.BingX.BingXFutures.Entity
         public string availableMargin { get; set; } // available margin
         public string usedMargin { get; set; } // used margin
         public string freezedMargin { get; set; } // frozen margin
+        public string shortUid { get; set; } // short uid
     }
 
     public class OrderDetails
@@ -180,10 +185,13 @@ namespace OsEngine.Market.Servers.BingX.BingXFutures.Entity
         public List<FillOrder> fill_orders { get; set; }
     }
 
+    public class PositionMode
+    {
+        public string dualSidePosition { get; set; }
+    }
+
     public class Balance
     {
         public BalanceInfoBingXFutures balance { get; set; }
     }
-
-
 }

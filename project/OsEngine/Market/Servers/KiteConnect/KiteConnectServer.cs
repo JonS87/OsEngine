@@ -25,7 +25,7 @@ namespace OsEngine.Market.Servers.KiteConnect
             ServerRealization = realization;
 
             CreateParameterString(OsLocalization.Market.ServerParamPublicKey, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamSecretKey, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterSecretKey, "");
             CreateParameterString("Request Token", "");
             CreateParameterPassword("Access Token", "");
             CreateParameterBoolean("A subscription for downloading historical data has been issued", false);
@@ -54,7 +54,7 @@ namespace OsEngine.Market.Servers.KiteConnect
             threadMessageReader.Start();
         }
 
-        public void Connect()
+        public void Connect(WebProxy proxy)
         {
             try
             {
@@ -100,6 +100,8 @@ namespace OsEngine.Market.Servers.KiteConnect
                         SendLogMessage($"Error requesting user profile. Status: {response.StatusCode} - {response.Content}", LogMessageType.Error);
                     }
                 }
+
+                _listWebSocket = new List<WebSocket>();
 
                 CreateWebSocketConnection();
             }
@@ -156,12 +158,9 @@ namespace OsEngine.Market.Servers.KiteConnect
         {
             unsubscribeFromAllWebSockets();
 
-            _securities.Clear();
             _myPortfolios.Clear();
 
             DeleteWebSocketConnection();
-
-            SendLogMessage("Connection Closed by KiteConnect. WebSocket Data Closed Event", LogMessageType.System);
 
             if (ServerStatus != ServerConnectStatus.Disconnect)
             {
@@ -172,16 +171,27 @@ namespace OsEngine.Market.Servers.KiteConnect
 
         private void unsubscribeFromAllWebSockets()
         {
-            if (_webSocket == null)
+            if (_listWebSocket == null)
             {
                 return;
             }
 
-            for (int i = 0; i < _securities.Count; i++)
+            for (int j = 0; j < _listWebSocket.Count; j++)
             {
-                string instrumentToken = _securities[i].NameId.Split('_')[0];
-                _webSocket?.Send("{\"a\":\"unsubscribe\",\"v\":[" + instrumentToken + "]}");
-            }
+                if (_listWebSocket[j] == null)
+                {
+                    continue;
+                }
+                if (_listWebSocket[j].ReadyState != WebSocketState.Open)
+                {
+                    continue;
+                }
+                for (int i = 0; i < _securities.Count; i++)
+                {
+                    string instrumentToken = _securities[i].NameId.Split('_')[0];
+                    _listWebSocket[j]?.Send("{\"a\":\"unsubscribe\",\"v\":[" + instrumentToken + "]}");
+                }
+            }            
         }
 
         public DateTime ServerTime { get; set; }
@@ -365,6 +375,9 @@ namespace OsEngine.Market.Servers.KiteConnect
                         newSecurity.Decimals = security[7].DecimalsCount();
                         newSecurity.PriceStepCost = newSecurity.PriceStep;
                         newSecurity.State = SecurityStateType.Activ;
+                        newSecurity.VolumeStep = security[8].ToDecimal();
+                        newSecurity.MinTradeAmount = security[8].ToDecimal();
+                        newSecurity.MinTradeAmountType = MinTradeAmountType.Contract;
 
                         _securities.Add(newSecurity);
                     }
@@ -875,14 +888,16 @@ namespace OsEngine.Market.Servers.KiteConnect
                 countDays = 59;
             }
 
-            if (timeFrameBuilder.TimeFrame != TimeFrame.Day)
+            /*if (timeFrameBuilder.TimeFrame != TimeFrame.Day)
             {
                 endTimeData = startTimeData.AddDays(countDays + 1);
             }
             else
             {
                 endTimeData = startTimeData.AddDays(countDays);
-            }
+            }*/
+
+            endTimeData = startTimeData.AddDays(countDays);
 
             while (countDays > 0)
             {
@@ -1075,20 +1090,23 @@ namespace OsEngine.Market.Servers.KiteConnect
 
         #region 6 WebSocket creation
 
+        private List<WebSocket> _listWebSocket;
+
         private WebSocket _webSocket;
 
         private void CreateWebSocketConnection()
+        {
+            CreateNewWebSocketConnection();      
+        }
+
+        private void CreateNewWebSocketConnection()
         {
             try
             {
                 string fullUrlWebSoket = $"{_webSocketUrl}/?api_key={_apiKey}&access_token={_accessToken}";
 
-                if (_webSocket != null)
-                {
-                    return;
-                }
-
                 _webSocket = new WebSocket(fullUrlWebSoket);
+
                 _webSocket.SslConfiguration.EnabledSslProtocols
                 = System.Security.Authentication.SslProtocols.Ssl3
                 | System.Security.Authentication.SslProtocols.Tls11
@@ -1104,6 +1122,8 @@ namespace OsEngine.Market.Servers.KiteConnect
                 _webSocket.OnClose += _webSocket_OnClose;
 
                 _webSocket.Connect();
+
+                _listWebSocket.Add(_webSocket);
             }
             catch (Exception exception)
             {
@@ -1113,21 +1133,29 @@ namespace OsEngine.Market.Servers.KiteConnect
 
         private void DeleteWebSocketConnection()
         {
-            if (_webSocket != null)
+            if (_listWebSocket == null)
             {
-                try
+                return;
+            }
+
+            for (int i = 0; i < _listWebSocket.Count; i++)
+            {
+                if (_listWebSocket[i] != null)
                 {
-                    _webSocket.OnOpen -= _webSocket_OnOpen;
-                    _webSocket.OnMessage -= _webSocket_OnMessage;
-                    _webSocket.OnError -= _webSocket_OnError;
-                    _webSocket.OnClose -= _webSocket_OnClose;
-                    _webSocket.CloseAsync();
+                    try
+                    {
+                        _listWebSocket[i].OnOpen -= _webSocket_OnOpen;
+                        _listWebSocket[i].OnMessage -= _webSocket_OnMessage;
+                        _listWebSocket[i].OnError -= _webSocket_OnError;
+                        _listWebSocket[i].OnClose -= _webSocket_OnClose;
+                        _listWebSocket[i].CloseAsync();
+                    }
+                    catch
+                    {
+                        // ignore
+                    }
+                    _listWebSocket[i] = null;
                 }
-                catch
-                {
-                    // ignore
-                }
-                _webSocket = null;
             }
         }
 
@@ -1141,7 +1169,7 @@ namespace OsEngine.Market.Servers.KiteConnect
             {
                 ServerStatus = ServerConnectStatus.Disconnect;
 
-                SendLogMessage("Websocket lost connection: " + e.ToString(), LogMessageType.Error);
+                SendLogMessage("Connection Closed by KiteConnect. WebSocket Data Closed Event", LogMessageType.System);
 
                 if (DisconnectEvent != null)
                 {
@@ -1205,6 +1233,11 @@ namespace OsEngine.Market.Servers.KiteConnect
                     return;
                 }
 
+                if (_listWebSocket.Count == 0)
+                {
+                    return;
+                }
+
                 for (int i = 0; i < _subscribledSecurities.Count; i++)
                 {
                     if (_subscribledSecurities[i].Equals(security.Name))
@@ -1213,12 +1246,39 @@ namespace OsEngine.Market.Servers.KiteConnect
                     }
                 }
 
+                WebSocket webSocket = _listWebSocket[_listWebSocket.Count - 1];
+
+                if (webSocket.ReadyState == WebSocketState.Open
+                    && _subscribledSecurities.Count != 0
+                    && _subscribledSecurities.Count % 500 == 0)
+                {
+                    // creating a new socket
+                    CreateNewWebSocketConnection();
+
+                    DateTime timeEnd = DateTime.Now.AddSeconds(10);
+
+                    while (_webSocket.ReadyState != WebSocketState.Open)
+                    {
+                        Thread.Sleep(1000);
+
+                        if (timeEnd < DateTime.Now)
+                        {
+                            break;
+                        }
+                    }
+
+                    if (_webSocket.ReadyState == WebSocketState.Open)
+                    {
+                        webSocket = _webSocket;
+                    }
+                }
+
                 _subscribledSecurities.Add(security);
 
                 string instrumentToken = security.NameId.Split('_')[0];
 
-                _webSocket?.Send("{\"a\":\"subscribe\",\"v\":[" + instrumentToken + "]}");
-                _webSocket?.Send("{\"a\":\"mode\",\"v\":[\"" + "full" + "\", [" + instrumentToken + "]]}");
+                webSocket?.Send("{\"a\":\"subscribe\",\"v\":[" + instrumentToken + "]}");
+                webSocket?.Send("{\"a\":\"mode\",\"v\":[\"" + "full" + "\", [" + instrumentToken + "]]}");
 
             }
             catch (Exception exception)
@@ -1227,6 +1287,13 @@ namespace OsEngine.Market.Servers.KiteConnect
                 SendLogMessage(exception.ToString(), LogMessageType.Error);
             }
         }
+
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
 
         #endregion 8
 
@@ -1528,6 +1595,8 @@ namespace OsEngine.Market.Servers.KiteConnect
         public event Action<Order> MyOrderEvent;
 
         public event Action<MyTrade> MyTradeEvent;
+
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         #endregion 9
 

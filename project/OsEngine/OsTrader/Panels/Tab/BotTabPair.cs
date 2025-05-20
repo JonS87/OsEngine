@@ -14,7 +14,7 @@ using System.Windows.Forms;
 using System.Windows.Forms.Integration;
 using System.Threading;
 using OsEngine.Market;
-using Kraken.WebSockets.Messages;
+using OsEngine.Alerts;
 
 namespace OsEngine.OsTrader.Panels.Tab
 {
@@ -73,7 +73,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             set
             {
 
-                for(int i = 0;i < Pairs.Count;i++)
+                for (int i = 0; i < Pairs.Count; i++)
                 {
                     Pairs[i].EventsIsOn = value;
                 }
@@ -122,7 +122,7 @@ namespace OsEngine.OsTrader.Panels.Tab
 
         public void Clear()
         {
-            for(int i = 0;i < Pairs.Count;i++)
+            for (int i = 0; i < Pairs.Count; i++)
             {
                 Pairs[i].Tab1.Clear();
                 Pairs[i].Tab2.Clear();
@@ -185,7 +185,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                     Pairs[i].LogMessageEvent -= SendNewLogMessage;
                 }
 
-                if(Pairs != null)
+                if (Pairs != null)
                 {
                     Pairs.Clear();
                     Pairs = null;
@@ -203,7 +203,14 @@ namespace OsEngine.OsTrader.Panels.Tab
                     _host = null;
                 }
 
-                if(TabDeletedEvent != null)
+                if (_positionViewer != null)
+                {
+                    _positionViewer.UserSelectActionEvent -= _globalController_UserSelectActionEvent;
+                    _positionViewer.UserClickOnPositionShowBotInTableEvent -= _globalPositionViewer_UserClickOnPositionShowBotInTableEvent;
+                    _positionViewer.Delete();
+                }
+
+                if (TabDeletedEvent != null)
                 {
                     TabDeletedEvent();
                 }
@@ -223,7 +230,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             {
                 List<Journal.Journal> journals = new List<Journal.Journal>();
 
-                for(int i = 0;i < Pairs.Count;i++)
+                for (int i = 0; i < Pairs.Count; i++)
                 {
                     journals.Add(Pairs[i].Tab1.GetJournal());
                     journals.Add(Pairs[i].Tab2.GetJournal());
@@ -239,47 +246,6 @@ namespace OsEngine.OsTrader.Panels.Tab
         }
 
         /// <summary>
-        /// Check all pairs for this position with a certain number. Service function
-        /// </summary>
-        public BotTabSimple GetTabWithThisPosition(int positionNum)
-        {
-            try
-            {
-                BotTabSimple tabWithPosition = null;
-
-                for (int i = 0; i < Pairs.Count; i++)
-                {
-                    List<Position> posOnThisTab = Pairs[i].Tab1.PositionsAll;
-
-                    for (int i2 = 0; i2 < posOnThisTab.Count; i2++)
-                    {
-                        if (posOnThisTab[i2].Number == positionNum)
-                        {
-                            return Pairs[i].Tab1;
-                        }
-                    }
-
-                    posOnThisTab = Pairs[i].Tab2.PositionsAll;
-
-                    for (int i2 = 0; i2 < posOnThisTab.Count; i2++)
-                    {
-                        if (posOnThisTab[i2].Number == positionNum)
-                        {
-                            return Pairs[i].Tab2;
-                        }
-                    }
-                }
-
-                return tabWithPosition;
-            }
-            catch (Exception error)
-            {
-                SendNewLogMessage(error.ToString(), LogMessageType.Error);
-            }
-            return null;
-        }
-
-        /// <summary>
         /// Source removed
         /// </summary>
         public event Action TabDeletedEvent;
@@ -288,19 +254,19 @@ namespace OsEngine.OsTrader.Panels.Tab
         {
             get
             {
-                if(Pairs.Count == 0)
+                if (Pairs.Count == 0)
                 {
                     return null;
                 }
 
                 List<string> result = new List<string>();
 
-                for(int i = 0;i < Pairs.Count;i++)
+                for (int i = 0; i < Pairs.Count; i++)
                 {
                     BotTabSimple tab1 = Pairs[i].Tab1;
                     BotTabSimple tab2 = Pairs[i].Tab2;
 
-                    if(string.IsNullOrEmpty(tab1.Connector.SecurityName) == false)
+                    if (string.IsNullOrEmpty(tab1.Connector.SecurityName) == false)
                     {
                         result.Add(tab1.Connector.SecurityName);
                     }
@@ -556,10 +522,11 @@ namespace OsEngine.OsTrader.Panels.Tab
                     PairToTradeCreateEvent(pair);
                 }
             }
-            catch(Exception error)
+            catch (Exception error)
             {
-                SendNewLogMessage(error.ToString(),LogMessageType.Error);
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
             }
+            SetJournalsInPosViewer();
         }
 
         /// <summary>
@@ -591,7 +558,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             }
             catch (Exception error)
             {
-                SendNewLogMessage(error.ToString(),LogMessageType.Error);
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
             }
         }
 
@@ -620,7 +587,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                     }
                 }
             }
-            catch(Exception error)
+            catch (Exception error)
             {
                 SendNewLogMessage(error.ToString(), LogMessageType.Error);
             }
@@ -682,6 +649,8 @@ namespace OsEngine.OsTrader.Panels.Tab
             {
                 SendNewLogMessage(error.ToString(), LogMessageType.Error);
             }
+
+            SetJournalsInPosViewer();
         }
 
         /// <summary>
@@ -717,9 +686,9 @@ namespace OsEngine.OsTrader.Panels.Tab
                     pair.Save();
                 }
             }
-            catch(Exception error) 
+            catch (Exception error)
             {
-                SendNewLogMessage(error.ToString(),LogMessageType.Error);
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
             }
         }
 
@@ -812,7 +781,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             {
                 int result = 0;
 
-                for(int i = 0;i < Pairs.Count;i++)
+                for (int i = 0; i < Pairs.Count; i++)
                 {
                     if (Pairs[i].HavePositions)
                     {
@@ -835,16 +804,16 @@ namespace OsEngine.OsTrader.Panels.Tab
         {
             get
             {
-                if(Pairs.Count == 0)
+                if (Pairs.Count == 0)
                 {
                     return null;
                 }
 
                 List<string> createdPairs = new List<string>();
 
-                for(int i = 0;i < Pairs.Count; i++)
+                for (int i = 0; i < Pairs.Count; i++)
                 {
-                    if (string.IsNullOrEmpty(Pairs[i].Tab1.Connector.SecurityName) 
+                    if (string.IsNullOrEmpty(Pairs[i].Tab1.Connector.SecurityName)
                         || string.IsNullOrEmpty(Pairs[i].Tab2.Connector.SecurityName))
                     {
                         continue;
@@ -864,9 +833,10 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// <summary>
         /// Is this pair of securities in trade?
         /// </summary>
-        public bool HaveThisPairInTrade(string sec1, string sec2, string secClass, TimeFrame timeFrame, ServerType serverType)
+        public bool HaveThisPairInTrade(string sec1, string sec2, string secClass, 
+            TimeFrame timeFrame, ServerType serverType, string serverName)
         {
-            for(int i = 0;i < Pairs.Count;i++)
+            for (int i = 0; i < Pairs.Count; i++)
             {
                 string curSecName1 = Pairs[i].Tab1.Connector.SecurityName;
                 string curSecName2 = Pairs[i].Tab2.Connector.SecurityName;
@@ -876,17 +846,22 @@ namespace OsEngine.OsTrader.Panels.Tab
                 ServerType serverType1 = Pairs[i].Tab1.Connector.ServerType;
                 ServerType serverType2 = Pairs[i].Tab2.Connector.ServerType;
 
+                string serverName1 = Pairs[i].Tab1.Connector.ServerFullName;
+                string serverName2 = Pairs[i].Tab2.Connector.ServerFullName;
+
                 TimeFrame timeFrame1 = Pairs[i].Tab1.Connector.TimeFrame;
                 TimeFrame timeFrame2 = Pairs[i].Tab2.Connector.TimeFrame;
 
-                if(sec1 == curSecName1 &&
+                if (sec1 == curSecName1 &&
                     sec2 == curSecName2 &&
                     secClass == curSecClass1 &&
                     secClass == curSecClass2 &&
                     timeFrame == timeFrame1 &&
                     timeFrame == timeFrame2 &&
                     serverType == serverType1 &&
-                    serverType == serverType2)
+                    serverType == serverType2 &&
+                    serverName == serverName1 &&
+                    serverName == serverName2)
                 {
                     return true;
                 }
@@ -911,30 +886,129 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// Create a new pair according to the settings
         /// </summary>
         public void CreateNewPair(
-            string sec1, string sec2, string secClass, 
+            string sec1, string sec2, string secClass,
             TimeFrame timeFrame, ServerType serverType,
-            ComissionType comissionType, decimal comissionValue,
-            string portfolio)
+            CommissionType commissionType, decimal commissionValue,
+            string portfolio, string serverName)
         {
             CreatePair();
 
             PairToTrade newPair = Pairs[Pairs.Count - 1];
 
-            newPair.Tab1.CommissionType = comissionType;
-            newPair.Tab1.CommissionValue = comissionValue;
+            newPair.Tab1.CommissionType = commissionType;
+            newPair.Tab1.CommissionValue = commissionValue;
             newPair.Tab1.Connector.ServerType = serverType;
+            newPair.Tab1.Connector.ServerFullName = serverName;
             newPair.Tab1.Connector.TimeFrame = timeFrame;
             newPair.Tab1.Connector.SecurityName = sec1;
             newPair.Tab1.Connector.SecurityClass = secClass;
             newPair.Tab1.Connector.PortfolioName = portfolio;
 
-            newPair.Tab2.CommissionType = comissionType;
-            newPair.Tab2.CommissionValue = comissionValue;
+            newPair.Tab2.CommissionType = commissionType;
+            newPair.Tab2.CommissionValue = commissionValue;
             newPair.Tab2.Connector.ServerType = serverType;
+            newPair.Tab2.Connector.ServerFullName = serverName;
             newPair.Tab2.Connector.TimeFrame = timeFrame;
             newPair.Tab2.Connector.SecurityName = sec2;
             newPair.Tab2.Connector.SecurityClass = secClass;
             newPair.Tab2.Connector.PortfolioName = portfolio;
+        }
+
+        #endregion
+
+        #region External position management
+
+        /// <summary>
+        /// Close all market positions
+        /// </summary>
+        public void CloseAllPositionAtMarket()
+        {
+            try
+            {
+                if (Pairs == null)
+                {
+                    return;
+                }
+
+                for (int i = 0; i < Pairs.Count; i++)
+                {
+                    Pairs[i].ClosePositions();
+                }
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
+        /// <summary>
+        /// Check all pairs for this position with a certain number. Service function
+        /// </summary>
+        public BotTabSimple GetTabWithThisPosition(int positionNum)
+        {
+            try
+            {
+                BotTabSimple tabWithPosition = null;
+
+                for (int i = 0; i < Pairs.Count; i++)
+                {
+                    List<Position> posOnThisTab = Pairs[i].Tab1.PositionsAll;
+
+                    for (int i2 = 0; i2 < posOnThisTab.Count; i2++)
+                    {
+                        if (posOnThisTab[i2].Number == positionNum)
+                        {
+                            return Pairs[i].Tab1;
+                        }
+                    }
+
+                    posOnThisTab = Pairs[i].Tab2.PositionsAll;
+
+                    for (int i2 = 0; i2 < posOnThisTab.Count; i2++)
+                    {
+                        if (posOnThisTab[i2].Number == positionNum)
+                        {
+                            return Pairs[i].Tab2;
+                        }
+                    }
+                }
+
+                return tabWithPosition;
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// All pairs positions
+        /// </summary>
+        public List<Position> PositionsOpenAll
+        {
+            get
+            {
+                List<Position> positions = new List<Position>();
+
+                for (int i = 0; i < Pairs.Count; i++)
+                {
+                    List<Position> curPoses = Pairs[i].Tab1.PositionsOpenAll;
+
+                    if (Pairs[i].Tab2.PositionsOpenAll != null
+                        && Pairs[i].Tab2.PositionsOpenAll.Count > 0)
+                    {
+                        curPoses.AddRange(Pairs[i].Tab2.PositionsOpenAll);
+                    }
+
+                    if (curPoses.Count != 0)
+                    {
+                        positions.AddRange(curPoses);
+                    }
+                }
+
+                return positions;
+            }
         }
 
         #endregion
@@ -960,9 +1034,9 @@ namespace OsEngine.OsTrader.Panels.Tab
                     CorrelationChangeEvent(correlationArray, pair);
                 }
             }
-            catch(Exception error)
+            catch (Exception error)
             {
-                SendNewLogMessage(error.ToString(),LogMessageType.Error);
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
             }
         }
 
@@ -1087,9 +1161,9 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                     TryRePaintGrid();
                 }
-                catch(Exception error)
+                catch (Exception error)
                 {
-                    SendNewLogMessage(error.ToString(),LogMessageType.Error);
+                    SendNewLogMessage(error.ToString(), LogMessageType.Error);
                 }
             }
         }
@@ -1099,6 +1173,8 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// </summary>
         private bool _isDeleted;
 
+        private GlobalPositionViewer _positionViewer;
+
         /// <summary>
         /// The area where the table of pairs is drawn
         /// </summary>
@@ -1107,7 +1183,9 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// <summary>
         /// Start drawing the table of pairs
         /// </summary>
-        public void StartPaint(WindowsFormsHost host)
+        public void StartPaint(WindowsFormsHost host,
+            WindowsFormsHost hostOpenDeals,
+            WindowsFormsHost hostCloseDeals)
         {
             try
             {
@@ -1127,6 +1205,17 @@ namespace OsEngine.OsTrader.Panels.Tab
                     painterThread = new Thread(PainterThread);
                     painterThread.Start();
                 }
+
+                if (_positionViewer == null)
+                {
+                    _positionViewer = new GlobalPositionViewer(StartProgram);
+                    _positionViewer.LogMessageEvent += SendNewLogMessage;
+                    _positionViewer.UserSelectActionEvent += _globalController_UserSelectActionEvent;
+                    _positionViewer.UserClickOnPositionShowBotInTableEvent += _globalPositionViewer_UserClickOnPositionShowBotInTableEvent;
+                }
+
+                SetJournalsInPosViewer();
+                _positionViewer.StartPaint(hostOpenDeals, hostCloseDeals);
             }
             catch (Exception error)
             {
@@ -1139,9 +1228,74 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// </summary>
         public void StopPaint()
         {
-            if(_host != null)
+            if (_host != null)
             {
                 _host.Child = null;
+            }
+
+            if (_positionViewer != null)
+            {
+                _positionViewer.StopPaint();
+            }
+        }
+
+        private void SetJournalsInPosViewer()
+        {
+            if (StartProgram == StartProgram.IsOsOptimizer)
+            {
+                return;
+            }
+
+            if (_positionViewer == null)
+            {
+                return;
+            }
+
+            try
+            {
+                for (int i = 0; i < Pairs.Count; i++)
+                {
+                    PairToTrade curPair = Pairs[i];
+
+                    if (curPair.Tab1 != null)
+                    {
+                        Journal.Journal journal = curPair.Tab1.GetJournal();
+
+                        _positionViewer.RemoveJournal(journal);
+                        _positionViewer.SetJournal(journal);
+                    }
+                    if (curPair.Tab2 != null)
+                    {
+                        Journal.Journal journal = curPair.Tab2.GetJournal();
+
+                        _positionViewer.RemoveJournal(journal);
+                        _positionViewer.SetJournal(journal);
+                    }
+                }
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
+        public event Action<Position, SignalType> UserSelectActionEvent;
+
+        public event Action<string> UserClickOnPositionShowBotInTableEvent;
+
+        private void _globalController_UserSelectActionEvent(Position pos, SignalType signal)
+        {
+            if (UserSelectActionEvent != null)
+            {
+                UserSelectActionEvent(pos, signal);
+            }
+        }
+
+        private void _globalPositionViewer_UserClickOnPositionShowBotInTableEvent(string botTabName)
+        {
+            if (UserClickOnPositionShowBotInTableEvent != null)
+            {
+                UserClickOnPositionShowBotInTableEvent(botTabName);
             }
         }
 
@@ -1295,7 +1449,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                     continue;
                 }
 
-                if(i >= _grid.Rows.Count)
+                if (i >= _grid.Rows.Count)
                 {
                     break;
                 }
@@ -1360,7 +1514,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             }
             catch (Exception error)
             {
-               
+
             }
         }
 
@@ -1513,7 +1667,7 @@ namespace OsEngine.OsTrader.Panels.Tab
 
             nRow.Cells.Add(new DataGridViewTextBoxCell());
 
-            if(pair.Tab1.Connector != null)
+            if (pair.Tab1.Connector != null)
             {
                 nRow.Cells[3].Value = pair.Tab1.Connector.ServerType.ToString();
             }
@@ -1625,7 +1779,7 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                     ui.ShowDialog();
 
-                    if (ui.UserAcceptActioin)
+                    if (ui.UserAcceptAction)
                     {
                         DeletePair(tabNum);
                     }
@@ -1693,7 +1847,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                 }
                 else if (column == 3 && row == 0)
                 { // кнопка открытия окна авто генерации пар
-                    if(_autoSelectPairsUi != null)
+                    if (_autoSelectPairsUi != null)
                     {
                         _autoSelectPairsUi.Activate();
                         return;
@@ -1995,7 +2149,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             Tab1.Delete();
             Tab2.Delete();
 
-            if(PairDeletedEvent != null)
+            if (PairDeletedEvent != null)
             {
                 PairDeletedEvent();
             }
@@ -2057,13 +2211,13 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// </summary>
         public bool ShowTradePanelOnChart
         {
-            get 
-            { 
+            get
+            {
                 return _showTradePanelOnChart;
             }
-            set 
-            { 
-                if(_showTradePanelOnChart == value)
+            set
+            {
+                if (_showTradePanelOnChart == value)
                 {
                     return;
                 }
@@ -2170,8 +2324,8 @@ namespace OsEngine.OsTrader.Panels.Tab
             if (Sec1TradeRegime != PairTraderSecurityTradeRegime.Off)
             {
                 decimal vol = GetVolume(Sec1VolumeType, Sec1Volume, Tab1);
-                
-                if(Sec1TradeRegime == PairTraderSecurityTradeRegime.Market)
+
+                if (Sec1TradeRegime == PairTraderSecurityTradeRegime.Market)
                 {
                     Tab1.SellAtMarket(vol);
                 }
@@ -2179,7 +2333,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                 {
                     decimal price = GetPrice(Sec1SlippageType, Sec1Slippage, Side.Sell, Tab1);
 
-                    Tab1.SellAtLimit(vol,price);
+                    Tab1.SellAtLimit(vol, price);
                 }
             }
             if (Sec2TradeRegime != PairTraderSecurityTradeRegime.Off)
@@ -2262,7 +2416,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             {
                 decimal lastPrice = tab.PriceBestBid;
 
-                if(lastPrice == 0)
+                if (lastPrice == 0)
                 {
                     return 0;
                 }
@@ -2271,7 +2425,7 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                 Security mySec = tab.Security;
 
-                if(mySec.Lot > 1)
+                if (mySec.Lot > 1)
                 {
                     volume = volume / mySec.Lot;
                 }
@@ -2296,33 +2450,33 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// <summary>
         /// Calculate the price on security
         /// </summary>
-        private decimal GetPrice(PairTraderSlippageType slipageType, decimal slipageValue, Side side, BotTabSimple tab)
+        private decimal GetPrice(PairTraderSlippageType slippageType, decimal slippageValue, Side side, BotTabSimple tab)
         {
             decimal price = 0;
 
-            if(side == Side.Buy)
+            if (side == Side.Buy)
             {
                 price = tab.PriceBestBid;
             }
-            else if(side == Side.Sell)
+            else if (side == Side.Sell)
             {
                 price = tab.PriceBestAsk;
             }
 
-            if(slipageValue == 0)
+            if (slippageValue == 0)
             {
                 return price;
             }
 
             decimal slippage = 0;
 
-            if(slipageType == PairTraderSlippageType.Absolute)
+            if (slippageType == PairTraderSlippageType.Absolute)
             {
-                slippage = slipageValue;
+                slippage = slippageValue;
             }
-            else if(slipageType == PairTraderSlippageType.Percent)
+            else if (slippageType == PairTraderSlippageType.Percent)
             {
-                slippage = price * (slipageValue / 100);
+                slippage = price * (slippageValue / 100);
             }
 
             if (side == Side.Buy)
@@ -2348,14 +2502,14 @@ namespace OsEngine.OsTrader.Panels.Tab
             }
             set
             {
-                if(_lastEntryCointegrationSide == value)
+                if (_lastEntryCointegrationSide == value)
                 {
                     return;
                 }
 
                 _lastEntryCointegrationSide = value;
 
-                if(Tab1.StartProgram == StartProgram.IsOsTrader)
+                if (Tab1.StartProgram == StartProgram.IsOsTrader)
                 {
                     Save();
                 }
@@ -2514,9 +2668,9 @@ namespace OsEngine.OsTrader.Panels.Tab
                 ReloadCorrelation(candles1, candles2);
 
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                SendNewLogMessage(ex.ToString(),LogMessageType.Error);
+                SendNewLogMessage(ex.ToString(), LogMessageType.Error);
             }
 
         }
@@ -2758,7 +2912,7 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// <summary>
         /// The reconnection to the exchange was started in source 1. Event handler
         /// </summary>
-        private void Connector_ConnectorStartedReconnectEvent1(string arg1, TimeFrame arg2, TimeSpan arg3, string arg4, Market.ServerType arg5)
+        private void Connector_ConnectorStartedReconnectEvent1(string arg1, TimeFrame arg2, TimeSpan arg3, string arg4, string arg5)
         {
             ClearIndicators();
         }
@@ -2766,7 +2920,7 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// <summary>
         /// The reconnection to the exchange was started in source 2. Event handler
         /// </summary>
-        private void Connector_ConnectorStartedReconnectEvent(string arg1, TimeFrame arg2, TimeSpan arg3, string arg4, Market.ServerType arg5)
+        private void Connector_ConnectorStartedReconnectEvent(string arg1, TimeFrame arg2, TimeSpan arg3, string arg4, string arg5)
         {
             ClearIndicators();
         }
@@ -2812,17 +2966,17 @@ namespace OsEngine.OsTrader.Panels.Tab
                 return;
             }
 
-            if(AutoRebuildCorrelation)
+            if (AutoRebuildCorrelation)
             {
                 ReloadCorrelation(_candles1, _candles2);
             }
 
-            if(AutoRebuildCointegration)
+            if (AutoRebuildCointegration)
             {
                 ReloadCointegration(_candles1, _candles2);
             }
 
-            if(CandlesInPairSyncFinishedEvent != null)
+            if (CandlesInPairSyncFinishedEvent != null)
             {
                 CandlesInPairSyncFinishedEvent(_candles1, Tab1, _candles2, Tab2, this);
             }

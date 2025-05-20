@@ -23,13 +23,19 @@ namespace OsEngine.Market.Servers
         /// взять тип сервера. 
         /// </summary>
         /// <returns></returns>
-        ServerType ServerType { get;}
+        ServerType ServerType { get; }
+
+        /// <summary>
+        /// full server name to user
+        /// полное название сервера для пользователя
+        /// </summary>
+        string ServerNameAndPrefix { get; }
 
         /// <summary>
         /// show settings
         /// показать настройки
         /// </summary>
-        void ShowDialog();
+        void ShowDialog(int num = 0);
 
         #endregion
 
@@ -95,7 +101,7 @@ namespace OsEngine.Market.Servers
         /// take all portfolios
         /// взять все портфели
         /// </summary>
-        List<Portfolio> Portfolios { get;}
+        List<Portfolio> Portfolios { get; }
 
         /// <summary>
         /// take portfolio by number
@@ -123,7 +129,7 @@ namespace OsEngine.Market.Servers
         /// take the security by the short name
         /// взять инструмент по короткому имени инструмента
         /// </summary>
-        Security GetSecurityForName(string securityName,string securityClass);
+        Security GetSecurityForName(string securityName, string securityClass);
 
         /// <summary>
         /// securities changed
@@ -152,6 +158,16 @@ namespace OsEngine.Market.Servers
         void StopThisSecurity(CandleSeries series);
 
         /// <summary>
+        /// subscribe to news
+        /// </summary>
+        bool SubscribeNews();
+
+        /// <summary>
+        /// the news has come out
+        /// </summary>
+        event Action<News> NewsEvent;
+
+        /// <summary>
         /// new candles
         /// новые свечи
         /// </summary>
@@ -174,6 +190,12 @@ namespace OsEngine.Market.Servers
         /// </summary>
         event Action<List<Trade>> NewTradeEvent;
 
+        /// <summary>
+        /// new additional market data
+        /// новые данные по дополнительным данным по тикеру
+        /// </summary>
+        event Action<OptionMarketData> NewAdditionalMarketDataEvent;
+
         #endregion
 
         #region Data upload
@@ -189,14 +211,14 @@ namespace OsEngine.Market.Servers
         /// Начать выгрузку данных по инструменту
         /// </summary>
         List<Candle> GetCandleDataToSecurity(string securityName, string securityClass, TimeFrameBuilder timeFrameBuilder,
-            DateTime startTime, DateTime endTime, DateTime actualTime, bool neadToUpdate);
+            DateTime startTime, DateTime endTime, DateTime actualTime, bool needToUpdate);
 
         /// <summary>
         /// take ticks instrument data for a certain period
         /// взять тиковые данные по инструменту за определённый период
         /// </summary>
         List<Trade> GetTickDataToSecurity(string securityName, string securityClass, DateTime startTime, DateTime endTime, DateTime actualTime,
-            bool neadToUpdete);
+            bool needToUpdete);
 
         /// <summary>
         /// take all trades on the instrument that have in the system

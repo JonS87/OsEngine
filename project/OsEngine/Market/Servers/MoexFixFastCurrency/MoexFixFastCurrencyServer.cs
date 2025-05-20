@@ -76,7 +76,7 @@ namespace OsEngine.Market.Servers.MoexFixFastCurrency
             thread7.Start();
         }
 
-        public void Connect()
+        public void Connect(WebProxy proxy)
         {
             try
             {
@@ -913,6 +913,13 @@ namespace OsEngine.Market.Servers.MoexFixFastCurrency
                 SendLogMessage(exception.ToString(), LogMessageType.Error);
             }
         }
+
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
 
         #endregion
 
@@ -2939,6 +2946,8 @@ namespace OsEngine.Market.Servers.MoexFixFastCurrency
         public event Action<MarketDepth> MarketDepthEvent;
 
         public event Action<Trade> NewTradesEvent;
+
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         #endregion
 

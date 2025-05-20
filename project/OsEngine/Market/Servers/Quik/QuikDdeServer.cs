@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Net;
 using System.Text;
 using System.Threading;
 using OsEngine.Entity;
@@ -149,7 +150,7 @@ namespace OsEngine.Market.Servers.Quik
         /// connect to API
         /// подключиться к Апи
         /// </summary>
-        public void Connect()
+        public void Connect(WebProxy proxy)
         {
             try
             {
@@ -849,8 +850,15 @@ namespace OsEngine.Market.Servers.Quik
             return command;
         }
 
-// processing data from auxiliary classes
-// обработка данных из вспомогательных классов
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
+
+        // processing data from auxiliary classes
+        // обработка данных из вспомогательных классов
 
         /// <summary>
         /// DDE server
@@ -1169,7 +1177,9 @@ namespace OsEngine.Market.Servers.Quik
         /// </summary>
         public event Action DisconnectEvent;
 
-// logging / логирование
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
+
+        // logging / логирование
 
         /// <summary>
         /// add a new log message

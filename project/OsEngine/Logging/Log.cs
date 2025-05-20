@@ -203,6 +203,9 @@ namespace OsEngine.Logging
                 items.Add(new MenuItem(OsLocalization.Logging.Label28));
                 items[1].Click += Log_ShowFile_Click;
 
+                items.Add(new MenuItem(OsLocalization.Logging.Label29));
+                items[2].Click += Log_ShowErrorLog_Click;
+
                 ContextMenu menu = new ContextMenu(items.ToArray());
 
                 _grid.ContextMenu = menu;
@@ -212,7 +215,11 @@ namespace OsEngine.Logging
             {
                 System.Windows.Forms.MessageBox.Show(ex.ToString());
             }
+        }
 
+        private void Log_ShowErrorLog_Click(object sender, EventArgs e)
+        {
+            Log.ShowErrorLogUi();
         }
 
         private void Log_ShowFile_Click(object sender, EventArgs e)
@@ -274,10 +281,10 @@ namespace OsEngine.Logging
                 _grid = null;
             }
 
-            while (_messagesesToSaveInFile.IsEmpty == false)
+            while (_messagesToSaveInFile.IsEmpty == false)
             {
                 LogMessage s;
-                _messagesesToSaveInFile.TryDequeue(out s);
+                _messagesToSaveInFile.TryDequeue(out s);
             }
 
             while (_incomingMessages.IsEmpty == false)
@@ -308,9 +315,9 @@ namespace OsEngine.Logging
                 _botPanels[i].LogMessageEvent -= ProcessMessage;
             }
 
-            for (int i = 0; i < _optimizerDataStoreges.Count; i++)
+            for (int i = 0; i < _optimizerDataStorages.Count; i++)
             {
-                _optimizerDataStoreges[i].LogMessageEvent -= ProcessMessage;
+                _optimizerDataStorages[i].LogMessageEvent -= ProcessMessage;
             }
 
             for (int i = 0; i < _osMinerMasters.Count; i++)
@@ -342,7 +349,7 @@ namespace OsEngine.Logging
             _osConverterMasters.Clear();
             _osTraderMasters.Clear();
             _botPanels.Clear();
-            _optimizerDataStoreges.Clear();
+            _optimizerDataStorages.Clear();
             _osMinerMasters.Clear();
             _osDataMasters.Clear();
             _optimizers.Clear();
@@ -353,7 +360,7 @@ namespace OsEngine.Logging
             _osConverterMasters = null;
             _osTraderMasters = null;
             _botPanels = null;
-            _optimizerDataStoreges = null;
+            _optimizerDataStorages = null;
             _osMinerMasters = null;
             _osDataMasters = null;
             _optimizers = null;
@@ -406,10 +413,10 @@ namespace OsEngine.Logging
                     _grid.Rows.Clear();
                 }
 
-                while (_messagesesToSaveInFile.IsEmpty == false)
+                while (_messagesToSaveInFile.IsEmpty == false)
                 {
                     LogMessage s;
-                    _messagesesToSaveInFile.TryDequeue(out s);
+                    _messagesToSaveInFile.TryDequeue(out s);
                 }
 
                 while (_incomingMessages.IsEmpty == false)
@@ -444,7 +451,7 @@ namespace OsEngine.Logging
         List<OsConverterMaster> _osConverterMasters = new List<OsConverterMaster>();
         List<OsTraderMaster> _osTraderMasters = new List<OsTraderMaster>();
         List<BotPanel> _botPanels = new List<BotPanel>();
-        List<OptimizerDataStorage> _optimizerDataStoreges = new List<OptimizerDataStorage>();
+        List<OptimizerDataStorage> _optimizerDataStorages = new List<OptimizerDataStorage>();
         List<OsMinerMaster> _osMinerMasters = new List<OsMinerMaster>();
         List<OsDataMasterPainter> _osDataMasters = new List<OsDataMasterPainter>();
         List<OptimizerMaster> _optimizers = new List<OptimizerMaster>();
@@ -513,7 +520,7 @@ namespace OsEngine.Logging
         public void Listen(OptimizerDataStorage storage)
         {
             storage.LogMessageEvent += ProcessMessage;
-            _optimizerDataStoreges.Add(storage);
+            _optimizerDataStorages.Add(storage);
         }
 
         /// <summary>
@@ -679,7 +686,7 @@ namespace OsEngine.Logging
 
                 if (messageLog.Type != LogMessageType.OldSession)
                 {
-                    _messagesesToSaveInFile.Enqueue(messageLog);
+                    _messagesToSaveInFile.Enqueue(messageLog);
                 }
 
                 if (_grid != null)
@@ -712,7 +719,7 @@ namespace OsEngine.Logging
         /// all log messages
         /// все сообщения лога
         /// </summary>
-        private ConcurrentQueue<LogMessage> _messagesesToSaveInFile = new ConcurrentQueue<LogMessage>();
+        private ConcurrentQueue<LogMessage> _messagesToSaveInFile = new ConcurrentQueue<LogMessage>();
 
         /// <summary>
         /// method for working saving log thread when the application starts closing
@@ -731,8 +738,8 @@ namespace OsEngine.Logging
 
             try
             {
-                if (_messagesesToSaveInFile == null ||
-                    _messagesesToSaveInFile.IsEmpty)
+                if (_messagesToSaveInFile == null ||
+                    _messagesToSaveInFile.IsEmpty)
                 {
                     return;
                 }
@@ -743,11 +750,11 @@ namespace OsEngine.Logging
                 using (StreamWriter writer = new StreamWriter(
                         path, true))
                 {
-                    while (_messagesesToSaveInFile.IsEmpty == false)
+                    while (_messagesToSaveInFile.IsEmpty == false)
                     {
                         LogMessage message;
 
-                        if (_messagesesToSaveInFile.TryDequeue(out message))
+                        if (_messagesToSaveInFile.TryDequeue(out message))
                         {
                             string mess = message.Time.ToLocalTime() + ";";
                             mess += message.Type + ";";
@@ -955,7 +962,7 @@ namespace OsEngine.Logging
             DataGridViewColumn column = new DataGridViewColumn();
             column.CellTemplate = cell0;
             column.HeaderText = OsLocalization.Logging.Column3;
-            column.ReadOnly = true;
+            column.ReadOnly = false;
             column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridErrorLog.Columns.Add(column);
         }
@@ -1006,23 +1013,68 @@ namespace OsEngine.Logging
             row.Cells[2].Value = message.Message;
             _gridErrorLog.Rows.Insert(0, row);
 
-            if (PrimeSettingsMaster.ErrorLogMessageBoxIsActive)
+            if (PrimeSettingsMaster.ErrorLogMessageBoxIsActive
+                && _logErrorUi == null)
             {
-                if (_logErrorUi == null)
-                {
-                    _logErrorUi = new LogErrorUi(_gridErrorLog);
-                    _logErrorUi.Closing += delegate (object sender, CancelEventArgs args)
-                    {
-                        _logErrorUi = null;
-                    };
-                    _logErrorUi.Show();
-                }
+                ShowErrorLogUi();
             }
 
             if (PrimeSettingsMaster.ErrorLogBeepIsActive)
             {
                 SystemSounds.Beep.Play();
             }
+        }
+
+        public static void ClearErrorLog()
+        {
+            try
+            {
+                if (!MainWindow.GetDispatcher.CheckAccess())
+                {
+                    MainWindow.GetDispatcher.Invoke(new Action(ClearErrorLog));
+                    return;
+                }
+
+                _gridErrorLog.Rows.Clear();
+                _errorLogShutDown = false;
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        public static void ShowErrorLogUi()
+        {
+            try
+            {
+                if (!MainWindow.GetDispatcher.CheckAccess())
+                {
+                    MainWindow.GetDispatcher.Invoke(new Action(ShowErrorLogUi));
+                    return;
+                }
+
+                if (_logErrorUi == null)
+                {
+                    _logErrorUi = new LogErrorUi(_gridErrorLog);
+                    _logErrorUi.Closing += _logErrorUi_Closing;
+                    _logErrorUi.Show();
+                }
+                else
+                {
+                    _logErrorUi.Activate();
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private static void _logErrorUi_Closing(object sender, CancelEventArgs e)
+        {
+            _logErrorUi.Closing -= _logErrorUi_Closing;
+            _logErrorUi = null;
         }
     }
 

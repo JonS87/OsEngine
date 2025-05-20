@@ -31,7 +31,7 @@ namespace OsEngine.Market.Servers.BitMex
             ServerRealization = realization;
 
             CreateParameterString(OsLocalization.Market.ServerParamId, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamSecretKey, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterSecretKey, "");
         }
     }
 
@@ -54,7 +54,7 @@ namespace OsEngine.Market.Servers.BitMex
             converter.Start();
         }
 
-        public void Connect()
+        public void Connect(WebProxy proxy = null)
         {
             _id = ((ServerParameterString)ServerParameters[0]).Value;
             _secKey = ((ServerParameterPassword)ServerParameters[1]).Value;
@@ -538,7 +538,7 @@ namespace OsEngine.Market.Servers.BitMex
                 }
                 else
                 {
-                    return СandlesBuilder(security, (int)timeSpan.TotalMinutes, startTime, endTime);
+                    return CandlesBuilder(security, (int)timeSpan.TotalMinutes, startTime, endTime);
                 }
             }
             catch (Exception exception)
@@ -663,7 +663,7 @@ namespace OsEngine.Market.Servers.BitMex
             return 300;
         }
 
-        private List<Candle> СandlesBuilder(string security, int tf, DateTime startTime, DateTime endTime)
+        private List<Candle> CandlesBuilder(string security, int tf, DateTime startTime, DateTime endTime)
         {
             List<Candle> oldCandles;
             int a;
@@ -1131,6 +1131,13 @@ namespace OsEngine.Market.Servers.BitMex
                 SendLogMessage(exception.ToString(), LogMessageType.Error);
             }
         }
+
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
 
         #endregion
 
@@ -1706,6 +1713,8 @@ namespace OsEngine.Market.Servers.BitMex
         public event Action<MarketDepth> MarketDepthEvent;
 
         public event Action<Trade> NewTradesEvent;
+
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         #endregion
 

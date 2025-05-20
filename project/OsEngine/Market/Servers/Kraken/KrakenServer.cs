@@ -9,6 +9,7 @@ using OsEngine.Logging;
 using OsEngine.Market.Servers.Entity;
 using Kraken.WebSockets;
 using System.Threading.Tasks;
+using System.Net;
 
 
 namespace OsEngine.Market.Servers.Kraken
@@ -21,7 +22,7 @@ namespace OsEngine.Market.Servers.Kraken
             ServerRealization = realization;
 
             CreateParameterString(OsLocalization.Market.ServerParamPublicKey, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamSecretKey, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterSecretKey, "");
             CreateParameterEnum("Leverage type", "None", new List<string> (){"None","Two","Three","Four","Five"});
 
         }
@@ -105,7 +106,7 @@ namespace OsEngine.Market.Servers.Kraken
         /// connect to API
         /// подсоединиться к апи
         /// </summary>
-        public async void Connect()
+        public async void Connect(WebProxy proxy)
         {
             if (_clientRest == null)
             {
@@ -269,6 +270,13 @@ namespace OsEngine.Market.Servers.Kraken
         {
             _clientSocketPublicData.Subscrible(security.NameFull,security.Name);
         }
+
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
 
         /// <summary>
         /// take candle history for period
@@ -530,6 +538,8 @@ namespace OsEngine.Market.Servers.Kraken
         /// соединение с API разорвано
         /// </summary>
         public event Action DisconnectEvent;
+
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         // log messages
         // сообщения для лога

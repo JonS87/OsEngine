@@ -21,8 +21,9 @@ namespace OsEngine.Market.Servers.Alor
 {
     public class AlorServer : AServer
     {
-        public AlorServer()
+        public AlorServer(int uniqueNumber)
         {
+            ServerNum = uniqueNumber;
             AlorServerRealization realization = new AlorServerRealization();
             ServerRealization = realization;
 
@@ -36,6 +37,8 @@ namespace OsEngine.Market.Servers.Alor
             CreateParameterBoolean(OsLocalization.Market.UseCurrency, true);
             CreateParameterBoolean(OsLocalization.Market.UseOptions, false);
             CreateParameterBoolean(OsLocalization.Market.UseOther, false);
+            CreateParameterEnum(OsLocalization.Market.ServerParam13, "10", new List<string> { "1", "10", "20"});
+            CreateParameterBoolean(OsLocalization.Market.IgnoreMorningAuctionTrades, false);
         }
     }
 
@@ -62,14 +65,17 @@ namespace OsEngine.Market.Servers.Alor
             worker4.Start();
         }
 
-        public void Connect()
+        private WebProxy _myProxy;
+
+        public void Connect(WebProxy proxy = null)
         {
             try
             {
+                _myProxy = proxy;
                 _securities.Clear();
                 _myPortfolios.Clear();
-                _subscribledSecurities.Clear();
-                _lastGetLiveTimeToketTime = DateTime.MinValue;
+                _subscribedSecurities.Clear();
+                _lastGetLiveTimeTokenTime = DateTime.MinValue;
 
                 SendLogMessage("Start Alor Connection", LogMessageType.System);
 
@@ -78,6 +84,7 @@ namespace OsEngine.Market.Servers.Alor
                 _portfolioFutId = ((ServerParameterString)ServerParameters[2]).Value;
                 _portfolioCurrencyId = ((ServerParameterString)ServerParameters[3]).Value;
                 _portfolioSpareId = ((ServerParameterString)ServerParameters[4]).Value;
+                _ignoreMorningAuctionTrades = ((ServerParameterBool)ServerParameters[11]).Value;
 
                 if (string.IsNullOrEmpty(_apiTokenRefresh))
                 {
@@ -123,7 +130,7 @@ namespace OsEngine.Market.Servers.Alor
                     continue;
                 }
 
-                if (_lastGetLiveTimeToketTime.AddMinutes(20) < DateTime.Now)
+                if (_lastGetLiveTimeTokenTime.AddMinutes(20) < DateTime.Now)
                 {
                     if (GetCurSessionToken() == false)
                     {
@@ -137,7 +144,7 @@ namespace OsEngine.Market.Servers.Alor
             }
         }
 
-        DateTime _lastGetLiveTimeToketTime = DateTime.MinValue;
+        DateTime _lastGetLiveTimeTokenTime = DateTime.MinValue;
 
         private bool GetCurSessionToken()
         {
@@ -146,6 +153,12 @@ namespace OsEngine.Market.Servers.Alor
                 string endPoint = "/refresh?token=" + _apiTokenRefresh;
                 RestRequest requestRest = new RestRequest(endPoint, Method.POST);
                 RestClient client = new RestClient(_oauthApiHost);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
+
                 IRestResponse response = client.Execute(requestRest);
 
                 if (response.StatusCode == HttpStatusCode.OK)
@@ -153,7 +166,7 @@ namespace OsEngine.Market.Servers.Alor
                     string content = response.Content;
                     TokenResponse newLiveToken = JsonConvert.DeserializeAnonymousType(content, new TokenResponse());
 
-                    _lastGetLiveTimeToketTime = DateTime.Now;
+                    _lastGetLiveTimeTokenTime = DateTime.Now;
                     _apiTokenReal = newLiveToken.AccessToken;
                     return true;
                 }
@@ -174,7 +187,7 @@ namespace OsEngine.Market.Servers.Alor
         {
             _securities.Clear();
             _myPortfolios.Clear();
-            _lastGetLiveTimeToketTime = DateTime.MinValue;
+            _lastGetLiveTimeTokenTime = DateTime.MinValue;
 
             DeleteWebSocketConnection();
 
@@ -211,6 +224,7 @@ namespace OsEngine.Market.Servers.Alor
         private bool _useOptions = false;
         private bool _useCurrency = false;
         private bool _useOther = false;
+        private bool _ignoreMorningAuctionTrades = true; // ignore trades before 7:00 MSK for stocks and before 9:00 for futures
 
         private string _portfolioSpotId;
         private string _portfolioFutId;
@@ -281,6 +295,12 @@ namespace OsEngine.Market.Servers.Alor
                 RestRequest requestRest = new RestRequest(endPoint, Method.GET);
                 requestRest.AddHeader("Authorization", "Bearer " + _apiTokenReal);
                 RestClient client = new RestClient(_restApiHost);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
+
                 IRestResponse response = client.Execute(requestRest);
 
                 if (response.StatusCode == HttpStatusCode.OK)
@@ -314,6 +334,11 @@ namespace OsEngine.Market.Servers.Alor
                 {
                     AlorSecurity item = stocks[i];
 
+                    if(item.symbol == "IMOEX2")
+                    {
+
+                    }
+
                     SecurityType instrumentType = GetSecurityType(item);
 
                     if (!CheckNeedSecurity(instrumentType))
@@ -331,6 +356,7 @@ namespace OsEngine.Market.Servers.Alor
                     newSecurity.Exchange = item.exchange;
                     newSecurity.DecimalsVolume = 0;
                     newSecurity.Lot = item.lotsize.ToDecimal();
+                    newSecurity.VolumeStep = 1;
                     newSecurity.Name = item.symbol;
                     newSecurity.NameFull = item.symbol + "_" + item.board;
 
@@ -547,6 +573,10 @@ namespace OsEngine.Market.Servers.Alor
             {
                 return SecurityType.Fund;
             }
+            else if(security.description.Contains("Индекс"))
+            {
+                return SecurityType.Index;
+            }
 
             var board = security.board;
             if (board == "CETS") return SecurityType.CurrencyPair;
@@ -621,16 +651,27 @@ namespace OsEngine.Market.Servers.Alor
             ActivatePortfolioSocket();
         }
 
-        private void GetCurrentPortfolio(string portfoliId, string namePrefix)
+        private void GetCurrentPortfolio(string portfolioId, string namePrefix)
         {
             try
             {
-                string endPoint = $"/md/v2/clients/MOEX/{portfoliId}/summary?format=Simple";
+                string exchange = "MOEX";
+                if (portfolioId.StartsWith("E"))
+                {
+                    exchange = "UNITED";
+                }
+
+                string endPoint = $"/md/v2/clients/{exchange}/{portfolioId}/summary?format=Simple";
                 RestRequest requestRest = new RestRequest(endPoint, Method.GET);
                 requestRest.AddHeader("Authorization", "Bearer " + _apiTokenReal);
                 requestRest.AddHeader("accept", "application/json");
 
                 RestClient client = new RestClient(_restApiHost);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
 
                 IRestResponse response = client.Execute(requestRest);
 
@@ -639,7 +680,7 @@ namespace OsEngine.Market.Servers.Alor
                     string content = response.Content;
                     AlorPortfolioRest portfolio = JsonConvert.DeserializeAnonymousType(content, new AlorPortfolioRest());
 
-                    ConvertToPortfolio(portfolio, portfoliId, namePrefix);
+                    ConvertToPortfolio(portfolio, portfolioId, namePrefix);
                 }
                 else
                 {
@@ -658,6 +699,7 @@ namespace OsEngine.Market.Servers.Alor
             Portfolio newPortfolio = new Portfolio();
             newPortfolio.Number = name + "_" + prefix;
             newPortfolio.ValueCurrent = portfolio.buyingPower.ToDecimal();
+            newPortfolio.UnrealizedPnl = portfolio.profit.ToDecimal();
             _myPortfolios.Add(newPortfolio);
         }
 
@@ -817,6 +859,12 @@ namespace OsEngine.Market.Servers.Alor
                 requestRest.AddHeader("accept", "application/json");
                 requestRest.AddHeader("Authorization", "Bearer " + _apiTokenReal);
                 RestClient client = new RestClient(_restApiHost);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
+
                 IRestResponse response = client.Execute(requestRest);
 
                 if (response.StatusCode == HttpStatusCode.OK)
@@ -841,8 +889,20 @@ namespace OsEngine.Market.Servers.Alor
         {
             List<Candle> result = new List<Candle>();
 
+            if(candles == null 
+                || candles.history == null 
+                || candles.history.Count == 0)
+            {
+                return result;
+            }
+
             for(int i = 0;i < candles.history.Count;i++)
             {
+                if(candles.history[i] == null)
+                {
+                    continue;
+                }
+
                 AlorCandle curCandle = candles.history[i];
 
                 Candle newCandle = new Candle();
@@ -939,6 +999,12 @@ namespace OsEngine.Market.Servers.Alor
                 requestRest.AddHeader("accept", "application/json");
                 requestRest.AddHeader("Authorization", "Bearer " + _apiTokenReal);
                 RestClient client = new RestClient(_restApiHost);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
+
                 IRestResponse response = client.Execute(requestRest);
 
                 if (response.StatusCode == HttpStatusCode.OK)
@@ -1034,6 +1100,13 @@ namespace OsEngine.Market.Servers.Alor
                     _webSocketData.OnClose += WebSocketData_Closed;
                     _webSocketData.OnMessage += WebSocketData_MessageReceived;
                     _webSocketData.OnError += WebSocketData_Error;
+
+                    if(_myProxy != null)
+                    {
+                        NetworkCredential credential = (NetworkCredential)_myProxy.Credentials;
+                        _webSocketData.SetProxy(_myProxy.Address.ToString(), credential.UserName, credential.Password);
+                    }
+
                     _webSocketData.Connect();
 
                     _webSocketPortfolio = new WebSocket(_wsHost);
@@ -1042,6 +1115,13 @@ namespace OsEngine.Market.Servers.Alor
                     _webSocketPortfolio.OnClose += _webSocketPortfolio_Closed;
                     _webSocketPortfolio.OnMessage += _webSocketPortfolio_MessageReceived;
                     _webSocketPortfolio.OnError += _webSocketPortfolio_Error;
+
+                    if (_myProxy != null)
+                    {
+                        NetworkCredential credential = (NetworkCredential)_myProxy.Credentials;
+                        _webSocketPortfolio.SetProxy(_myProxy.Address.ToString(), credential.UserName, credential.Password);
+                    }
+
                     _webSocketPortfolio.Connect();
 
                 }
@@ -1165,10 +1245,15 @@ namespace OsEngine.Market.Servers.Alor
         {
             // myTrades subscription
 
-            RequestSocketSubscribleMyTrades subObjTrades = new RequestSocketSubscribleMyTrades();
+            RequestSocketSubscribeMyTrades subObjTrades = new RequestSocketSubscribeMyTrades();
             subObjTrades.guid = GetGuid();
             subObjTrades.token = _apiTokenReal;
             subObjTrades.portfolio = portfolioName;
+
+            if (portfolioName.StartsWith("E"))
+            {
+                subObjTrades.exchange = "UNITED";
+            }
 
             string messageTradeSub = JsonConvert.SerializeObject(subObjTrades);
 
@@ -1183,10 +1268,15 @@ namespace OsEngine.Market.Servers.Alor
 
             // orders subscription
 
-            RequestSocketSubscribleOrders subObjOrders = new RequestSocketSubscribleOrders();
+            RequestSocketSubscribeOrders subObjOrders = new RequestSocketSubscribeOrders();
             subObjOrders.guid = GetGuid();
             subObjOrders.token = _apiTokenReal;
             subObjOrders.portfolio = portfolioName;
+
+            if (portfolioName.StartsWith("E"))
+            {
+                subObjOrders.exchange = "UNITED";
+            }
 
             string messageOrderSub = JsonConvert.SerializeObject(subObjOrders);
 
@@ -1202,15 +1292,20 @@ namespace OsEngine.Market.Servers.Alor
 
             // portfolio subscription
 
-            RequestSocketSubscriblePoftfolio subObjPortf = new RequestSocketSubscriblePoftfolio();
+            RequestSocketSubscribePortfolio subObjPortf = new RequestSocketSubscribePortfolio();
             subObjPortf.guid = GetGuid();
             subObjPortf.token = _apiTokenReal;
             subObjPortf.portfolio = portfolioName;
 
+            if (portfolioName.StartsWith("E"))
+            {
+                subObjPortf.exchange = "UNITED";
+            }
+
             string messagePortfolioSub = JsonConvert.SerializeObject(subObjPortf);
 
             AlorSocketSubscription portfSub = new AlorSocketSubscription();
-            portfSub.SubType = AlorSubType.Porfolio;
+            portfSub.SubType = AlorSubType.Portfolio;
             portfSub.ServiceInfo = portfolioName;
             portfSub.Guid = subObjPortf.guid;
 
@@ -1221,10 +1316,15 @@ namespace OsEngine.Market.Servers.Alor
 
             // positions subscription
 
-            RequestSocketSubscriblePositions subObjPositions = new RequestSocketSubscriblePositions();
+            RequestSocketSubscribePositions subObjPositions = new RequestSocketSubscribePositions();
             subObjPositions.guid = GetGuid();
             subObjPositions.token = _apiTokenReal;
             subObjPositions.portfolio = portfolioName;
+
+            if (portfolioName.StartsWith("E"))
+            {
+                subObjPositions.exchange = "UNITED";
+            }
 
             string messagePositionsSub = JsonConvert.SerializeObject(subObjPositions);
 
@@ -1440,34 +1540,35 @@ namespace OsEngine.Market.Servers.Alor
 
         #region 9 WebSocket Security subscrible
 
-        private RateGate _rateGateSubscrible = new RateGate(1, TimeSpan.FromMilliseconds(50));
+        private RateGate _rateGateSubscribe = new RateGate(1, TimeSpan.FromMilliseconds(50));
 
-        List<Security> _subscribledSecurities = new List<Security>();
+        List<Security> _subscribedSecurities = new List<Security>();
 
         public void Subscrible(Security security)
         {
             try
             {
-                for (int i = 0; i < _subscribledSecurities.Count; i++)
+                for (int i = 0; i < _subscribedSecurities.Count; i++)
                 {
-                    if (_subscribledSecurities[i].Name == security.Name)
+                    if (_subscribedSecurities[i].Name == security.Name)
                     {
                         return;
                     }
                 }
 
-                _rateGateSubscrible.WaitToProceed();
+                _rateGateSubscribe.WaitToProceed();
 
-                _subscribledSecurities.Add(security);
+                _subscribedSecurities.Add(security);
 
                 // trades subscription
 
                 //curl - X GET "https://apidev.alor.ru/md/v2/Securities/MOEX/LKOH/alltrades?format=Simple&from=1593430060&to=1593430560&fromId=7796897024&toId=7796897280&take=10" - H "accept: application/json"
 
-                RequestSocketSubscribleTrades subObjTrades = new RequestSocketSubscribleTrades();
+                RequestSocketSubscribeTrades subObjTrades = new RequestSocketSubscribeTrades();
                 subObjTrades.code = security.Name;
                 subObjTrades.guid = GetGuid();
                 subObjTrades.token = _apiTokenReal;
+
                 string messageTradeSub = JsonConvert.SerializeObject(subObjTrades);
 
                 AlorSocketSubscription tradeSub = new AlorSocketSubscription();
@@ -1480,14 +1581,19 @@ namespace OsEngine.Market.Servers.Alor
 
                 // market depth subscription
 
-                RequestSocketSubscribleMarketDepth subObjMarketDepth = new RequestSocketSubscribleMarketDepth();
+                RequestSocketSubscribeMarketDepth subObjMarketDepth = new RequestSocketSubscribeMarketDepth();
                 subObjMarketDepth.code = security.Name;
                 subObjMarketDepth.guid = GetGuid();
                 subObjMarketDepth.token = _apiTokenReal;
 
-                if (((ServerParameterBool)ServerParameters[17]).Value == false)
+                if (((ServerParameterBool)ServerParameters[19]).Value == false)
                 {
                     subObjMarketDepth.depth = "1";
+                }
+                else
+                {
+                    subObjMarketDepth.depth = ((ServerParameterEnum)ServerParameters[10]).Value;
+
                 }
 
                 AlorSocketSubscription mdSub = new AlorSocketSubscription();
@@ -1506,6 +1612,15 @@ namespace OsEngine.Market.Servers.Alor
                 SendLogMessage(exception.ToString(),LogMessageType.Error);
             }
         }
+
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
+
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         #endregion
 
@@ -1547,8 +1662,8 @@ namespace OsEngine.Market.Servers.Alor
                         continue;
                     }
 
-                    SoketMessageBase baseMessage = 
-                        JsonConvert.DeserializeAnonymousType(message, new SoketMessageBase());
+                    SocketMessageBase baseMessage = 
+                        JsonConvert.DeserializeAnonymousType(message, new SocketMessageBase());
 
                     if(baseMessage == null 
                         || string.IsNullOrEmpty(baseMessage.guid))
@@ -1599,7 +1714,12 @@ namespace OsEngine.Market.Servers.Alor
             trade.Time = ConvertToDateTimeFromUnixFromMilliseconds(baseMessage.timestamp);
             trade.Id = baseMessage.id;
 
-            if(baseMessage.side == "sell")
+            if(string.IsNullOrEmpty(baseMessage.oi) == false)
+            {
+                trade.OpenInterest = baseMessage.oi.ToDecimal();
+            }
+
+            if (baseMessage.side == "sell")
             {
                 trade.Side = Side.Sell;
             }
@@ -1609,6 +1729,40 @@ namespace OsEngine.Market.Servers.Alor
             }
             
             trade.Volume = baseMessage.qty.ToDecimal();
+
+            if(trade.Price < 0)
+            {
+
+            }
+
+            if (_ignoreMorningAuctionTrades && trade.Time.Hour < 9) // process only mornings
+            {
+                Security security = _subscribedSecurities[0];
+                for (int i = 0; i < _subscribedSecurities.Count; i++)
+                {
+                    if (_subscribedSecurities[i].Name == trade.SecurityNameCode)
+                    {
+                        security = _subscribedSecurities[i];
+                        break;
+                    }
+                }
+
+                if (security.SecurityType == SecurityType.Futures)
+                {
+                    if (trade.Time < trade.Time.Date.AddHours(9))
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    if (trade.Time < trade.Time.Date.AddHours(7))
+                    {
+                        return;
+                    }
+                }
+            }
+
 
             if (NewTradesEvent != null)
             {
@@ -1701,8 +1855,8 @@ namespace OsEngine.Market.Servers.Alor
                         continue;
                     }
 
-                    SoketMessageBase baseMessage =
-                        JsonConvert.DeserializeAnonymousType(message, new SoketMessageBase());
+                    SocketMessageBase baseMessage =
+                        JsonConvert.DeserializeAnonymousType(message, new SocketMessageBase());
 
                     if (baseMessage == null
                         || string.IsNullOrEmpty(baseMessage.guid))
@@ -1717,7 +1871,7 @@ namespace OsEngine.Market.Servers.Alor
                             continue;
                         }
 
-                        if (_subscriptionsPortfolio[i].SubType == AlorSubType.Porfolio)
+                        if (_subscriptionsPortfolio[i].SubType == AlorSubType.Portfolio)
                         {
                             UpDateMyPortfolio(baseMessage.data.ToString(), _subscriptionsPortfolio[i].ServiceInfo);
                             break;
@@ -1818,6 +1972,8 @@ namespace OsEngine.Market.Servers.Alor
             newPos.PortfolioName = portf.Number;
             newPos.ValueCurrent = baseMessage.qty.ToDecimal();
             newPos.SecurityNameCode = baseMessage.symbol;
+            newPos.UnrealizedPnl = baseMessage.dailyUnrealisedPl.ToDecimal();
+
             portf.SetNewPosition(newPos);
 
             if (PortfolioEvent != null)
@@ -2112,8 +2268,8 @@ namespace OsEngine.Market.Servers.Alor
             
             portf.ValueBlocked = baseMessage.portfolioLiquidationValue.ToDecimal() - baseMessage.buyingPower.ToDecimal();
            
-            portf.Profit = baseMessage.profit.ToDecimal();
-            
+            portf.UnrealizedPnl = baseMessage.profit.ToDecimal();
+
             if (PortfolioEvent != null)
             {
                 PortfolioEvent(_myPortfolios);
@@ -2195,6 +2351,11 @@ namespace OsEngine.Market.Servers.Alor
                 }
 
                 RestClient client = new RestClient(_restApiHost);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
 
                 IRestResponse response = client.Execute(requestRest);
 
@@ -2330,13 +2491,18 @@ namespace OsEngine.Market.Servers.Alor
                 if(qty <= 0 ||
                     order.State != OrderStateType.Active)
                 {
-                    SendLogMessage("Can`t change price to order. It's not in Activ state", LogMessageType.Error);
+                    SendLogMessage("Can`t change price to order. It's not in Active state", LogMessageType.Error);
                     return;
                 }
 
                 requestRest.AddJsonBody(body);
                 
                 RestClient client = new RestClient(_restApiHost);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
 
                 AlorChangePriceOrder alorChangePriceOrder = new AlorChangePriceOrder();
                 alorChangePriceOrder.MarketId = order.NumberMarket;
@@ -2416,14 +2582,20 @@ namespace OsEngine.Market.Servers.Alor
 
                 string portfolio = order.PortfolioNumber.Split('_')[0];
 
+                string exchange = "MOEX";
                 string endPoint 
-                    = $"/commandapi/warptrans/TRADE/v2/client/orders/{order.NumberMarket}?portfolio={portfolio}&exchange=MOEX&stop=false&jsonResponse=true&format=Simple";
+                    = $"/commandapi/warptrans/TRADE/v2/client/orders/{order.NumberMarket}?portfolio={portfolio}&exchange={exchange}&stop=false&jsonResponse=true&format=Simple";
 
                 RestRequest requestRest = new RestRequest(endPoint, Method.DELETE);
                 requestRest.AddHeader("Authorization", "Bearer " + _apiTokenReal);
                 requestRest.AddHeader("accept", "application/json");
 
                 RestClient client = new RestClient(_restApiHost);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
 
                 IRestResponse response = client.Execute(requestRest);
 
@@ -2649,13 +2821,24 @@ namespace OsEngine.Market.Servers.Alor
 
             try
             {
-                string endPoint = "/md/v2/clients/MOEX/" + portfolio + "/orders?format=Simple";
+                string exchange = "MOEX";
+                if (portfolio.StartsWith("E"))
+                {
+                    exchange = "UNITED";
+                }
+
+                string endPoint = $"/md/v2/clients/{exchange}/" + portfolio + "/orders?format=Simple";
 
                 RestRequest requestRest = new RestRequest(endPoint, Method.GET);
                 requestRest.AddHeader("Authorization", "Bearer " + _apiTokenReal);
                 requestRest.AddHeader("accept", "application/json");
 
                 RestClient client = new RestClient(_restApiHost);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
 
                 IRestResponse response = client.Execute(requestRest);
 
@@ -2720,7 +2903,13 @@ namespace OsEngine.Market.Servers.Alor
             {
                 // /md/v2/Clients/MOEX/D39004/LKOH/trades?format=Simple
 
-                string endPoint = "/md/v2/clients/MOEX/" + portfolio + "/" + security + "/trades?format=Simple";
+                string exchange = "MOEX";
+                if (portfolio.StartsWith("E"))
+                {
+                    exchange = "UNITED";
+                }
+
+                string endPoint = $"/md/v2/clients/{exchange}/{portfolio}/{security}/trades?format=Simple";
 
                 RestRequest requestRest = new RestRequest(endPoint, Method.GET);
                 requestRest.AddHeader("Authorization", "Bearer " + _apiTokenReal);
@@ -2728,8 +2917,12 @@ namespace OsEngine.Market.Servers.Alor
 
                 RestClient client = new RestClient(_restApiHost);
 
-                IRestResponse response = client.Execute(requestRest);
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
 
+                IRestResponse response = client.Execute(requestRest);
 
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
@@ -2878,7 +3071,8 @@ namespace OsEngine.Market.Servers.Alor
     public enum AlorAvailableExchanges
     {
         MOEX,
-        SPBX
+        SPBX,
+        UNITED
     }
 
     public class AlorSocketSubscription
@@ -2908,7 +3102,7 @@ namespace OsEngine.Market.Servers.Alor
     {
         Trades,
         MarketDepth,
-        Porfolio,
+        Portfolio,
         Positions,
         Orders,
         MyTrades

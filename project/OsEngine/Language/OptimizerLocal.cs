@@ -3,8 +3,6 @@
  * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
-using OsEngine.OsOptimizer;
-
 namespace OsEngine.Language
 {
     public class OptimizerLocal
@@ -238,8 +236,8 @@ namespace OsEngine.Language
             "Ru:Начальные средства_");
 
         public string Label14 => OsLocalization.ConvertToLocString(
-            "Eng:Tabs securities_" +
-            "Ru:Бумаги для вкладок_");
+            "Eng:Sources and data_" +
+            "Ru:Источники и данные_");
 
         public string Label15 => OsLocalization.ConvertToLocString(
             "Eng:Index_" +
@@ -375,7 +373,7 @@ namespace OsEngine.Language
 
         public string Label48 => OsLocalization.ConvertToLocString(
           "Eng:Reload_" +
-          "Ru:Перезагрузить_");
+          "Ru:Обновить_");
 
         public string Label49 => OsLocalization.ConvertToLocString(
           "Eng:Results_" +
@@ -410,7 +408,7 @@ namespace OsEngine.Language
            "Ru:П/У % 1 контракт _");
 
         public string Label57 => OsLocalization.ConvertToLocString(
-           "Eng:Set Standart Params_" +
+           "Eng:Set Standard Params_" +
            "Ru:Вернуть стандартные параметры_");
 
         public string Label58 => OsLocalization.ConvertToLocString(
@@ -432,5 +430,33 @@ namespace OsEngine.Language
         public string Label62 => OsLocalization.ConvertToLocString(
            "Eng:Optimizer data storage_" +
            "Ru:Хранилище данных оптимизатора_");
+
+        public string Label63 => OsLocalization.ConvertToLocString(
+           "Eng:Time to end_" +
+           "Ru:Время до конца_");
+
+        public string Label64 => OsLocalization.ConvertToLocString(
+           "Eng:Source type_" +
+           "Ru:Тип источника_");
+
+        public string Label65 => OsLocalization.ConvertToLocString(
+           "Eng:First security_" +
+           "Ru:Первая бумага_");
+
+        public string Label66 => OsLocalization.ConvertToLocString(
+           "Eng:Timeframe_" +
+           "Ru:Таймфрейм_");
+
+        public string Label67 => OsLocalization.ConvertToLocString(
+           "Eng:Series result._" +
+           "Ru:Результаты серии._");
+
+        public string Label68 => OsLocalization.ConvertToLocString(
+           "Eng:Bot_" +
+           "Ru:Робот_");
+
+        public string Label69 => OsLocalization.ConvertToLocString(
+           "Eng:Value_" +
+           "Ru:Значение_");
     }
 }

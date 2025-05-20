@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿/*
+ *Your rights to use the code are governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
+ *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+*/
 
 namespace OsEngine.Market.Servers.BingX.BingXSpot
 {
@@ -111,6 +110,7 @@ namespace OsEngine.Market.Servers.BingX.BingXSpot
         #endregion
 
         #region Trade permission
+
         public bool MarketOrdersIsSupport
         {
             get { return true; }
@@ -131,7 +131,7 @@ namespace OsEngine.Market.Servers.BingX.BingXSpot
             get { return false; }
         }
 
-        public bool UseStandartCandlesStarter
+        public bool UseStandardCandlesStarter
         {
             get { return true; }
         }
@@ -149,13 +149,13 @@ namespace OsEngine.Market.Servers.BingX.BingXSpot
         private TimeFramePermission _tradeTimeFramePermission
             = new TimeFramePermission()
             {
-                TimeFrameSec1IsOn = false,
-                TimeFrameSec2IsOn = false,
-                TimeFrameSec5IsOn = false,
-                TimeFrameSec10IsOn = false,
-                TimeFrameSec15IsOn = false,
-                TimeFrameSec20IsOn = false,
-                TimeFrameSec30IsOn = false,
+                TimeFrameSec1IsOn = true,
+                TimeFrameSec2IsOn = true,
+                TimeFrameSec5IsOn = true,
+                TimeFrameSec10IsOn = true,
+                TimeFrameSec15IsOn = true,
+                TimeFrameSec20IsOn = true,
+                TimeFrameSec30IsOn = true,
                 TimeFrameMin1IsOn = true,
                 TimeFrameMin2IsOn = false,
                 TimeFrameMin3IsOn = true,
@@ -168,7 +168,7 @@ namespace OsEngine.Market.Servers.BingX.BingXSpot
                 TimeFrameHour1IsOn = true,
                 TimeFrameHour2IsOn = true,
                 TimeFrameHour4IsOn = true,
-                TimeFrameDayIsOn = true
+                TimeFrameDayIsOn = false,
             };
 
         public bool ManuallyClosePositionOnBoard_IsOn
@@ -187,8 +187,7 @@ namespace OsEngine.Market.Servers.BingX.BingXSpot
             {
                 string[] values = new string[]
                 {
-                    "USDT",
-                    "USDC",
+                    "USDT"
                 };
 
                 return values;
@@ -197,12 +196,46 @@ namespace OsEngine.Market.Servers.BingX.BingXSpot
 
         public bool CanQueryOrdersAfterReconnect
         {
-            get { return false; }
+            get { return true; }
         }
 
         public bool CanQueryOrderStatus
         {
+            get { return true; }
+        }
+
+        #endregion
+
+        #region Other Permissions
+
+        public bool IsNewsServer
+        {
             get { return false; }
+        }
+
+        public bool IsSupports_CheckDataFeedLogic
+        {
+            get { return true; }
+        }
+
+        public string[] CheckDataFeedLogic_ExceptionSecuritiesClass
+        {
+            get { return null; }
+        }
+
+        public int CheckDataFeedLogic_NoDataMinutesToDisconnect
+        {
+            get { return 10; }
+        }
+
+        public bool IsSupports_MultipleInstances
+        {
+            get { return true; }
+        }
+
+        public bool IsSupports_ProxyFor_MultipleInstances
+        {
+            get { return true; }
         }
 
         #endregion

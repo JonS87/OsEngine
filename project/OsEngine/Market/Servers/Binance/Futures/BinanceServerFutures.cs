@@ -32,15 +32,18 @@ namespace OsEngine.Market.Servers.Binance.Futures
 
     public class BinanceServerFutures : AServer
     {
-        public BinanceServerFutures()
+        public BinanceServerFutures(int uniqueNumber)
         {
+            ServerNum = uniqueNumber;
+            
             BinanceServerFuturesRealization realization = new BinanceServerFuturesRealization();
             ServerRealization = realization;
 
             CreateParameterString(OsLocalization.Market.ServerParamPublicKey, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamSecretKey, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterSecretKey, "");
             CreateParameterEnum("Futures Type", "USDT-M", new List<string> { "USDT-M", "COIN-M" });
             CreateParameterBoolean("HedgeMode", false);
+            CreateParameterBoolean("Demo Account", false);
         }
     }
 
@@ -72,8 +75,11 @@ namespace OsEngine.Market.Servers.Binance.Futures
             worker4.Start();
         }
 
-        public void Connect()
+        private WebProxy _myProxy;
+
+        public void Connect(WebProxy proxy = null)
         {
+            _myProxy = proxy;
             ApiKey = ((ServerParameterString)ServerParameters[0]).Value;
             SecretKey = ((ServerParameterPassword)ServerParameters[1]).Value;
             HedgeMode = ((ServerParameterBool)ServerParameters[3]).Value;
@@ -110,6 +116,22 @@ namespace OsEngine.Market.Servers.Binance.Futures
                 _baseUrl = "https://dapi.binance.com";
                 wss_point = "wss://dstream.binance.com";
                 type_str_selector = "dapi";
+            }
+
+            if (((ServerParameterBool)ServerParameters[4]).Value == true)
+            {
+                if (((ServerParameterEnum)ServerParameters[2]).Value == "USDT-M")
+                {
+                    _baseUrl = "https://testnet.binancefuture.com";
+                    wss_point = "wss://stream.binancefuture.com";
+                    type_str_selector = "fapi";
+                }
+                else if (((ServerParameterEnum)ServerParameters[2]).Value == "COIN-M")
+                {
+                    _baseUrl = "https://testnet.binancefuture.com";
+                    wss_point = "wss://dstream.binancefuture.com";
+                    type_str_selector = "dapi";
+                }
             }
 
             ActivateSockets();
@@ -244,6 +266,14 @@ namespace OsEngine.Market.Servers.Binance.Futures
                 security.Name = sec.symbol;
                 security.NameFull = sec.symbol;
                 security.NameClass = sec.quoteAsset;
+
+                if (sec.contractType == "CURRENT_QUARTER" 
+                    || sec.contractType == "NEXT_QUARTER")
+                {
+                    security.NameFull = sec.symbol + "_" + sec.contractType;
+                    security.NameClass = "DeliverableFutures";
+                }
+               
                 security.NameId = sec.symbol + sec.quoteAsset;
                 security.SecurityType = SecurityType.Futures;
                 security.Exchange = ServerType.BinanceFutures.ToString();
@@ -265,17 +295,32 @@ namespace OsEngine.Market.Servers.Binance.Futures
                 }
 
                 if (sec.filters.Count > 1 &&
-                    sec.filters[1] != null &&
-                    sec.filters[1].minQty != null)
+                    sec.filters[1] != null)
                 {
-                    decimal minQty = sec.filters[1].minQty.ToDecimal();
-                    security.MinTradeAmount = minQty;
-                    string qtyInStr = minQty.ToStringWithNoEndZero().Replace(",", ".");
-                    if (qtyInStr.Replace(",", ".").Split('.').Length > 1)
+                    if (sec.filters[1].minQty != null)
                     {
-                        security.DecimalsVolume = qtyInStr.Replace(",", ".").Split('.')[1].Length;
+                        decimal minQty = sec.filters[1].minQty.ToDecimal();
+                        string qtyInStr = minQty.ToStringWithNoEndZero().Replace(",", ".");
+                        if (qtyInStr.Replace(",", ".").Split('.').Length > 1)
+                        {
+                            security.DecimalsVolume = qtyInStr.Replace(",", ".").Split('.')[1].Length;
+                        }
+                    }
+
+                    if (sec.filters[1].stepSize != null)
+                    {
+                        security.VolumeStep = sec.filters[1].stepSize.ToDecimal();
                     }
                 }
+
+                if (sec.filters.Count > 1 &&
+                    sec.filters[5] != null &&
+                    sec.filters[5].notional != null)
+                {
+                    security.MinTradeAmount = sec.filters[5].notional.ToDecimal();
+                }
+
+                security.MinTradeAmountType = MinTradeAmountType.C_Currency;
 
                 security.State = SecurityStateType.Activ;
                 _securities.Add(security);
@@ -295,9 +340,9 @@ namespace OsEngine.Market.Servers.Binance.Futures
 
             }
 
-            List<Security> securitiesHistorical = CreateHistoricalSecurities(secNonPerp);
+            //List<Security> securitiesHistorical = CreateHistoricalSecurities(secNonPerp);
 
-            _securities.AddRange(securitiesHistorical);
+            //_securities.AddRange(securitiesHistorical);
 
             if (SecurityEvent != null)
             {
@@ -375,7 +420,7 @@ namespace OsEngine.Market.Servers.Binance.Futures
 
             if(responce != null)
             {
-                UpdatePortfolio(responce);
+                UpdatePortfolio(responce, true);
             }
         }
 
@@ -396,7 +441,7 @@ namespace OsEngine.Market.Servers.Binance.Futures
 
                     if (resp != null)
                     {
-                        UpdatePortfolio(resp);
+                        UpdatePortfolio(resp, false);
                     }
                 }
                 catch (Exception ex)
@@ -443,7 +488,7 @@ namespace OsEngine.Market.Servers.Binance.Futures
 
         private List<Portfolio> _portfolios = new List<Portfolio>();
 
-        private void UpdatePortfolio(AccountResponseFutures portfs)
+        private void UpdatePortfolio(AccountResponseFutures portfs, bool IsUpdateValueBegin)
         {
             try
             {
@@ -464,6 +509,10 @@ namespace OsEngine.Market.Servers.Binance.Futures
                     return;
                 }
 
+                decimal positionInUSDT = 0;
+                decimal sizeUSDT = 0;
+                decimal resultPnL = 0;
+
                 foreach (var onePortf in portfs.assets)
                 {
                     PositionOnBoard newPortf = new PositionOnBoard();
@@ -473,11 +522,13 @@ namespace OsEngine.Market.Servers.Binance.Futures
                     newPortf.ValueCurrent =
                         onePortf.marginBalance.ToDecimal();
                     newPortf.PortfolioName = "BinanceFutures";
+                    newPortf.UnrealizedPnl =
+                        onePortf.unrealizedProfit.ToDecimal();
 
                     decimal lockedBalanceUSDT = 0m;
+
                     if (onePortf.asset.Equals("USDT"))
                     {
-
                         foreach (var position in portfs.positions)
                         {
                             if (position.symbol == "USDTUSDT") continue;
@@ -489,6 +540,23 @@ namespace OsEngine.Market.Servers.Binance.Futures
                     newPortf.ValueBlocked = lockedBalanceUSDT;
 
                     myPortfolio.SetNewPosition(newPortf);
+
+                    if (((ServerParameterEnum)ServerParameters[2]).Value == "USDT-M")
+                    {
+                        if (onePortf.asset.Equals("USDT"))
+                        {
+                            sizeUSDT = onePortf.marginBalance.ToDecimal();
+                        }
+                        else if (onePortf.asset.Equals("USDC")
+                            || onePortf.asset.Equals("BTC")
+                            || onePortf.asset.Equals("BNB")
+                            || onePortf.asset.Equals("ETH"))
+                        {
+                            positionInUSDT += GetPriceSecurity(onePortf.asset + "USDT") * onePortf.marginBalance.ToDecimal();
+                        }
+
+                        resultPnL += onePortf.unrealizedProfit.ToDecimal();
+                    }
                 }
 
                 foreach (var onePortf in portfs.positions)
@@ -511,7 +579,21 @@ namespace OsEngine.Market.Servers.Binance.Futures
 
                     newPortf.PortfolioName = "BinanceFutures";
 
+                    newPortf.UnrealizedPnl =
+                        onePortf.unrealizedProfit.ToDecimal();
+
                     myPortfolio.SetNewPosition(newPortf);
+                }
+
+                if (((ServerParameterEnum)ServerParameters[2]).Value == "USDT-M")
+                {
+                    if (IsUpdateValueBegin)
+                    {
+                        myPortfolio.ValueBegin = Math.Round(sizeUSDT + positionInUSDT, 4);
+                    }
+
+                    myPortfolio.ValueCurrent = Math.Round(sizeUSDT + positionInUSDT, 4);
+                    myPortfolio.UnrealizedPnl = resultPnL;
                 }
 
                 if (PortfolioEvent != null)
@@ -523,6 +605,37 @@ namespace OsEngine.Market.Servers.Binance.Futures
             {
                 SendLogMessage(error.ToString(), LogMessageType.Error);
             }
+        }
+
+        private decimal GetPriceSecurity(string security)
+        {
+            try
+            {
+                string res = null;
+                decimal price = 0;
+
+                Dictionary<string, string> param = new Dictionary<string, string>();
+                param.Add("symbol=", security);
+
+                res = CreateQuery(Method.GET, "/fapi/v1/ticker/price", param, true);
+
+                if (res == null)
+                {
+                    return 0;
+                }
+
+                PriceTicker resp = JsonConvert.DeserializeAnonymousType(res, new PriceTicker());
+
+                price = resp.price.ToDecimal();
+
+                return price;
+            }
+            catch (Exception ex)
+            {
+                SendLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+
+            return 0;
         }
 
         public event Action<List<Portfolio>> PortfolioEvent;
@@ -1208,6 +1321,13 @@ namespace OsEngine.Market.Servers.Binance.Futures
                 string urlStr = wss_point + "/ws/" + _listenKey;
 
                 _socketPrivateData = new WebSocket(urlStr);
+
+                if (_myProxy != null)
+                {
+                    NetworkCredential credential = (NetworkCredential)_myProxy.Credentials;
+                    _socketPrivateData.SetProxy(_myProxy.Address.ToString(), credential.UserName, credential.Password);
+                }
+
                 _socketPrivateData.EmitOnPing = true;
                 _socketPrivateData.SslConfiguration.EnabledSslProtocols = System.Security.Authentication.SslProtocols.None;
                 _socketPrivateData.OnOpen += _socketClient_Opened;
@@ -1418,7 +1538,7 @@ namespace OsEngine.Market.Servers.Binance.Futures
 
             string urlStrDepth = null;
 
-            if (((ServerParameterBool)ServerParameters[11]).Value == false)
+            if (((ServerParameterBool)ServerParameters[12]).Value == false)
             {
                 urlStrDepth = wss_point + "/stream?streams="
                              + security.Name.ToLower() + "@depth5"
@@ -1434,6 +1554,12 @@ namespace OsEngine.Market.Servers.Binance.Futures
 
             WebSocket wsClientDepth = new WebSocket(urlStrDepth);
 
+            if (_myProxy != null)
+            {
+                NetworkCredential credential = (NetworkCredential)_myProxy.Credentials;
+                wsClientDepth.SetProxy(_myProxy.Address.ToString(), credential.UserName, credential.Password);
+            }
+
             wsClientDepth.EmitOnPing = true;
             wsClientDepth.SslConfiguration.EnabledSslProtocols = System.Security.Authentication.SslProtocols.None;
 
@@ -1445,6 +1571,13 @@ namespace OsEngine.Market.Servers.Binance.Futures
             _socketsArray.Add(security.Name + "_depth20", wsClientDepth);
 
         }
+
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
 
         #endregion
 
@@ -2049,6 +2182,8 @@ namespace OsEngine.Market.Servers.Binance.Futures
 
         public event Action<MyTrade> MyTradeEvent;
 
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
+
         #endregion
 
         #region 11 Trade
@@ -2598,7 +2733,14 @@ namespace OsEngine.Market.Servers.Binance.Futures
 
             string baseUrl = _baseUrl;
 
-            var response = new RestClient(baseUrl).Execute(request).Content;
+            RestClient client = new RestClient(baseUrl);
+
+            if (_myProxy != null)
+            {
+                client.Proxy = _myProxy;
+            }
+
+            var response = client.Execute(request).Content;
 
             if (response.StartsWith("<!DOCTYPE"))
             {

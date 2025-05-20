@@ -25,7 +25,7 @@
         <CheckBox x:Name="CheckBoxTf2HourIsOn" Content="2 hour" HorizontalAlignment="Left" Margin="258,75,0,0" VerticalAlignment="Top" />
         <CheckBox x:Name="CheckBoxTfTickIsOn" Content="trades"  HorizontalAlignment="Left" Margin="258,138,0,0" VerticalAlignment="Top" />
         <CheckBox x:Name="CheckBoxTfMarketDepthIsOn" Content="market depth"  HorizontalAlignment="Left" Margin="258,159,0,0" VerticalAlignment="Top" />
-        <WindowsFormsHost x:Name="HostSecurities" Margin="358,46,10,0" Height="187" VerticalAlignment="Top"/>
+        <WindowsFormsHost x:Name="HostSecurities" Margin="358,46,7,0" Height="190" VerticalAlignment="Top"/>
         <Label Name="Label16" Content="Securities" HorizontalAlignment="Left" Margin="358,16,0,0" VerticalAlignment="Top" />
         <Rectangle Margin="5,244,5,10"/>
         <DatePicker Name="DatePickerTimeStart" HorizontalAlignment="Left" Margin="98,253,0,0" VerticalAlignment="Top" Width="133"/>
@@ -38,7 +38,7 @@
         <Button Name="ButtonDelSecurity" Content="-"  Margin="0,13,10,0" VerticalAlignment="Top" Height="28" FontSize="15" FontWeight="Bold" FontFamily="Stencil" Click="ButtonDelSecurity_Click" HorizontalAlignment="Right" Width="30"/>
         <ComboBox x:Name="ComboBoxMarketDepthDepth" HorizontalAlignment="Left" Margin="269,190,0,0" VerticalAlignment="Top" Width="83" Height="20"/>
         <Label Name="Label17" Content="Depth" HorizontalAlignment="Left" Margin="215,187,0,0" VerticalAlignment="Top" />
-        <CheckBox x:Name="CheckBoxNeadToUpDate" Content="Auto update" Margin="305,298,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" />
+        <CheckBox x:Name="CheckBoxNeedToUpDate" Content="Auto update" Margin="305,298,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" />
         <Button Name="ButtonAccept" Content="Accept" HorizontalAlignment="Right" Margin="0,0,10,29" VerticalAlignment="Bottom" Width="191" Click="ButtonAccept_Click"/>
         <CheckBox x:Name="CheckBoxTf4HourIsOn" Content="4 hour" HorizontalAlignment="Left" Margin="258,96,0,0" VerticalAlignment="Top" />
         <CheckBox x:Name="CheckBoxTfDayIsOn" Content="day" HorizontalAlignment="Left" Margin="258,117,0,0" VerticalAlignment="Top" />

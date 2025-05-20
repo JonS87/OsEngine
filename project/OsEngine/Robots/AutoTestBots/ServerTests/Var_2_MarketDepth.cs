@@ -34,7 +34,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
                 securities.Count == 0 ||
                 securities.Count < 5)
             {
-                SetNewError("Error 0. Security set user is not found, or securities count < 5 " + SecNames);
+                SetNewError("Error 0. Security not found or securities count < 5 " + SecNames);
                 TestEnded();
                 return;
             }
@@ -202,7 +202,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
                 }
                 if (md.Asks[i].Bid != 0)
                 {
-                    SetNewError("MD Error 10. Bid in asks array is note zero");
+                    SetNewError("MD Error 10. Bid in asks array is not zero");
                     return;
                 }
                 if (md.Asks[i].Ask == 0)
@@ -231,7 +231,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
 
             if (oldDepth != null && oldDepth.Time == md.Time)
             {
-                SetNewError("MD Error 13. Time in md is note change");
+                SetNewError("MD Error 13. Time in md did not change");
             }
 
             bool isSaved = false;
@@ -255,7 +255,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
             {
                 if (md.Bids[i].Price == 0)
                 {
-                    SetNewError("MD Error 14. Bibs[i] price == 0");
+                    SetNewError("MD Error 14. Bids[i] price == 0");
                     return;
                 }
             }
@@ -273,7 +273,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
 
             if (md.Bids[0].Price >= md.Asks[0].Price)
             {
-                SetNewError("MD Error 16. Bib price >= Ask price");
+                SetNewError("MD Error 16. Bid price >= Ask price");
                 return;
             }
 
@@ -284,12 +284,12 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
 
                 if (md.Bids[i].Price == md.Bids[i - 1].Price)
                 {
-                    SetNewError("MD Error 17. Bibs[i] price == Bibs[i-1] price");
+                    SetNewError("MD Error 17. Bids[i] price == Bids[i-1] price");
                 }
 
                 if (md.Bids[i].Price > md.Bids[i - 1].Price)
                 {
-                    SetNewError("MD Error 18. Bibs[i] price > Bibs[i-1] price");
+                    SetNewError("MD Error 18. Bids[i] price > Bids[i-1] price");
                 }
             }
 

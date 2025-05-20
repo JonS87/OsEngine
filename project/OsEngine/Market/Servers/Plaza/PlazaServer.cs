@@ -8,6 +8,7 @@ using ru.micexrts.cgate.message;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Net;
 using System.Text;
 using System.Threading;
 using Message = ru.micexrts.cgate.message.Message;
@@ -48,7 +49,7 @@ namespace OsEngine.Market.Servers.Plaza
             _heartBeatSenderThread.Start();
         }
 
-        public void Connect()
+        public void Connect(WebProxy proxy)
         {
             string key = ((ServerParameterString)ServerParameters[0]).Value;
             int limitation = ((ServerParameterInt)ServerParameters[1]).Value;
@@ -160,7 +161,7 @@ namespace OsEngine.Market.Servers.Plaza
                         SendLogMessage(error.ToString(), LogMessageType.Error);
                     }
 
-                    _listenerInfoNeadToReconnect = false;
+                    _listenerInfoNeedToReconnect = false;
                     _listenerInfo = null;
                 }
 
@@ -179,7 +180,7 @@ namespace OsEngine.Market.Servers.Plaza
                         SendLogMessage(error.ToString(), LogMessageType.Error);
                     }
 
-                    _listenerPortfolioNeadToReconnect = false;
+                    _listenerPortfolioNeedToReconnect = false;
                     _listenerPortfolio = null;
                 }
 
@@ -198,7 +199,7 @@ namespace OsEngine.Market.Servers.Plaza
                         SendLogMessage(error.ToString(), LogMessageType.Error);
                     }
 
-                    _listenerPositionNeadToReconnect = false;
+                    _listenerPositionNeedToReconnect = false;
                     _listenerPosition = null;
                 }
 
@@ -217,7 +218,7 @@ namespace OsEngine.Market.Servers.Plaza
                         SendLogMessage(error.ToString(), LogMessageType.Error);
                     }
 
-                    _listenerTradeNeadToReconnect = false;
+                    _listenerTradeNeedToReconnect = false;
                     _listenerTrade = null;
                 }
 
@@ -236,7 +237,7 @@ namespace OsEngine.Market.Servers.Plaza
                         SendLogMessage(error.ToString(), LogMessageType.Error);
                     }
 
-                    _listenerMarketDepthNeadToReconnect = false;
+                    _listenerMarketDepthNeedToReconnect = false;
                     _listenerMarketDepth = null;
                 }
 
@@ -255,7 +256,7 @@ namespace OsEngine.Market.Servers.Plaza
                         SendLogMessage(error.ToString(), LogMessageType.Error);
                     }
 
-                    _listenerOrderAndMyDealNeadToReconnect = false;
+                    _listenerOrderAndMyDealNeedToReconnect = false;
                     _listenerOrderAndMyDeal = null;
                 }
 
@@ -544,7 +545,7 @@ namespace OsEngine.Market.Servers.Plaza
                         if (Connection == null && _statusNeeded == ServerConnectStatus.Connect)
                         {
                             Dispose();
-                            Connect();
+                            Connect(null);
 
                             continue;
                         }
@@ -568,7 +569,7 @@ namespace OsEngine.Market.Servers.Plaza
                             SendLogMessage("Router error", LogMessageType.Error);
 
                             Dispose();
-                            Connect();
+                            Connect(null);
 
                             continue;
                         }
@@ -656,7 +657,7 @@ namespace OsEngine.Market.Servers.Plaza
         /// Flag saying that the connection with the list was interrupted and it requires a full reboot | 
         /// Флаг, говорящий о том что коннект с листнером прервался и требуется его полная перезагрузка
         /// </summary>
-        private bool _listenerInfoNeadToReconnect;
+        private bool _listenerInfoNeedToReconnect;
 
         /// <summary>
 		/// thread state of instrument listener | 
@@ -680,9 +681,9 @@ namespace OsEngine.Market.Servers.Plaza
                     _listenerInfo.Handler += ClientMessage_Board;
                 }
 
-                if (_listenerInfoNeadToReconnect || _listenerInfo.State == State.Error)
+                if (_listenerInfoNeedToReconnect || _listenerInfo.State == State.Error)
                 {
-                    _listenerInfoNeadToReconnect = false;
+                    _listenerInfoNeedToReconnect = false;
                     try
                     {
                         _listenerInfo.Close();
@@ -746,7 +747,7 @@ namespace OsEngine.Market.Servers.Plaza
         /// flag saying that the connection with the list was interrupted and it requires a full reboot | 
         /// флаг, говорящий о том что коннект с листнером прервался и требуется его полная перезагрузка
         /// </summary>
-        private bool _listenerPortfolioNeadToReconnect;
+        private bool _listenerPortfolioNeedToReconnect;
 
         /// <summary>
 		/// thread state of portfolio listener | 
@@ -770,9 +771,9 @@ namespace OsEngine.Market.Servers.Plaza
                     _listenerPortfolio.Handler += ClientMessage_Portfolio;
                 }
 
-                if (_listenerPortfolioNeadToReconnect || _listenerPortfolio.State == State.Error)
+                if (_listenerPortfolioNeedToReconnect || _listenerPortfolio.State == State.Error)
                 {
-                    _listenerPortfolioNeadToReconnect = false;
+                    _listenerPortfolioNeedToReconnect = false;
                     try
                     {
                         _listenerPortfolio.Close();
@@ -842,7 +843,7 @@ namespace OsEngine.Market.Servers.Plaza
         /// flag saying that the connection with the list was interrupted and it requires a full reboot |
         /// флаг, говорящий о том что коннект с листнером прервался и требуется его полная перезагрузка
         /// </summary>
-        private bool _listenerPositionNeadToReconnect;
+        private bool _listenerPositionNeedToReconnect;
 
         private DateTime _listenerPositionDateTime = DateTime.MinValue;
 
@@ -860,9 +861,9 @@ namespace OsEngine.Market.Servers.Plaza
                     _listenerPosition.Handler += ClientMessage_Position;
                 }
 
-                if (_listenerPositionNeadToReconnect || _listenerPosition.State == State.Error)
+                if (_listenerPositionNeedToReconnect || _listenerPosition.State == State.Error)
                 {
-                    _listenerPositionNeadToReconnect = false;
+                    _listenerPositionNeedToReconnect = false;
                     try
                     {
                         _listenerPosition.Close();
@@ -926,7 +927,7 @@ namespace OsEngine.Market.Servers.Plaza
         /// flag saying that the connection with the list was interrupted and it requires a full reboot | 
         ///флаг, говорящий о том что коннект с листнером прервался и требуется его полная перезагрузка
         /// </summary>
-        private bool _listenerTradeNeadToReconnect;
+        private bool _listenerTradeNeedToReconnect;
 
         /// <summary>
 		/// thread state of tick listener | 
@@ -949,9 +950,9 @@ namespace OsEngine.Market.Servers.Plaza
                     _listenerTrade = new Listener(Connection, ListenTradeString);
                     _listenerTrade.Handler += ClientMessage_Trades;
                 }
-                if (_listenerTradeNeadToReconnect || _listenerTrade.State == State.Error)
+                if (_listenerTradeNeedToReconnect || _listenerTrade.State == State.Error)
                 {
-                    _listenerTradeNeadToReconnect = false;
+                    _listenerTradeNeedToReconnect = false;
                     try
                     {
                         _listenerTrade.Close();
@@ -1015,7 +1016,7 @@ namespace OsEngine.Market.Servers.Plaza
         /// flag saying that the connection with the list was interrupted and it requires a full reboot | 
         /// флаг, говорящий о том что коннект с листнером прервался и требуется его полная перезагрузка
         /// </summary>
-        private bool _listenerMarketDepthNeadToReconnect;
+        private bool _listenerMarketDepthNeedToReconnect;
 
         private DateTime _listenerMarketDepthDateTime = DateTime.MinValue;
 
@@ -1033,9 +1034,9 @@ namespace OsEngine.Market.Servers.Plaza
                     _listenerMarketDepth.Handler += ClientMessage_OrderLog;
                 }
 
-                if (_listenerMarketDepthNeadToReconnect || _listenerMarketDepth.State == State.Error)
+                if (_listenerMarketDepthNeedToReconnect || _listenerMarketDepth.State == State.Error)
                 {
-                    _listenerMarketDepthNeadToReconnect = false;
+                    _listenerMarketDepthNeedToReconnect = false;
                     try
                     {
                         _listenerMarketDepth.Close();
@@ -1090,7 +1091,7 @@ namespace OsEngine.Market.Servers.Plaza
         /// flag saying that the connection with the list was interrupted/флаг, говорящий о том что коннект с листнером прервался 
         /// and it requires a full reboot/и требуется его полная перезагрузка
         /// </summary>
-        private bool _listenerOrderAndMyDealNeadToReconnect;
+        private bool _listenerOrderAndMyDealNeedToReconnect;
 
         /// <summary>
 		/// thread state of my trades and my orders listener
@@ -1114,9 +1115,9 @@ namespace OsEngine.Market.Servers.Plaza
                     _listenerOrderAndMyDeal.Handler += ClientMessage_OrderAndMyDeal;
                 }
 
-                if (_listenerOrderAndMyDealNeadToReconnect || _listenerOrderAndMyDeal.State == State.Error)
+                if (_listenerOrderAndMyDealNeedToReconnect || _listenerOrderAndMyDeal.State == State.Error)
                 {
-                    _listenerOrderAndMyDealNeadToReconnect = false;
+                    _listenerOrderAndMyDealNeedToReconnect = false;
 
                     try
                     {
@@ -1312,8 +1313,8 @@ namespace OsEngine.Market.Servers.Plaza
 
                 SendLogMessage($"Publisher error. Reconnect.", LogMessageType.System);
 
-                Dispose();
-                Connect();
+                Dispose(); 
+                Connect(null);
             }
 
             try
@@ -1470,7 +1471,7 @@ namespace OsEngine.Market.Servers.Plaza
                     case MessageType.MsgP2ReplReplState:
                         {
                             _listenerTradeReplState = ((P2ReplStateMessage)msg).ReplState;
-                            _listenerTradeNeadToReconnect = true;
+                            _listenerTradeNeedToReconnect = true;
                             break;
                         }
                     case MessageType.MsgClose:
@@ -1564,7 +1565,7 @@ namespace OsEngine.Market.Servers.Plaza
                     case MessageType.MsgP2ReplReplState:
                         {
                             _listenerPortfolioReplState = ((P2ReplStateMessage)msg).ReplState;
-                            _listenerPortfolioNeadToReconnect = true;
+                            _listenerPortfolioNeedToReconnect = true;
                             break;
                         }
                     default:
@@ -1619,7 +1620,7 @@ namespace OsEngine.Market.Servers.Plaza
                     case MessageType.MsgP2ReplReplState:
                         {
                             _listenerPositionReplState = ((P2ReplStateMessage)msg).ReplState;
-                            _listenerPositionNeadToReconnect = true;
+                            _listenerPositionNeedToReconnect = true;
                             break;
                         }
                     default:
@@ -1765,7 +1766,7 @@ namespace OsEngine.Market.Servers.Plaza
                     case MessageType.MsgP2ReplReplState:
                         {
                             _listenerInfoReplState = ((P2ReplStateMessage)msg).ReplState;
-                            _listenerInfoNeadToReconnect = true;
+                            _listenerInfoNeedToReconnect = true;
                             break;
                         }
                     default:
@@ -1907,7 +1908,7 @@ namespace OsEngine.Market.Servers.Plaza
                         }
                     case MessageType.MsgP2ReplReplState:
                         {
-                            _listenerMarketDepthNeadToReconnect = true;
+                            _listenerMarketDepthNeedToReconnect = true;
                             break;
                         }
                     default:
@@ -1955,7 +1956,6 @@ namespace OsEngine.Market.Servers.Plaza
         private List<RevisionInfo> _marketDepthsRevisions;
 
         private List<MarketDepth> _marketDepths;
-
 
         private MarketDepth Insert(StreamDataMessage replmsg, Security security)
         {
@@ -2360,6 +2360,13 @@ namespace OsEngine.Market.Servers.Plaza
             _marketDepths = new List<MarketDepth>();
         }
 
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
+
         #endregion
 
         #region 9 OrderEvent, TradeEvent
@@ -2529,7 +2536,7 @@ namespace OsEngine.Market.Servers.Plaza
                     case MessageType.MsgP2ReplReplState:
                         {
                             _listenerOrderAndMyDealReplState = ((P2ReplStateMessage)msg).ReplState;
-                            _listenerOrderAndMyDealNeadToReconnect = true;
+                            _listenerOrderAndMyDealNeedToReconnect = true;
                             break;
                         }
                     default:
@@ -3144,6 +3151,8 @@ namespace OsEngine.Market.Servers.Plaza
 
             return -1;
         }
+
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
 
         #endregion
     }

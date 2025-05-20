@@ -27,8 +27,8 @@ namespace OsEngine.Entity
         {
             TimeFrameBuilder = timeFrameBuilder;
             timeFrameBuilder.CandleSeriesRealization.Security = security;
-            timeFrameBuilder.СandleUpdateEvent += TimeFrameBuilder_СandleUpdateEvent;
-            timeFrameBuilder.СandleFinishedEvent += TimeFrameBuilder_СandleFinishedEvent;
+            timeFrameBuilder.CandleUpdateEvent += TimeFrameBuilder_CandleUpdateEvent;
+            timeFrameBuilder.CandleFinishedEvent += TimeFrameBuilder_CandleFinishedEvent;
             Security = security;
             _startProgram = startProgram;
 
@@ -402,7 +402,7 @@ namespace OsEngine.Entity
                 return;
             }
 
-            // обновилось неизвесное кол-во тиков
+            // обновилось неизвестное кол-во тиков
             for (int i = 0; i < newTrades.Count; i++)
             {
                 Trade trade = newTrades[i];
@@ -439,6 +439,11 @@ namespace OsEngine.Entity
                     {
                         CandlesAll[CandlesAll.Count - 1].Trades.Add(trade);
                     }
+
+                    if(trade.OpenInterest != 0)
+                    {
+                        CandlesAll[CandlesAll.Count - 1].OpenInterest = trade.OpenInterest;
+                    }
                 }
                 else
                 { // при любым другом виде свечек
@@ -448,6 +453,11 @@ namespace OsEngine.Entity
                     if (TimeFrameBuilder.SaveTradesInCandles)
                     {
                         CandlesAll[CandlesAll.Count - 1].Trades.Add(trade);
+                    }
+
+                    if (trade.OpenInterest != 0)
+                    {
+                        CandlesAll[CandlesAll.Count - 1].OpenInterest = trade.OpenInterest;
                     }
                 }
             }
@@ -512,6 +522,7 @@ namespace OsEngine.Entity
                 if (_lastTradeTime == DateTime.MinValue)
                 {
                     newTrades = trades;
+                    _lastTradeTime = trades[trades.Count - 1].Time;
                 }
                 else
                 {
@@ -531,10 +542,18 @@ namespace OsEngine.Entity
                             }
                             if (trades[i].Time == _lastTradeTime)
                             {
-                                if (string.IsNullOrEmpty(trades[i].Id))
+                                if (string.IsNullOrEmpty(trades[i].Id) &&
+                                    trades[i].IdInTester == 0)
                                 {
                                     // если IDшников нет - просто игнорируем трейды с идентичным временем
                                     continue;
+                                }
+                                else if (trades[i].IdInTester != 0)
+                                {
+                                    if (trades[i].IdInTester <= _lastTradeIndexInTester)
+                                    {
+                                        continue;
+                                    }
                                 }
                                 else if (isNewTradesFurther == false)
                                 {
@@ -567,6 +586,8 @@ namespace OsEngine.Entity
 
             _lastTradeTime = newTrades[newTrades.Count - 1].Time;
 
+            _lastTradeIndexInTester = newTrades[newTrades.Count - 1].IdInTester;
+
             for (int i2 = 0; i2 < newTrades.Count; i2++)
             {
                 if (newTrades[i2] == null)
@@ -584,6 +605,8 @@ namespace OsEngine.Entity
         }
 
         private int _lastTradeIndex;
+
+        private long _lastTradeIndexInTester;
 
         private DateTime _lastTradeTime;
 
@@ -642,33 +665,33 @@ namespace OsEngine.Entity
             {
                 return;
             }
-            if (СandleUpdeteEvent != null)
+            if (CandleUpdateEvent != null)
             {
-                СandleUpdeteEvent(this);
+                CandleUpdateEvent(this);
             }
         }
 
         private void UpdateFinishCandle()
         {
-            if (СandleFinishedEvent != null)
+            if (CandleFinishedEvent != null)
             {
-                СandleFinishedEvent(this);
+                CandleFinishedEvent(this);
             }
         }
 
-        private void TimeFrameBuilder_СandleUpdateEvent(List<Candle> candles)
+        private void TimeFrameBuilder_CandleUpdateEvent(List<Candle> candles)
         {
             UpdateChangeCandle();
         }
 
-        private void TimeFrameBuilder_СandleFinishedEvent(List<Candle> candles)
+        private void TimeFrameBuilder_CandleFinishedEvent(List<Candle> candles)
         {
             UpdateFinishCandle();
         }
 
-        public event Action<CandleSeries> СandleUpdeteEvent;
+        public event Action<CandleSeries> CandleUpdateEvent;
 
-        public event Action<CandleSeries> СandleFinishedEvent;
+        public event Action<CandleSeries> CandleFinishedEvent;
 
         #endregion
 

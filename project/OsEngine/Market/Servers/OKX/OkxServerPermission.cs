@@ -1,4 +1,8 @@
-﻿
+﻿/*
+ *Your rights to use the code are governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
+ *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+*/
+
 namespace OsEngine.Market.Servers.OKX
 {
     class OkxServerPermission : IServerPermission
@@ -7,6 +11,8 @@ namespace OsEngine.Market.Servers.OKX
         {
             get { return ServerType.OKX; }
         }
+
+        #region DataFeedPermissions
 
         public bool DataFeedTf1SecondCanLoad
         {
@@ -86,6 +92,10 @@ namespace OsEngine.Market.Servers.OKX
             get { return true; }
         }
 
+        #endregion
+
+        #region Trade permission
+
         public int WaitTimeSecondsAfterFirstStartToSendOrders
         {
             get { return 1; }
@@ -99,13 +109,13 @@ namespace OsEngine.Market.Servers.OKX
         private TimeFramePermission _tradeTimeFramePermission
             = new TimeFramePermission()
             {
-                TimeFrameSec1IsOn = false,
-                TimeFrameSec2IsOn = false,
-                TimeFrameSec5IsOn = false,
-                TimeFrameSec10IsOn = false,
-                TimeFrameSec15IsOn = false,
-                TimeFrameSec20IsOn = false,
-                TimeFrameSec30IsOn = false,
+                TimeFrameSec1IsOn = true,
+                TimeFrameSec2IsOn = true,
+                TimeFrameSec5IsOn = true,
+                TimeFrameSec10IsOn = true,
+                TimeFrameSec15IsOn = true,
+                TimeFrameSec20IsOn = true,
+                TimeFrameSec30IsOn = true,
                 TimeFrameMin1IsOn = true,
                 TimeFrameMin2IsOn = false,
                 TimeFrameMin3IsOn = true,
@@ -136,14 +146,14 @@ namespace OsEngine.Market.Servers.OKX
             get { return false; }
         }
 
-        public bool UseStandartCandlesStarter
+        public bool UseStandardCandlesStarter
         {
             get { return true; }
         }
 
         public bool IsUseLotToCalculateProfit
         {
-            get { return false; }
+            get { return true; }
         }
 
         public bool ManuallyClosePositionOnBoard_IsOn
@@ -183,5 +193,41 @@ namespace OsEngine.Market.Servers.OKX
         {
             get { return true; }
         }
+
+        #endregion
+
+        #region Other Permissions
+
+        public bool IsNewsServer
+        {
+            get { return false; }
+        }
+
+        public bool IsSupports_CheckDataFeedLogic
+        {
+            get { return false; }
+        }
+
+        public string[] CheckDataFeedLogic_ExceptionSecuritiesClass
+        {
+            get { return null; }
+        }
+
+        public int CheckDataFeedLogic_NoDataMinutesToDisconnect
+        {
+            get { return 10; }
+        }
+
+        public bool IsSupports_MultipleInstances
+        {
+            get { return true; }
+        }
+
+        public bool IsSupports_ProxyFor_MultipleInstances
+        {
+            get { return true; }
+        }
+
+        #endregion
     }
 }

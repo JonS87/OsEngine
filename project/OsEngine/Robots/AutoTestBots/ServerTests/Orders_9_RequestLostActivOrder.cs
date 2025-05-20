@@ -133,7 +133,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
 
             Server.TestValue_CanSendOrdersUp = true;
 
-            DateTime timeEndWhait = DateTime.Now.AddMinutes(2);
+            DateTime timeEndWait = DateTime.Now.AddMinutes(2);
 
             Order order = null;
 
@@ -141,7 +141,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
 
             while (true)
             {
-                if (timeEndWhait < DateTime.Now)
+                if (timeEndWait < DateTime.Now)
                 {
                     this.SetNewError("Error 8. No Active order from server BuyLimit");
                     TestEnded();
@@ -202,11 +202,11 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
 
             // нужно дождаться когда будет Active order
 
-            DateTime timeEndWhait = DateTime.Now.AddMinutes(2);
+            DateTime timeEndWait = DateTime.Now.AddMinutes(2);
 
             while (true)
             {
-                if (timeEndWhait < DateTime.Now)
+                if (timeEndWait < DateTime.Now)
                 {
                     this.SetNewError("Error 9. No reject order from server CancelOrder");
                     return;
@@ -248,7 +248,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
         List<Order> _ordersCancel = new List<Order>();
         List<Order> _ordersDone = new List<Order>();
         List<Order> _ordersFail = new List<Order>();
-        List<Order> _ordersPatrial = new List<Order>();
+        List<Order> _ordersPartial = new List<Order>();
         List<Order> _ordersPending = new List<Order>();
 
         private void ClearOrders()
@@ -257,7 +257,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
             _ordersCancel.Clear();
             _ordersDone.Clear();
             _ordersFail.Clear();
-            _ordersPatrial.Clear();
+            _ordersPartial.Clear();
             _ordersPending.Clear();
         }
 
@@ -265,7 +265,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
         {
             if (order.State == OrderStateType.None)
             {
-                this.SetNewError("Error 10. Order whith state NONE");
+                this.SetNewError("Error 10. Order with state NONE");
                 return;
             }
 
@@ -292,7 +292,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
             }
             else if (order.State == OrderStateType.Partial)
             {
-                _ordersPatrial.Add(order);
+                _ordersPartial.Add(order);
             }
             else if (order.State == OrderStateType.Pending)
             {
@@ -319,7 +319,7 @@ namespace OsEngine.Robots.AutoTestBots.ServerTests
 
             if (order.TypeOrder != OrderPriceType.Limit)
             {
-                this.SetNewError("Error 11. Order Type is note Liimt. Real type: " + order.TypeOrder);
+                this.SetNewError("Error 11. Order Type is note Limit. Real type: " + order.TypeOrder);
                 return false;
             }
 

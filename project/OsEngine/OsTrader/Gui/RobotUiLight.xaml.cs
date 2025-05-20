@@ -41,7 +41,16 @@ namespace OsEngine.OsTrader.Gui
 
             _painter = new BotTabsPainter(_strategyKeeper, BotsHost);
 
-            _painterServer = new ServerMasterSourcesPainter(HostServers, HostServerLog, CheckBoxServerAutoOpen);
+            _painterServer = new ServerMasterSourcesPainter(
+                HostServers, 
+                HostServerLog, 
+                CheckBoxServerAutoOpen,
+                TextBoxSearchSource,
+                ButtonRightInSearchResults,
+                ButtonLeftInSearchResults,
+                LabelCurrentResultShow,
+                LabelCommasResultShow,
+                LabelCountResultsShow);
 
             this.Activate();
             this.Focus();
@@ -85,6 +94,7 @@ namespace OsEngine.OsTrader.Gui
             TabHistoricalOrders.Header = OsLocalization.Trader.Label190;
             TabStopLimitPoses.Header = OsLocalization.Trader.Label193;
             ButtonSupportTable.Content = OsLocalization.Market.Label81;
+            ButtonProxy.Content = OsLocalization.Market.Label172;
         }
 
         void TesterUi_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -92,7 +102,7 @@ namespace OsEngine.OsTrader.Gui
             AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Trader.Label48);
             ui.ShowDialog();
 
-            if (ui.UserAcceptActioin == false)
+            if (ui.UserAcceptAction == false)
             {
                 e.Cancel = true;
                 return;
@@ -105,6 +115,11 @@ namespace OsEngine.OsTrader.Gui
         private OsTraderMaster _strategyKeeper;
 
         public static bool IsRobotUiLightStart = false;
+
+        private void ButtonProxy_Click(object sender, RoutedEventArgs e)
+        {
+            ServerMaster.ShowProxyDialog();
+        }
 
         // смещение областей
 
@@ -215,5 +230,7 @@ namespace OsEngine.OsTrader.Gui
                 e.Cancel = true;
             }
         }
+
+        
     }
 }

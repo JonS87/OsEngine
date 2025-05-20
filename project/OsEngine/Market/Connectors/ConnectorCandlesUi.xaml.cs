@@ -17,6 +17,7 @@ using System.Windows.Forms;
 using OsEngine.Candles;
 using OsEngine.Candles.Factory;
 using OsEngine.Candles.Series;
+using OsEngine.Market.Servers.Optimizer;
 
 namespace OsEngine.Market.Connectors
 {
@@ -48,7 +49,7 @@ namespace OsEngine.Market.Connectors
                 List<IServer> servers = ServerMaster.GetServers();
 
                 if (servers == null)
-                {// if connection server to exhange hasn't been created yet / если сервер для подключения к бирже ещё не создан
+                {// if connection server to exchange hasn't been created yet / если сервер для подключения к бирже ещё не создан
                     Close();
                     return;
                 }
@@ -58,21 +59,40 @@ namespace OsEngine.Market.Connectors
                 _connectorBot = connectorBot;
 
                 // upload settings to controls
-                // загружаем настройки в контролы
                 for (int i = 0; i < servers.Count; i++)
                 {
-                    ComboBoxTypeServer.Items.Add(servers[i].ServerType);
+                    ComboBoxTypeServer.Items.Add(servers[i].ServerNameAndPrefix);
+                }
+
+                if (servers.Count > 0
+                    && servers[0].ServerType == ServerType.Optimizer)
+                {
+                    _selectedServerType = ServerType.Optimizer;
+                    _selectedServerName = ServerType.Optimizer.ToString();
+                    connectorBot.ServerType = ServerType.Optimizer;
+                    connectorBot.ServerFullName = _selectedServerName;
                 }
 
                 if (connectorBot.ServerType != ServerType.None)
                 {
-                    ComboBoxTypeServer.SelectedItem = connectorBot.ServerType;
-                    _selectedServerType = connectorBot.ServerType;
+                    if (string.IsNullOrEmpty(connectorBot.ServerFullName) == false)
+                    {
+                        ComboBoxTypeServer.SelectedItem = connectorBot.ServerFullName;
+                        _selectedServerType = connectorBot.ServerType;
+                        _selectedServerName = connectorBot.ServerFullName;
+                    }
+                    else
+                    {
+                        ComboBoxTypeServer.SelectedItem = connectorBot.ServerType.ToString();
+                        _selectedServerType = connectorBot.ServerType;
+                        _selectedServerName = connectorBot.ServerType.ToString();
+                    }
                 }
                 else
                 {
-                    ComboBoxTypeServer.SelectedItem = servers[0].ServerType;
+                    ComboBoxTypeServer.SelectedItem = servers[0].ServerNameAndPrefix;
                     _selectedServerType = servers[0].ServerType;
+                    _selectedServerName = servers[0].ServerNameAndPrefix;
                 }
 
                 if (connectorBot.StartProgram == StartProgram.IsTester)
@@ -85,6 +105,7 @@ namespace OsEngine.Market.Connectors
 
                     connectorBot.ServerType = ServerType.Tester;
                     _selectedServerType = ServerType.Tester;
+                    _selectedServerName = ServerType.Tester.ToString();
 
                     ComboBoxPortfolio.IsEnabled = false;
                     ComboBoxTypeServer.IsEnabled = false;
@@ -104,20 +125,26 @@ namespace OsEngine.Market.Connectors
 
                 ComboBoxTypeServer.SelectionChanged += ComboBoxTypeServer_SelectionChanged;
 
+                CheckBoxSaveTradeArrayInCandle.IsChecked = _connectorBot.SaveTradesInCandles;
+                CheckBoxSaveTradeArrayInCandle.Click += CheckBoxSaveTradeArrayInCandle_Click;
+
                 ComboBoxCandleMarketDataType.Items.Add(CandleMarketDataType.Tick);
                 ComboBoxCandleMarketDataType.Items.Add(CandleMarketDataType.MarketDepth);
                 ComboBoxCandleMarketDataType.SelectedItem = _connectorBot.CandleMarketDataType;
+                ComboBoxCandleMarketDataType.SelectionChanged += ComboBoxCandleMarketDataType_SelectionChanged;
 
+                if (_connectorBot.CandleMarketDataType == CandleMarketDataType.MarketDepth)
+                {
+                    CheckBoxSaveTradeArrayInCandle.IsEnabled = false;
+                    CheckBoxSaveTradeArrayInCandle.IsChecked = false;
+                }
 
-                ComboBoxComissionType.Items.Add(ComissionType.None.ToString());
-                ComboBoxComissionType.Items.Add(ComissionType.OneLotFix.ToString());
-                ComboBoxComissionType.Items.Add(ComissionType.Percent.ToString());
-                ComboBoxComissionType.SelectedItem = _connectorBot.CommissionType.ToString();
+                ComboBoxCommissionType.Items.Add(CommissionType.None.ToString());
+                ComboBoxCommissionType.Items.Add(CommissionType.OneLotFix.ToString());
+                ComboBoxCommissionType.Items.Add(CommissionType.Percent.ToString());
+                ComboBoxCommissionType.SelectedItem = _connectorBot.CommissionType.ToString();
 
-                TextBoxComissionValue.Text = _connectorBot.CommissionValue.ToString();
-
-                CheckBoxSaveTradeArrayInCandle.IsChecked = _connectorBot.SaveTradesInCandles;
-                CheckBoxSaveTradeArrayInCandle.Click += CheckBoxSaveTradeArrayInCandle_Click;
+                TextBoxCommissionValue.Text = _connectorBot.CommissionValue.ToString();
 
                 _saveTradesInCandles = _connectorBot.SaveTradesInCandles;
 
@@ -131,8 +158,8 @@ namespace OsEngine.Market.Connectors
                 Label8.Content = OsLocalization.Market.Label8;
                 Label9.Content = OsLocalization.Market.Label9;
                 ButtonAccept.Content = OsLocalization.Market.ButtonAccept;
-                LabelComissionType.Content = OsLocalization.Market.LabelCommissionType;
-                LabelComissionValue.Content = OsLocalization.Market.LabelCommissionValue;
+                LabelCommissionType.Content = OsLocalization.Market.LabelCommissionType;
+                LabelCommissionValue.Content = OsLocalization.Market.LabelCommissionValue;
                 CheckBoxSaveTradeArrayInCandle.Content = OsLocalization.Market.Label59;
                 TextBoxSearchSecurity.Text = OsLocalization.Market.Label64;
                 LabelCandleType.Content = OsLocalization.Market.Label65;
@@ -255,7 +282,8 @@ namespace OsEngine.Market.Connectors
 
                 _candlesRealizationGrid.EndEdit();
 
-                Enum.TryParse(ComboBoxTypeServer.Text, true, out _connectorBot.ServerType);
+                Enum.TryParse(ComboBoxTypeServer.Text.Split('_')[0], true, out _connectorBot.ServerType);
+                _connectorBot.ServerFullName = _selectedServerName;
 
                 _connectorBot.PortfolioName = ComboBoxPortfolio.Text;
 
@@ -271,13 +299,13 @@ namespace OsEngine.Market.Connectors
                 Enum.TryParse(ComboBoxCandleMarketDataType.Text, true, out createType);
                 _connectorBot.CandleMarketDataType = createType;
 
-                ComissionType typeComission;
-                Enum.TryParse(ComboBoxComissionType.Text, true, out typeComission);
-                _connectorBot.CommissionType = typeComission;
+                CommissionType typeCommission;
+                Enum.TryParse(ComboBoxCommissionType.Text, true, out typeCommission);
+                _connectorBot.CommissionType = typeCommission;
 
                 try
                 {
-                    _connectorBot.CommissionValue = TextBoxComissionValue.Text.ToDecimal();
+                    _connectorBot.CommissionValue = TextBoxCommissionValue.Text.ToDecimal();
                 }
                 catch
                 {
@@ -285,6 +313,13 @@ namespace OsEngine.Market.Connectors
                 }
 
                 _connectorBot.CandleCreateMethodType = ComboBoxCandleCreateMethodType.Text;
+
+                if (_connectorBot.CandleCreateMethodType != "Simple"
+                    && _connectorBot.TimeFrame != TimeFrame.Sec1)
+                {
+                    _connectorBot.TimeFrame = TimeFrame.Sec1;
+                }
+
                 _connectorBot.SaveTradesInCandles = _saveTradesInCandles;
 
                 ACandlesSeriesRealization candlesCur = _connectorBot.TimeFrameBuilder.CandleSeriesRealization;
@@ -328,7 +363,7 @@ namespace OsEngine.Market.Connectors
                         break;
                     }
                 }
-               
+
                 _connectorBot.TimeFrameBuilder.Save();
                 _connectorBot.Save();
 
@@ -354,12 +389,54 @@ namespace OsEngine.Market.Connectors
             }
         }
 
+        private void ComboBoxCandleMarketDataType_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            try
+            {
+                CandleMarketDataType currentDataType;
+
+                if (Enum.TryParse(ComboBoxCandleMarketDataType.SelectedValue.ToString(), out currentDataType))
+                {
+                    if (currentDataType == CandleMarketDataType.MarketDepth)
+                    {
+                        CheckBoxSaveTradeArrayInCandle.IsEnabled = false;
+                        CheckBoxSaveTradeArrayInCandle.IsChecked = false;
+                    }
+                    else
+                    {
+                        CheckBoxSaveTradeArrayInCandle.IsEnabled = true;
+                        CheckBoxSaveTradeArrayInCandle.IsChecked = _connectorBot.SaveTradesInCandles;
+                    }
+                }
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
         private bool _saveTradesInCandles;
 
         private void ComboBoxTypeServer_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             try
             {
+                if (ComboBoxTypeServer.SelectedValue == null)
+                {
+                    return;
+                }
+
+                string serverName = ComboBoxTypeServer.SelectedValue.ToString();
+
+                ServerType serverType;
+                if (Enum.TryParse(serverName.Split('_')[0], out serverType) == false)
+                {
+                    return;
+                }
+
+                _selectedServerType = serverType;
+                _selectedServerName = serverName;
+
                 if (_selectedServerType == ServerType.None)
                 {
                     return;
@@ -373,12 +450,14 @@ namespace OsEngine.Market.Connectors
                     return;
                 }
 
-                IServer server = serversAll.Find(server1 => server1.ServerType == _selectedServerType);
+                IServer server = serversAll.Find(server1 => server1.ServerNameAndPrefix == _selectedServerName);
 
                 if (server != null)
                 {
                     server.SecuritiesChangeEvent -= server_SecuritiesChangeEvent;
                     server.PortfoliosChangeEvent -= server_PortfoliosChangeEvent;
+                    server.SecuritiesChangeEvent += server_SecuritiesChangeEvent;
+                    server.PortfoliosChangeEvent += server_PortfoliosChangeEvent;
                 }
 
                 if (ComboBoxTypeServer.SelectedItem == null)
@@ -386,15 +465,6 @@ namespace OsEngine.Market.Connectors
                     return;
                 }
 
-                Enum.TryParse(ComboBoxTypeServer.SelectedItem.ToString(), true, out _selectedServerType);
-
-                IServer server2 = serversAll.Find(server1 => server1.ServerType == _selectedServerType);
-
-                if (server2 != null)
-                {
-                    server2.SecuritiesChangeEvent += server_SecuritiesChangeEvent;
-                    server2.PortfoliosChangeEvent += server_PortfoliosChangeEvent;
-                }
                 LoadPortfolioOnBox();
                 LoadClassOnBox();
                 LoadSecurityOnBox();
@@ -409,6 +479,8 @@ namespace OsEngine.Market.Connectors
         }
 
         private ServerType _selectedServerType;
+
+        private string _selectedServerName;
 
         #endregion
 
@@ -457,7 +529,7 @@ namespace OsEngine.Market.Connectors
             {
                 List<IServer> serversAll = ServerMaster.GetServers();
 
-                IServer server = serversAll.Find(server1 => server1.ServerType == _selectedServerType);
+                IServer server = serversAll.Find(server1 => server1.ServerNameAndPrefix == _selectedServerName);
 
                 if (server == null)
                 {
@@ -556,14 +628,23 @@ namespace OsEngine.Market.Connectors
                 }
                 List<IServer> serversAll = ServerMaster.GetServers();
 
-                IServer server = serversAll.Find(server1 => server1.ServerType == _selectedServerType);
+                IServer server = serversAll.Find(server1 => server1.ServerNameAndPrefix == _selectedServerName);
 
                 if (server == null)
                 {
                     return;
                 }
 
-                var securities = server.Securities;
+                List<Security> securities = null;
+
+                if (server.ServerType == ServerType.Optimizer)
+                {
+                    securities = ((OptimizerServer)server).SecuritiesFromStorage;
+                }
+                else
+                {
+                    securities = server.Securities;
+                }
 
                 ComboBoxClass.Items.Clear();
 
@@ -673,7 +754,7 @@ namespace OsEngine.Market.Connectors
 
                 List<IServer> serversAll = ServerMaster.GetServers();
 
-                IServer server = serversAll.Find(server1 => server1.ServerType == _selectedServerType);
+                IServer server = serversAll.Find(server1 => server1.ServerNameAndPrefix == _selectedServerName);
 
                 if (server == null)
                 {
@@ -682,8 +763,16 @@ namespace OsEngine.Market.Connectors
                 // clear all
                 // стираем всё
 
+                List<Security> securities = null;
 
-                List<Security> securities = server.Securities;
+                if (server.ServerType == ServerType.Optimizer)
+                {
+                    securities = ((OptimizerServer)server).SecuritiesFromStorage;
+                }
+                else
+                {
+                    securities = server.Securities;
+                }
 
                 if (securities == null ||
                     securities.Count == 0)
@@ -731,10 +820,23 @@ namespace OsEngine.Market.Connectors
         {
             try
             {
+                if(_gridSecurities.Rows == null ||
+                    _gridSecurities.Rows.Count ==0)
+                {
+                    return;
+                }
+
                 _gridSecurities.ClearSelection();
 
                 int columnInd = e.ColumnIndex;
                 int rowInd = e.RowIndex;
+
+                if(columnInd < 0
+                    || rowInd < 0 
+                    || rowInd >= _gridSecurities.Rows.Count)
+                {
+                    return;
+                }
 
                 for (int i = 0; i < _gridSecurities.RowCount; i++)
                 {
@@ -863,7 +965,7 @@ namespace OsEngine.Market.Connectors
 
                 SecurityTable.Child = _gridSecurities;
 
-                if(selectedRow > 0
+                if (selectedRow > 0
                     && selectedRow < securities.Count)
                 {
                     _gridSecurities.Rows[selectedRow].Selected = true;
@@ -975,6 +1077,8 @@ namespace OsEngine.Market.Connectors
 
                 key = key.ToLower();
 
+                int indexFirstSec = int.MaxValue;
+
                 for (int i = 0; i < _gridSecurities.Rows.Count; i++)
                 {
                     string security = "";
@@ -993,11 +1097,22 @@ namespace OsEngine.Market.Connectors
                     security = security.ToLower();
                     secSecond = secSecond.ToLower();
 
-                    if (security.Contains(key) ||
-                        secSecond.Contains(key))
+                    if (security.Contains(key) || secSecond.Contains(key))
                     {
+                        if (security.IndexOf(key) == 0 || secSecond.IndexOf(key) == 0)
+                        {
+                            indexFirstSec = i;
+                        }
+
                         _searchResults.Add(i);
                     }
+                }
+
+                if (_searchResults.Count > 1 && _searchResults.Contains(indexFirstSec) && _searchResults.IndexOf(indexFirstSec) != 0)
+                {
+                    int index = _searchResults.IndexOf(indexFirstSec);
+                    _searchResults.RemoveAt(index);
+                    _searchResults.Insert(0, indexFirstSec);
                 }
             }
             catch (Exception ex)
@@ -1321,25 +1436,25 @@ namespace OsEngine.Market.Connectors
             {
                 DataGridViewComboBoxCell cell = new DataGridViewComboBoxCell();
 
-                CandlesParameterString paramStr = (CandlesParameterString)param;
+                CandlesParameterString parameterStr = (CandlesParameterString)param;
 
-                if (paramStr.SysName == "TimeFrame")
+                if (parameterStr.SysName == "TimeFrame")
                 {
                     LoadTimeFrameBox(cell);
                 }
                 else
                 {
-                    for (int i = 0; i < paramStr.ValuesString.Count; i++)
+                    for (int i = 0; i < parameterStr.ValuesString.Count; i++)
                     {
-                        cell.Items.Add(paramStr.ValuesString[i]);
+                        cell.Items.Add(parameterStr.ValuesString[i]);
                     }
                 }
 
                 for (int i = 0; i < cell.Items.Count; i++)
                 {
-                    if (cell.Items[i].ToString() == paramStr.ValueString)
+                    if (cell.Items[i].ToString() == parameterStr.ValueString)
                     {
-                        cell.Value = paramStr.ValueString;
+                        cell.Value = parameterStr.ValueString;
                         break;
                     }
                 }
@@ -1348,7 +1463,7 @@ namespace OsEngine.Market.Connectors
                     cell.Items.Count > 0)
                 {
                     cell.Value = cell.Items[0].ToString();
-                    paramStr.ValueString = cell.Items[0].ToString();
+                    parameterStr.ValueString = cell.Items[0].ToString();
                 }
 
                 row.Cells.Add(cell);
@@ -1363,8 +1478,26 @@ namespace OsEngine.Market.Connectors
             {
                 // Timeframe
                 // таймФрейм
-                TesterServer server = (TesterServer)ServerMaster.GetServers()[0];
-                if (server.TypeTesterData != TesterDataType.Candle)
+
+                TesterServer serverTester = null;
+                OptimizerServer serverOpt = null;
+
+                IServer serverI = ServerMaster.GetServers()[0];
+
+                if (serverI.ServerType == ServerType.Tester)
+                {
+                    serverTester = (TesterServer)serverI;
+                }
+                else if (serverI.ServerType == ServerType.Optimizer)
+                {
+                    serverOpt = (OptimizerServer)serverI;
+                }
+
+                if ((serverTester != null &&
+                    serverTester.TypeTesterData != TesterDataType.Candle)
+                    ||
+                    (serverOpt != null &&
+                    serverOpt.TypeTesterData != TesterDataType.Candle))
                 {
                     // if we build data on ticks or depths, then any Timeframe can be used
                     // candle manager builds any Timeframe
@@ -1402,15 +1535,16 @@ namespace OsEngine.Market.Connectors
                     // и вставляются они только когда мы выбираем бумагу в методе 
                     string security = GetSelectedSecurity();
 
-                    TesterServer serverr = (TesterServer)ServerMaster.GetServers()[0];
+                    List<SecurityTester> securities = null;
 
-                    if (serverr.TypeTesterData != TesterDataType.Candle)
+                    if (serverTester != null)
                     {
-                        return;
+                        securities = serverTester.SecuritiesTester;
                     }
-
-                    List<SecurityTester> securities = serverr.SecuritiesTester;
-
+                    else if (serverOpt != null)
+                    {
+                        securities = serverOpt.SecuritiesTester;
+                    }
                     string name = security;
 
                     if (securities == null ||
@@ -1427,8 +1561,6 @@ namespace OsEngine.Market.Connectors
                         }
                     }
 
-                    //box.Value = securities[0].TimeFrame.ToString();
-
                     ComboBoxCandleCreateMethodType.SelectedItem = CandleCreateMethodType.Simple;
                     ComboBoxCandleCreateMethodType.IsEnabled = false;
 
@@ -1440,7 +1572,7 @@ namespace OsEngine.Market.Connectors
             {
                 List<IServer> serversAll = ServerMaster.GetServers();
 
-                IServer serverr = serversAll.Find(server1 => server1.ServerType == _selectedServerType);
+                IServer serverr = serversAll.Find(server1 => server1.ServerNameAndPrefix == _selectedServerName);
 
                 IServerPermission permission = ServerMaster.GetServerPermission(_selectedServerType);
 

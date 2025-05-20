@@ -26,13 +26,14 @@ namespace OsEngine.Market.Servers.Binance.Spot
 {
     public class BinanceServerSpot : AServer
     {
-        public BinanceServerSpot()
+        public BinanceServerSpot (int uniqueNumber)
         {
+            ServerNum = uniqueNumber;
             BinanceServerRealization realization = new BinanceServerRealization();
             ServerRealization = realization;
 
             CreateParameterString(OsLocalization.Market.ServerParamPublicKey, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamSecretKey, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterSecretKey, "");
         }
     }
 
@@ -57,8 +58,12 @@ namespace OsEngine.Market.Servers.Binance.Spot
             worker3.Start();
         }
 
-        public void Connect()
+        private WebProxy _myProxy;
+
+        public void Connect(WebProxy proxy = null)
         {
+            _myProxy = proxy;
+
             ApiKey = ((ServerParameterString)ServerParameters[0]).Value;
             SecretKey = ((ServerParameterPassword)ServerParameters[1]).Value;
 
@@ -69,7 +74,7 @@ namespace OsEngine.Market.Servers.Binance.Spot
                 return;
             }
 
-            // check server availability for HTTP communication with it / проверяем доступность сервера для HTTP общения с ним
+            // check server availability for HTTP communication with it 
             Uri uri = new Uri(_baseUrl + "/v1/time");
             try
             {
@@ -183,7 +188,7 @@ namespace OsEngine.Market.Servers.Binance.Spot
                 security.NameId = sec.symbol + sec.quoteAsset;
                 security.SecurityType = SecurityType.CurrencyPair;
                 security.Exchange = ServerType.Binance.ToString();
-                // sec.filters[1] - минимальный объем равный цена * объем
+                // sec.filters[1] - minimum volume equal to price * volume
 
                 security.PriceStep = sec.filters[0].tickSize.ToDecimal();
                 security.PriceStepCost = security.PriceStep;
@@ -202,19 +207,35 @@ namespace OsEngine.Market.Servers.Binance.Spot
                 }
 
                 if (sec.filters.Count > 1 &&
-                   sec.filters[1] != null &&
-                   sec.filters[1].minQty != null)
+                   sec.filters[1] != null)
                 {
-                    decimal minQty = sec.filters[1].minQty.ToDecimal();
-
-                    security.Lot = 1;
-                    string qtyInStr = minQty.ToStringWithNoEndZero().Replace(",", ".");
-
-                    if (qtyInStr.Split('.').Length > 1)
+                    if (sec.filters[1].minQty != null)
                     {
-                        security.DecimalsVolume = qtyInStr.Split('.')[1].Length;
+                        decimal minQty = sec.filters[1].minQty.ToDecimal();
+
+                        security.Lot = 1;
+                        string qtyInStr = minQty.ToStringWithNoEndZero().Replace(",", ".");
+
+                        if (qtyInStr.Split('.').Length > 1)
+                        {
+                            security.DecimalsVolume = qtyInStr.Split('.')[1].Length;
+                        }
+                    }
+
+                    if (sec.filters[1].stepSize != null)
+                    {
+                        security.VolumeStep = sec.filters[1].stepSize.ToDecimal();
                     }
                 }
+
+                if (sec.filters.Count > 1 &&
+                    sec.filters[6] != null &&
+                    sec.filters[6].minNotional != null)
+                {
+                    security.MinTradeAmount = sec.filters[6].minNotional.ToDecimal();
+                }
+
+                security.MinTradeAmountType = MinTradeAmountType.C_Currency;
 
                 security.State = SecurityStateType.Activ;
                 _securities.Add(security);
@@ -433,7 +454,6 @@ namespace OsEngine.Market.Servers.Binance.Spot
                             newCandles.RemoveAt(i);
                             i--;
                         }
-
                     }
                 }
 
@@ -504,55 +524,53 @@ namespace OsEngine.Market.Servers.Binance.Spot
         {
             try
             {
+                string res = jsonCandles.Trim(new char[] { '[', ']' });
 
-                    string res = jsonCandles.Trim(new char[] { '[', ']' });
+                if (string.IsNullOrEmpty(res) == true)
+                {
+                    return null;
+                }
 
-                    if (string.IsNullOrEmpty(res) == true)
+                var res2 = res.Split(new char[] { ']' });
+
+                List<Candle> _candles = new List<Candle>();
+
+                Candle newCandle;
+
+                for (int i = 0; i < res2.Length; i++)
+                {
+                    if (i != 0)
                     {
-                        return null;
+                        string upd = res2[i].Substring(2);
+                        upd = upd.Replace("\"", "");
+                        string[] param = upd.Split(',');
+
+                        newCandle = new Candle();
+                        newCandle.TimeStart = new DateTime(1970, 1, 1).AddMilliseconds(param[0].ToDouble());
+                        newCandle.Low = param[3].ToDecimal();
+                        newCandle.High = param[2].ToDecimal();
+                        newCandle.Open = param[1].ToDecimal();
+                        newCandle.Close = param[4].ToDecimal();
+                        newCandle.Volume = param[5].ToDecimal();
+                        _candles.Add(newCandle);
                     }
-
-                    var res2 = res.Split(new char[] { ']' });
-
-                    List<Candle> _candles = new List<Candle>();
-
-                    Candle newCandle;
-
-                    for (int i = 0; i < res2.Length; i++)
+                    else
                     {
-                        if (i != 0)
-                        {
-                            string upd = res2[i].Substring(2);
-                            upd = upd.Replace("\"", "");
-                            string[] param = upd.Split(',');
+                        string[] param = res2[i].Replace("\"", "").Split(',');
 
-                            newCandle = new Candle();
-                            newCandle.TimeStart = new DateTime(1970, 1, 1).AddMilliseconds(param[0].ToDouble());
-                            newCandle.Low = param[3].ToDecimal();
-                            newCandle.High = param[2].ToDecimal();
-                            newCandle.Open = param[1].ToDecimal();
-                            newCandle.Close = param[4].ToDecimal();
-                            newCandle.Volume = param[5].ToDecimal();
-                            _candles.Add(newCandle);
-                        }
-                        else
-                        {
-                            string[] param = res2[i].Replace("\"", "").Split(',');
+                        newCandle = new Candle();
+                        newCandle.TimeStart = new DateTime(1970, 1, 1).AddMilliseconds(param[0].ToDouble());
+                        newCandle.Low = param[3].ToDecimal();
+                        newCandle.High = param[2].ToDecimal();
+                        newCandle.Open = param[1].ToDecimal();
+                        newCandle.Close = param[4].ToDecimal();
+                        newCandle.Volume = param[5].ToDecimal();
 
-                            newCandle = new Candle();
-                            newCandle.TimeStart = new DateTime(1970, 1, 1).AddMilliseconds(param[0].ToDouble());
-                            newCandle.Low = param[3].ToDecimal();
-                            newCandle.High = param[2].ToDecimal();
-                            newCandle.Open = param[1].ToDecimal();
-                            newCandle.Close = param[4].ToDecimal();
-                            newCandle.Volume = param[5].ToDecimal();
-
-                            _candles.Add(newCandle);
-                        }
+                        _candles.Add(newCandle);
                     }
+                }
 
-                    return _candles;
-                
+                return _candles;
             }
             catch (Exception error)
             {
@@ -572,7 +590,6 @@ namespace OsEngine.Market.Servers.Binance.Spot
             var timeStampEnd = timeEnd - yearBegin;
             var rEnd = timeStampEnd.TotalMilliseconds;
             string endTime = Convert.ToInt64(rEnd).ToString();
-
 
             string needTf = "";
 
@@ -636,7 +653,6 @@ namespace OsEngine.Market.Servers.Binance.Spot
 
                 var candles = _deserializeCandles(res);
                 return candles;
-
             }
             else
             {
@@ -740,7 +756,6 @@ namespace OsEngine.Market.Servers.Binance.Spot
 
                 var candles = _deserializeCandles(res);
                 return candles;
-
             }
             else
             {
@@ -928,7 +943,7 @@ namespace OsEngine.Market.Servers.Binance.Spot
                     {
                         lastId = Convert.ToInt64(newTrades[newTrades.Count - 1].Id);
                     }
-                    catch { } // Если дата по которую скачиваем свечки превышает сегодняшнюю: Ignore 
+                    catch { } // If the date for which we download the candles is greater than today: Ignore
                 }
 
                 if (newTrades != null && newTrades.Count != 0)
@@ -986,7 +1001,7 @@ namespace OsEngine.Market.Servers.Binance.Spot
         {
             try
             {
-                Thread.Sleep(1000); // не убирать RateGate не помогает в CreateQuery
+                Thread.Sleep(1000); // do not remove! RateGate does not help in CreateQuery
 
                 string timeStamp = TimeManager.GetUnixTimeStampMilliseconds().ToString();
                 Dictionary<string, string> param = new Dictionary<string, string>();
@@ -1123,7 +1138,6 @@ namespace OsEngine.Market.Servers.Binance.Spot
 
                 if (_spotSocketClient != null)
                 {
-
                     _spotSocketClient.OnOpen -= Client_Opened;
                     _spotSocketClient.OnClose -= Client_Closed;
                     _spotSocketClient.OnError -= Client_Error;
@@ -1187,7 +1201,6 @@ namespace OsEngine.Market.Servers.Binance.Spot
                         {
                             // ignore
                         }
-
                     }
                 }
             }
@@ -1235,6 +1248,12 @@ namespace OsEngine.Market.Servers.Binance.Spot
                 }
 
                 WebSocket client = new WebSocket(urlStr); //create a web socket / создаем вебсокет
+
+                if(_myProxy != null)
+                {
+                    NetworkCredential credential = (NetworkCredential)_myProxy.Credentials;
+                    client.SetProxy(_myProxy.Address.ToString(), credential.UserName, credential.Password);
+                }
 
                 client.OnOpen += Client_Opened;
                 client.OnError += Client_Error;
@@ -1418,7 +1437,14 @@ namespace OsEngine.Market.Servers.Binance.Spot
             }
 
 
-            WebSocket _wsClient = new WebSocket(urlStr); // create web-socket / создаем вебсокет
+            WebSocket _wsClient = new WebSocket(urlStr); // create web-socket 
+
+            if (_myProxy != null)
+            {
+                NetworkCredential credential = (NetworkCredential)_myProxy.Credentials;
+                _wsClient.SetProxy(_myProxy.Address.ToString(), credential.UserName, credential.Password);
+            }
+
             _wsClient.EmitOnPing = true;
             _wsClient.SslConfiguration.EnabledSslProtocols = System.Security.Authentication.SslProtocols.None;
 
@@ -1430,6 +1456,13 @@ namespace OsEngine.Market.Servers.Binance.Spot
             _wsStreamsSecurityData.Add(security.Name, _wsClient);
         }
 
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
+
         #endregion
 
         #region 10 WebSocket parsing the messages
@@ -1440,11 +1473,11 @@ namespace OsEngine.Market.Servers.Binance.Spot
             {
                 try
                 {
-                    if(_newMessagePublic.IsEmpty == true)
+                    if (_newMessagePublic.IsEmpty == true)
                     {
                         Thread.Sleep(1);
                     }
-                    else 
+                    else
                     {
                         string mes;
 
@@ -1481,7 +1514,7 @@ namespace OsEngine.Market.Servers.Binance.Spot
             {
                 try
                 {
-                    if(_newMessagePrivate.IsEmpty == true)
+                    if (_newMessagePrivate.IsEmpty == true)
                     {
                         Thread.Sleep(1);
                     }
@@ -1629,7 +1662,7 @@ namespace OsEngine.Market.Servers.Binance.Spot
                 newOrder.NumberUser = orderNumUser;
 
                 newOrder.NumberMarket = order.i.ToString();
-                //newOrder.PortfolioNumber = order.PortfolioNumber; добавить в сервере
+                //newOrder.PortfolioNumber = order.PortfolioNumber; add to server
                 newOrder.Side = order.S == "BUY" ? Side.Buy : Side.Sell;
                 newOrder.State = OrderStateType.Active;
                 newOrder.Volume = order.q.ToDecimal();
@@ -1719,14 +1752,14 @@ namespace OsEngine.Market.Servers.Binance.Spot
                 if (oldOrder != null &&
                     order.z != null &&
                     oldOrder.Volume == order.z.ToString().ToDecimal())
-                {// ордер Done
+                {// Order Done
                     Order newOrder = new Order();
                     newOrder.SecurityNameCode = order.s;
                     newOrder.TimeCallBack = new DateTime(1970, 1, 1).AddMilliseconds(order.E.ToDouble());
                     newOrder.NumberUser = orderNumUser;
 
                     newOrder.NumberMarket = order.i.ToString();
-                    //newOrder.PortfolioNumber = order.PortfolioNumber; добавить в сервере
+                    //newOrder.PortfolioNumber = order.PortfolioNumber; 
                     newOrder.Side = order.S == "BUY" ? Side.Buy : Side.Sell;
                     newOrder.State = OrderStateType.Done;
                     newOrder.Volume = order.q.ToDecimal();
@@ -1759,20 +1792,26 @@ namespace OsEngine.Market.Servers.Binance.Spot
 
                 if (string.IsNullOrEmpty(order.n)
                     || order.n.ToDecimal() == 0)
-                {// комиссии нет никакой. просто ложим в трейд 
+                {// there is no commission. just put it in trade
                     trade.Volume = order.l.ToDecimal();
                 }
                 else
                 {
                     if (order.N != null &&
                         string.IsNullOrEmpty(order.N.ToString()) == false)
-                    {// комиссия берёться в какой-то монете
-                        string comissionSecName = order.N.ToString();
+                    {// the commission is taken in some coin
+                        string commissionSecName = order.N.ToString();
 
                         if (trade.SecurityNameCode.StartsWith("BNB")
-                            || trade.SecurityNameCode.StartsWith(comissionSecName))
+                            || trade.SecurityNameCode.StartsWith(commissionSecName))
                         {
                             trade.Volume = order.l.ToDecimal() - order.n.ToDecimal();
+
+                            int decimalVolum = GetDecimalsVolume(trade.SecurityNameCode);
+                            if (decimalVolum > 0)
+                            {
+                                trade.Volume = Math.Floor(trade.Volume * (decimal)Math.Pow(10, decimalVolum)) / (decimal)Math.Pow(10, decimalVolum);
+                            }
                         }
                         else
                         {
@@ -1780,7 +1819,7 @@ namespace OsEngine.Market.Servers.Binance.Spot
                         }
                     }
                     else
-                    {// не известная монета комиссии. Берём весь объём
+                    {// unknown coin commission. We take the entire volume
                         trade.Volume = order.l.ToDecimal();
                     }
                 }
@@ -1847,6 +1886,19 @@ namespace OsEngine.Market.Servers.Binance.Spot
                     MyOrderEvent(newOrder);
                 }
             }
+        }
+
+        private int GetDecimalsVolume(string security)
+        {
+            for (int i = 0; i < _securities.Count; i++)
+            {
+                if (security == _securities[i].Name)
+                {
+                    return _securities[i].DecimalsVolume;
+                }
+            }
+
+            return 0;
         }
 
         private List<Order> _ordersOnBoard = new List<Order>();
@@ -1977,7 +2029,7 @@ namespace OsEngine.Market.Servers.Binance.Spot
 
                 if (MarketDepthEvent != null)
                 {
-                    if(_newMessagePublic.Count < 1000)
+                    if (_newMessagePublic.Count < 1000)
                     {
                         MarketDepthEvent(needDepth.GetCopy());
                     }
@@ -1986,7 +2038,6 @@ namespace OsEngine.Market.Servers.Binance.Spot
                         MarketDepthEvent(needDepth);
                     }
                 }
-
             }
             catch (Exception error)
             {
@@ -2004,13 +2055,14 @@ namespace OsEngine.Market.Servers.Binance.Spot
 
         public event Action<Trade> NewTradesEvent;
 
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
+
         #endregion
 
         #region 11 Trade
 
         public void SendOrder(Order order)
         {
-
             if (order.PortfolioNumber == "BinanceSpot")
             {
                 ExecuteOrderOnSpotExchange(order);
@@ -2112,7 +2164,6 @@ namespace OsEngine.Market.Servers.Binance.Spot
                           .Replace(CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator, "."));
                     }
 
-
                     var res = CreateQuery(BinanceExchangeType.SpotExchange, Method.POST, "api/v3/order", param, true);
 
                     if (res != null && res.Contains("clientOrderId"))
@@ -2209,7 +2260,6 @@ namespace OsEngine.Market.Servers.Binance.Spot
                 catch (Exception ex)
                 {
                     SendLogMessage(ex.ToString(), LogMessageType.Error);
-
                 }
             }
         }
@@ -2316,9 +2366,9 @@ namespace OsEngine.Market.Servers.Binance.Spot
                 return;
             }
 
-            for(int i = 0;i < openOrders.Count;i++) 
-            { 
-                if(MyOrderEvent != null)
+            for (int i = 0; i < openOrders.Count; i++)
+            {
+                if (MyOrderEvent != null)
                 {
                     MyOrderEvent(openOrders[i]);
                 }
@@ -2329,27 +2379,27 @@ namespace OsEngine.Market.Servers.Binance.Spot
         {
             List<Order> allSecurityOrders = GetAllOrdersToSecurity(order.SecurityNameCode);
 
-            if(allSecurityOrders == null)
+            if (allSecurityOrders == null)
             {
                 return;
             }
 
             Order myOrderActualOnBoard = null;
 
-            for(int i = 0;i < allSecurityOrders.Count;i++)
+            for (int i = 0; i < allSecurityOrders.Count; i++)
             {
                 Order curOrder = allSecurityOrders[i];
 
-                if(curOrder.NumberUser != 0 &&
+                if (curOrder.NumberUser != 0 &&
                     order.NumberUser != 0 &&
-                    curOrder.NumberUser ==  order.NumberUser)
+                    curOrder.NumberUser == order.NumberUser)
                 {
                     myOrderActualOnBoard = curOrder;
                     break;
                 }
 
-                if(string.IsNullOrEmpty(curOrder.NumberMarket) == false &&
-                    string.IsNullOrEmpty(order.NumberMarket) == false 
+                if (string.IsNullOrEmpty(curOrder.NumberMarket) == false &&
+                    string.IsNullOrEmpty(order.NumberMarket) == false
                     && curOrder.NumberMarket == order.NumberMarket)
                 {
                     myOrderActualOnBoard = curOrder;
@@ -2357,27 +2407,27 @@ namespace OsEngine.Market.Servers.Binance.Spot
                 }
             }
 
-            if(myOrderActualOnBoard == null)
+            if (myOrderActualOnBoard == null)
             {
                 return;
             }
 
-            if(MyOrderEvent != null)
+            if (MyOrderEvent != null)
             {
                 MyOrderEvent(myOrderActualOnBoard);
             }
 
-            if(myOrderActualOnBoard.State == OrderStateType.Done ||
+            if (myOrderActualOnBoard.State == OrderStateType.Done ||
                 myOrderActualOnBoard.State == OrderStateType.Partial)
             { // запрашиваем MyTrades, если по ордеру были исполнения
 
                 List<MyTrade> tradesSpot = GetAllMyTradesToOrder(myOrderActualOnBoard);
 
-                if(tradesSpot != null)
+                if (tradesSpot != null)
                 {
-                    for(int i = 0;i < tradesSpot.Count;i++)
+                    for (int i = 0; i < tradesSpot.Count; i++)
                     {
-                        if(MyTradeEvent != null)
+                        if (MyTradeEvent != null)
                         {
                             MyTradeEvent(tradesSpot[i]);
                         }
@@ -2420,9 +2470,9 @@ namespace OsEngine.Market.Servers.Binance.Spot
 
             List<MyTrade> trades = new List<MyTrade>();
 
-            for(int i = 0;i < myTrades.Length;i++)
+            for (int i = 0; i < myTrades.Length; i++)
             {
-                if(myTrades[i].orderId != order.NumberMarket)
+                if (myTrades[i].orderId != order.NumberMarket)
                 {
                     continue;
                 }
@@ -2457,7 +2507,7 @@ namespace OsEngine.Market.Servers.Binance.Spot
 
             HistoryOrderReport[] orders = JsonConvert.DeserializeObject<HistoryOrderReport[]>(res);
 
-            if(orders == null)
+            if (orders == null)
             {
                 return null;
             }
@@ -2512,7 +2562,7 @@ namespace OsEngine.Market.Servers.Binance.Spot
                 newOrder.TimeCallBack = new DateTime(1970, 1, 1).AddMilliseconds(orders[i].updateTime.ToDouble());
 
                 if (myOrder.status == "NEW")
-                { 
+                {
                     newOrder.State = OrderStateType.Active;
                 }
                 else if (myOrder.status == "FILLED")
@@ -2535,7 +2585,7 @@ namespace OsEngine.Market.Servers.Binance.Spot
                 {
                     newOrder.State = OrderStateType.Fail;
                 }
-                else 
+                else
                 {
 
                 }
@@ -2563,7 +2613,7 @@ namespace OsEngine.Market.Servers.Binance.Spot
 
             HistoryOrderReport[] orders = JsonConvert.DeserializeObject<HistoryOrderReport[]>(res);
 
-            if(orders == null)
+            if (orders == null)
             {
                 return null;
             }
@@ -2615,7 +2665,6 @@ namespace OsEngine.Market.Servers.Binance.Spot
                 }
 
                 openOrders.Add(newOrder);
-
             }
 
             return openOrders;
@@ -2681,7 +2730,14 @@ namespace OsEngine.Market.Servers.Binance.Spot
                         baseUrl = "https://api.binance.com";
                     }
 
-                    var response = new RestClient(baseUrl).Execute(request).Content;
+                    RestClient client = new RestClient(baseUrl);
+
+                    if (_myProxy != null)
+                    {
+                        client.Proxy = _myProxy;
+                    }
+
+                    var response = client.Execute(request).Content;
 
                     if (response.Contains("code"))
                     {

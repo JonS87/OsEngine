@@ -55,7 +55,7 @@ namespace OsEngine.Market.Servers
         {
             try
             {
-                using (StreamWriter writer = new StreamWriter(@"Engine\" + Server.ServerType.ToString() + @"CompareModule.txt", false))
+                using (StreamWriter writer = new StreamWriter(@"Engine\" + Server.ServerNameUnique + @"CompareModule.txt", false))
                 {
                     writer.WriteLine(_verificationPeriod);
 
@@ -75,13 +75,13 @@ namespace OsEngine.Market.Servers
 
         private void Load()
         {
-            if (!File.Exists(@"Engine\" + Server.ServerType.ToString() + @"CompareModule.txt"))
+            if (!File.Exists(@"Engine\" + Server.ServerNameUnique + @"CompareModule.txt"))
             {
                 return;
             }
             try
             {
-                using (StreamReader reader = new StreamReader(@"Engine\" + Server.ServerType.ToString() + @"CompareModule.txt"))
+                using (StreamReader reader = new StreamReader(@"Engine\" + Server.ServerNameUnique + @"CompareModule.txt"))
                 {
                     Enum.TryParse(reader.ReadLine(), out _verificationPeriod);
 
@@ -192,7 +192,7 @@ namespace OsEngine.Market.Servers
                 return;
             }
 
-            string message = Server.ServerType + ". Error on compare securities in robot and portfolio \n";
+            string message = Server.ServerNameUnique + ". Error on compare securities in robot and portfolio \n";
             bool haveError = false;
 
             for(int i = 0;i <  portfolio.CompareSecurities.Count;i++)
@@ -284,7 +284,7 @@ namespace OsEngine.Market.Servers
         {
             List<ComparePositionsSecurity> result = new List<ComparePositionsSecurity>();
 
-            List<string> securities = GetSecuritiesWithPositions(portfolioName);
+            List<string> securities = GetSecuritiesWithPositions(portfolioName, Server.ServerNameAndPrefix);
 
             IServerPermission permission = ServerMaster.GetServerPermission(Server.ServerType);
 
@@ -348,7 +348,8 @@ namespace OsEngine.Market.Servers
             {
                 List<Position> curPositions = bots[i].OpenPositions;
 
-                if (curPositions == null)
+                if (curPositions == null 
+                    || curPositions.Count == 0)
                 {
                     continue;
                 }
@@ -356,6 +357,12 @@ namespace OsEngine.Market.Servers
                 for (int j = 0; j < curPositions.Count; j++)
                 {
                     string pName = curPositions[j].PortfolioName;
+
+                    if (string.IsNullOrEmpty(curPositions[j].ServerName) == false
+                        && curPositions[j].ServerName != Server.ServerNameAndPrefix)
+                    {
+                        continue;
+                    }
 
                     if (pName != null
                         && pName == portfolioName
@@ -455,13 +462,13 @@ namespace OsEngine.Market.Servers
             return newSecurity;
         }
 
-        private List<string> GetSecuritiesWithPositions(string portfolioName)
+        private List<string> GetSecuritiesWithPositions(string portfolioName, string serverName)
         {
             List<string> result = new List<string>();
 
             // 1 берём бумаги по которым есть позиции у роботов
 
-            List<Position> botsPositions = GetPositionsInPortfolioByRobots(portfolioName);
+            List<Position> botsPositions = GetPositionsInPortfolioByRobots(portfolioName, serverName);
 
             for(int i = 0;i < botsPositions.Count;i++)
             {
@@ -520,14 +527,24 @@ namespace OsEngine.Market.Servers
             return result;
         }
 
-        private List<Position> GetPositionsInPortfolioByRobots(string portfolioName)
+        private List<Position> GetPositionsInPortfolioByRobots(string portfolioName, string serverName)
         {
             List<BotPanel> bots = OsTraderMaster.Master.PanelsArray;
 
             List<Position> openPositions = new List<Position>();
 
+            if(bots == null)
+            {
+                return openPositions;
+            }
+
             for (int i = 0; i < bots.Count; i++)
             {
+                if (bots[i] == null)
+                {
+                    continue;
+                }
+
                 List<Position> curPositions = bots[i].OpenPositions;
 
                 if (curPositions == null)
@@ -537,6 +554,17 @@ namespace OsEngine.Market.Servers
 
                 for (int j = 0; j < curPositions.Count; j++)
                 {
+                    if (curPositions[j] == null)
+                    {
+                        continue;
+                    }
+
+                    if (string.IsNullOrEmpty(curPositions[j].ServerName) == false
+                        && curPositions[j].ServerName != serverName)
+                    {
+                        continue;
+                    }
+
                     string pName = curPositions[j].PortfolioName;
 
                     if (pName != null
@@ -558,7 +586,7 @@ namespace OsEngine.Market.Servers
         {
             try
             {
-                using (StreamWriter writer = new StreamWriter(@"Engine\" + Server.ServerType.ToString() + @"CompareModule_IgnoreSec.txt", false))
+                using (StreamWriter writer = new StreamWriter(@"Engine\" + Server.ServerNameUnique + @"CompareModule_IgnoreSec.txt", false))
                 {
                     for (int i = 0; i < IgnoredSecurities.Count; i++)
                     {
@@ -576,14 +604,14 @@ namespace OsEngine.Market.Servers
 
         public void LoadIgnoredSecurities()
         {
-            if (!File.Exists(@"Engine\" + Server.ServerType.ToString() + @"CompareModule_IgnoreSec.txt"))
+            if (!File.Exists(@"Engine\" + Server.ServerNameUnique + @"CompareModule_IgnoreSec.txt"))
             {
                 return;
             }
 
             try
             {
-                using (StreamReader reader = new StreamReader(@"Engine\" + Server.ServerType.ToString() + @"CompareModule_IgnoreSec.txt"))
+                using (StreamReader reader = new StreamReader(@"Engine\" + Server.ServerNameUnique + @"CompareModule_IgnoreSec.txt"))
                 {
                     while (reader.EndOfStream == false)
                     {

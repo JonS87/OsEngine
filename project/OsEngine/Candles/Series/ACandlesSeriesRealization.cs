@@ -45,23 +45,23 @@ namespace OsEngine.Candles.Series
 
         public void UpdateChangeCandle()
         {
-            if (СandleUpdateEvent != null)
+            if (CandleUpdateEvent != null)
             {
-                СandleUpdateEvent(CandlesAll);
+                CandleUpdateEvent(CandlesAll);
             }
         }
 
         public void UpdateFinishCandle()
         {
-            if (СandleFinishedEvent != null)
+            if (CandleFinishedEvent != null)
             {
-                СandleFinishedEvent(CandlesAll);
+                CandleFinishedEvent(CandlesAll);
             }
         }
 
-        public event Action<List<Candle>> СandleUpdateEvent;
+        public event Action<List<Candle>> CandleUpdateEvent;
 
-        public event Action<List<Candle>> СandleFinishedEvent;
+        public event Action<List<Candle>> CandleFinishedEvent;
 
         #endregion
 
@@ -186,11 +186,11 @@ namespace OsEngine.Candles.Series
             {
                 return;
             }
-            string[] paramsInArray = value.Split('$');
+            string[] parametersInArray = value.Split('$');
 
-            for (int i = 0; i < paramsInArray.Length; i++)
+            for (int i = 0; i < parametersInArray.Length; i++)
             {
-                string[] curParam = paramsInArray[i].Split('#');
+                string[] curParam = parametersInArray[i].Split('#');
 
                 for (int j = 0; j < Parameters.Count; j++)
                 {

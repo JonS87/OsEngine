@@ -124,12 +124,12 @@ namespace OsEngine.Market.Servers.Transaq
 
         public bool IsCanChangeOrderPrice
         {
-            get { return false; }
+            get { return true; }
         }
 
-        public bool UseStandartCandlesStarter
+        public bool UseStandardCandlesStarter
         {
-            get { return false; }
+            get { return true; }
         }
 
         public bool IsUseLotToCalculateProfit
@@ -163,13 +163,11 @@ namespace OsEngine.Market.Servers.Transaq
         TimeFrameHour1IsOn = true,
         TimeFrameHour2IsOn = true,
         TimeFrameHour4IsOn = true,
-        TimeFrameDayIsOn = false
+        TimeFrameDayIsOn = true
     };
-
-
         public bool ManuallyClosePositionOnBoard_IsOn
         {
-            get { return false; }
+            get { return true; }
         }
 
         public string[] ManuallyClosePositionOnBoard_ValuesForTrimmingName
@@ -179,7 +177,17 @@ namespace OsEngine.Market.Servers.Transaq
 
         public string[] ManuallyClosePositionOnBoard_ExceptionPositionNames
         {
-            get { return null; }
+            get
+            {
+                string[] values = new string[]
+                {
+                    "RUB",
+                    "USD",
+                    "EUR"
+                };
+
+                return values;
+            }
         }
 
         public bool CanQueryOrdersAfterReconnect
@@ -188,6 +196,40 @@ namespace OsEngine.Market.Servers.Transaq
         }
 
         public bool CanQueryOrderStatus
+        {
+            get { return false; }
+        }
+
+        #endregion
+
+        #region Other Permissions
+
+        public bool IsNewsServer
+        {
+            get { return true; }
+        }
+
+        public bool IsSupports_CheckDataFeedLogic
+        {
+            get { return false; }
+        }
+
+        public string[] CheckDataFeedLogic_ExceptionSecuritiesClass
+        {
+            get { return null; }
+        }
+
+        public int CheckDataFeedLogic_NoDataMinutesToDisconnect
+        {
+            get { return 10; }
+        }
+
+        public bool IsSupports_MultipleInstances
+        {
+            get { return false; }
+        }
+
+        public bool IsSupports_ProxyFor_MultipleInstances
         {
             get { return false; }
         }

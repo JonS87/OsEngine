@@ -73,7 +73,6 @@ namespace OsEngine.OsTrader.Gui
             ButtonDeleteBot.Content = OsLocalization.Trader.Label39;
             ButtonJournalCommunity.Content = OsLocalization.Trader.Label40;
             ButtonRiskManagerCommunity.Content = OsLocalization.Trader.Label41;
-            CheckBoxPaintOnOff.Content = OsLocalization.Trader.Label42;
             ButtonStrategSettingsIndividual.Content = OsLocalization.Trader.Label43;
             ButtonRedactTab.Content = OsLocalization.Trader.Label44;
             ButtonStrategParametr.Content = OsLocalization.Trader.Label45;
@@ -88,7 +87,7 @@ namespace OsEngine.OsTrader.Gui
             AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Trader.Label48);
             ui.ShowDialog();
 
-            if (ui.UserAcceptActioin == false)
+            if (ui.UserAcceptAction == false)
             {
                 e.Cancel = true;
             }
@@ -117,7 +116,6 @@ namespace OsEngine.OsTrader.Gui
         }
 
         private OsTraderMaster _strategyKeeper;
-
 
 // buttons with talking names / кнопки с говорящими названиями
 
@@ -241,7 +239,7 @@ namespace OsEngine.OsTrader.Gui
 
         private void ButtonDeleteBot_Click(object sender, RoutedEventArgs e)
         {
-            _strategyKeeper.DeleteActiv();
+            _strategyKeeper.DeleteActive();
         }
 
         private void buttonStrategManualSettings_Click(object sender, RoutedEventArgs e)
@@ -276,7 +274,7 @@ namespace OsEngine.OsTrader.Gui
 
         private void ButtonStrategParametr_Click(object sender, RoutedEventArgs e)
         {
-            _strategyKeeper.BotShowParametrsDialog();
+            _strategyKeeper.BotShowParametersDialog();
         }
 
         private void ButtonMore_Click(object sender, RoutedEventArgs e)

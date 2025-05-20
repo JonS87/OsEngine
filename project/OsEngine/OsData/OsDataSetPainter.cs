@@ -354,6 +354,8 @@ namespace OsEngine.OsData
                 if (columnIndex == 10)
                 { // chart or раскрыть/скрыть бумаги внутри
 
+                    _dataGrid.Rows[rowIndex].Cells[0].Selected = true;
+
                     bool isClickOnShowChartBtn = false;
                     bool isClickOnShowHideSecs = false;
 
@@ -456,6 +458,8 @@ namespace OsEngine.OsData
                 else if (columnIndex == 11)
                 { // delete or detail
 
+                    _dataGrid.Rows[rowIndex].Cells[0].Selected = true;
+
                     if (_dataGrid.Rows[rowIndex].Cells[0].Value == null
                        || _dataGrid.Rows[rowIndex].Cells[0].Value.ToString() == "")
                     {
@@ -538,7 +542,7 @@ namespace OsEngine.OsData
                     AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Data.Label42 + "  " + secName);
                     ui.ShowDialog();
 
-                    if (ui.UserAcceptActioin == false)
+                    if (ui.UserAcceptAction == false)
                     {
                         return;
                     }
@@ -956,6 +960,11 @@ colum12.HeaderText = "Delete";
 
             row.Cells.Add(new DataGridViewButtonCell()); //"Delete";
             row.Cells[11].Value = OsLocalization.Data.Label41;
+
+            for (int i = 0; i < row.Cells.Count; i++)
+            {
+                row.Cells[i].Style.BackColor = System.Drawing.Color.FromArgb(9, 11, 13);
+            }
 
             return row;
         }

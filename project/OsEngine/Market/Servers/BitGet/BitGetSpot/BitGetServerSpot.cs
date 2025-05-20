@@ -19,14 +19,15 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
 {
     public class BitGetServerSpot : AServer
     {
-        public BitGetServerSpot()
+        public BitGetServerSpot(int uniqueNumber)
         {
+            ServerNum = uniqueNumber;
             BitGetServerSpotRealization realization = new BitGetServerSpotRealization();
             ServerRealization = realization;
 
             CreateParameterString(OsLocalization.Market.ServerParamPublicKey, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamSecretKey, "");
-            CreateParameterPassword(OsLocalization.Market.ServerParamPassphrase, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterSecretKey, "");
+            CreateParameterPassword(OsLocalization.Market.ServerParameterPassphrase, "");
         }
     }
 
@@ -53,8 +54,11 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
             thread.Start();
         }
 
-        public void Connect()
+        private WebProxy _myProxy;
+
+        public void Connect(WebProxy proxy = null)
         {
+            _myProxy = proxy;
             PublicKey = ((ServerParameterString)ServerParameters[0]).Value;
             SeckretKey = ((ServerParameterPassword)ServerParameters[1]).Value;
             Passphrase = ((ServerParameterPassword)ServerParameters[2]).Value;
@@ -67,7 +71,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                     LogMessageType.Error);
                 return;
             }
-                        
+
             ServicePointManager.SecurityProtocol =
                 SecurityProtocolType.Ssl3
                 | SecurityProtocolType.Tls11
@@ -79,7 +83,15 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
             {
                 string requestStr = "/api/v2/public/time";
                 RestRequest requestRest = new RestRequest(requestStr, Method.GET);
-                IRestResponse response = new RestClient(BaseUrl).Execute(requestRest);
+
+                RestClient client = new RestClient(BaseUrl);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
+
+                IRestResponse response = client.Execute(requestRest);
 
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
@@ -176,11 +188,21 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
 
         public void GetSecurities()
         {
+            _rateGateSecurity.WaitToProceed();
+
             try
             {
                 string requestStr = $"/api/v2/spot/public/symbols";
                 RestRequest requestRest = new RestRequest(requestStr, Method.GET);
-                IRestResponse response = new RestClient(BaseUrl).Execute(requestRest);
+
+                RestClient client = new RestClient(BaseUrl);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
+
+                IRestResponse response = client.Execute(requestRest);
 
                 if (response.StatusCode != HttpStatusCode.OK)
                 {
@@ -209,28 +231,41 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
 
                         newSecurity.Exchange = ServerType.BitGetSpot.ToString();
                         newSecurity.DecimalsVolume = Convert.ToInt32(item.quantityPrecision);
-                        newSecurity.Lot = GetVolumeStep(newSecurity.DecimalsVolume);
+                        newSecurity.Lot = 1;
                         newSecurity.Name = item.symbol;
                         newSecurity.NameFull = item.symbol;
-                        newSecurity.NameClass = "Spot";
+                        newSecurity.NameClass = item.quoteCoin;
                         newSecurity.NameId = item.symbol;
                         newSecurity.SecurityType = SecurityType.CurrencyPair;
                         newSecurity.Decimals = Convert.ToInt32(item.pricePrecision);
                         newSecurity.PriceStep = priceStep;
                         newSecurity.PriceStepCost = priceStep;
                         newSecurity.State = SecurityStateType.Activ;
+                        newSecurity.MinTradeAmountType = MinTradeAmountType.C_Currency;
+                        newSecurity.MinTradeAmount = item.minTradeUSDT.ToDecimal();
+
+                        if (newSecurity.DecimalsVolume == 0)
+                        {
+                            newSecurity.VolumeStep = 1;
+                        }
+                        else
+                        {
+                            newSecurity.VolumeStep = GetVolumeStep(newSecurity.DecimalsVolume);
+                        }
 
                         securities.Add(newSecurity);
                     }
                 }
+
                 SecurityEvent(securities);
             }
             catch (Exception exception)
             {
                 SendLogMessage(exception.ToString(), LogMessageType.Error);
             }
-           
         }
+
+        private RateGate _rateGateSecurity = new RateGate(2, TimeSpan.FromMilliseconds(100));
 
         private decimal GetVolumeStep(int quantityPrecision)
         {
@@ -283,10 +318,17 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
         public void GetPortfolios()
         {
             CreateQueryPortfolio(true);
+            _portfolioIsStarted = true;
         }
-                
+
+        private bool _portfolioIsStarted = false;
+
+        private RateGate _rateGatePortfolio = new RateGate(1, TimeSpan.FromMilliseconds(100));
+
         private void CreateQueryPortfolio(bool IsUpdateValueBegin)
         {
+            _rateGatePortfolio.WaitToProceed();
+
             try
             {
                 HttpResponseMessage responseMessage = CreatePrivateQueryOrders("/api/v2/spot/account/assets", "GET", null, null);
@@ -324,7 +366,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
         }
 
         private void ConvertPorfolio(ResponseRestMessage<List<RestMessageAccount>> json, bool IsUpdateValueBegin)
-        {           
+        {
             Portfolio portfolio = new Portfolio();
 
             portfolio.Number = "BitGetSpot";
@@ -347,7 +389,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
 
                 portfolio.SetNewPosition(pos);
             }
-        
+
             PortfolioEvent(new List<Portfolio> { portfolio });
         }
 
@@ -373,6 +415,10 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
 
         private List<Candle> GetCandleData(Security security, TimeFrameBuilder timeFrameBuilder, DateTime startTime, DateTime endTime, DateTime actualTime, bool isOsData)
         {
+            startTime = DateTime.SpecifyKind(startTime, DateTimeKind.Utc);
+            endTime = DateTime.SpecifyKind(endTime, DateTimeKind.Utc);
+            actualTime = DateTime.SpecifyKind(actualTime, DateTimeKind.Utc);
+
             if (!CheckTime(startTime, endTime, actualTime))
             {
                 return null;
@@ -471,10 +517,9 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
         private bool CheckTime(DateTime startTime, DateTime endTime, DateTime actualTime)
         {
             if (startTime >= endTime ||
-                startTime >= DateTime.Now ||
+                startTime >= DateTime.UtcNow ||
                 actualTime > endTime ||
-                actualTime > DateTime.Now ||
-                endTime < DateTime.UtcNow.AddYears(-20))
+                actualTime > DateTime.UtcNow)
             {
                 return false;
             }
@@ -512,7 +557,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
 
         private List<Candle> RequestCandleHistory(Security security, string interval, long startTime, long endTime, bool isOsData, int limitCandles)
         {
-            _rgCandleData.WaitToProceed(100);
+            _rgCandleData.WaitToProceed();
 
             string stringUrl = "/api/v2/spot/market/candles";
 
@@ -526,7 +571,15 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                 string requestStr = $"{stringUrl}?symbol={security.Name}&productType={security.NameClass.ToLower()}&" +
                     $"startTime={startTime}&granularity={interval}&limit={limitCandles}&endTime={endTime}";
                 RestRequest requestRest = new RestRequest(requestStr, Method.GET);
-                IRestResponse response = new RestClient(BaseUrl).Execute(requestRest);
+
+                RestClient client = new RestClient(BaseUrl);
+
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
+
+                IRestResponse response = client.Execute(requestRest);
 
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
@@ -624,6 +677,13 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                 }
 
                 _webSocketPublic = new WebSocket(_webSocketUrlPublic);
+
+                if (_myProxy != null)
+                {
+                    NetworkCredential credential = (NetworkCredential)_myProxy.Credentials;
+                    _webSocketPublic.SetProxy(_myProxy.Address.ToString(), credential.UserName, credential.Password);
+                }
+
                 _webSocketPublic.EmitOnPing = true;
                 _webSocketPublic.SslConfiguration.EnabledSslProtocols
                     = System.Security.Authentication.SslProtocols.Ssl3
@@ -643,6 +703,13 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                 }
 
                 _webSocketPrivate = new WebSocket(_webSocketUrlPrivate);
+
+                if (_myProxy != null)
+                {
+                    NetworkCredential credential = (NetworkCredential)_myProxy.Credentials;
+                    _webSocketPrivate.SetProxy(_myProxy.Address.ToString(), credential.UserName, credential.Password);
+                }
+
                 _webSocketPrivate.EmitOnPing = true;
                 _webSocketPrivate.SslConfiguration.EnabledSslProtocols
                    = System.Security.Authentication.SslProtocols.Ssl3
@@ -1058,7 +1125,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
             {
                 try
                 {
-                    _webSocketPrivate.Send($"{{\"op\": \"unsubscribe\",\"args\": [{{\"instType\": \"SPOT\",\"channel\": \"account\",\"coin\": \"default\"}}]}}");                 
+                    _webSocketPrivate.Send($"{{\"op\": \"unsubscribe\",\"args\": [{{\"instType\": \"SPOT\",\"channel\": \"account\",\"coin\": \"default\"}}]}}");
                 }
                 catch
                 {
@@ -1066,6 +1133,13 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                 }
             }
         }
+
+        public bool SubscribeNews()
+        {
+            return false;
+        }
+
+        public event Action<News> NewsEvent;
 
         #endregion
 
@@ -1126,7 +1200,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                                 SubscribleState.msg, LogMessageType.Error);
 
                             if (_lastConnectionStartTime.AddMinutes(5) > DateTime.Now)
-                            { // если на старте вёб-сокета проблемы, то надо его перезапускать
+                            { // if there are problems with the web socket startup, you need to restart it
                                 ServerStatus = ServerConnectStatus.Disconnect;
                                 DisconnectEvent();
                             }
@@ -1212,7 +1286,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                                 SubscribleState.msg, LogMessageType.Error);
 
                             if (_lastConnectionStartTime.AddMinutes(5) > DateTime.Now)
-                            { // если на старте вёб-сокета проблемы, то надо его перезапускать
+                            { // if there are problems with the web socket startup, you need to restart it
                                 ServerStatus = ServerConnectStatus.Disconnect;
                                 DisconnectEvent();
                             }
@@ -1231,7 +1305,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                                 UpdateAccount(message);
                                 continue;
                             }
-                           
+
                             if (action.arg.channel.Equals("orders"))
                             {
                                 UpdateOrder(message);
@@ -1250,6 +1324,11 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
 
         private void UpdateAccount(string message)
         {
+            if (_portfolioIsStarted == false)
+            {
+                return;
+            }
+
             try
             {
                 ResponseWebSocketMessageAction<List<ResponseWebSocketAccount>> assets = JsonConvert.DeserializeAnonymousType(message, new ResponseWebSocketMessageAction<List<ResponseWebSocketAccount>>());
@@ -1264,7 +1343,6 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                 portfolio.Number = "BitGetSpot";
                 portfolio.ValueBegin = 1;
                 portfolio.ValueCurrent = 1;
-
 
                 for (int i = 0; i < assets.data.Count; i++)
                 {
@@ -1329,7 +1407,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                     newOrder.PortfolioNumber = "BitGetSpot";
                     newOrder.SecurityClassCode = order.arg.instType.ToString();
                     newOrder.TypeOrder = OrderPriceType.Limit;
-                    
+
                     MyOrderEvent(newOrder);
 
                     if (newOrder.State == OrderStateType.Partial)
@@ -1359,7 +1437,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                         {
                             myTrade.Volume = item.baseVolume.ToDecimal();
                         }
-                       
+
                         MyTradeEvent(myTrade);
                     }
                 }
@@ -1394,7 +1472,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                 long time = 0;
 
                 for (int i = 0; i < responseTrade.data.Count; i++)
-                {                   
+                {
                     Trade trade = new Trade();
 
                     if (i == 0)
@@ -1416,12 +1494,12 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                     {
                         return;
                     }
-                    
+
                     trade.Volume = responseTrade.data[i].size.ToDecimal();
                     trade.Side = responseTrade.data[i].side.Equals("buy") ? Side.Buy : Side.Sell;
 
                     NewTradesEvent(trade);
-                }                
+                }
             }
             catch (Exception ex)
             {
@@ -1521,24 +1599,24 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
 
         public event Action<Trade> NewTradesEvent;
 
+        public event Action<OptionMarketDataForConnector> AdditionalMarketDataEvent;
+
         #endregion
 
         #region 11 Trade
 
-        private RateGate _rateGateSendOrder = new RateGate(1, TimeSpan.FromMilliseconds(200));
-
-        private RateGate _rateGateCancelOrder = new RateGate(1, TimeSpan.FromMilliseconds(200));
+        private RateGate _rateGateOrder = new RateGate(1, TimeSpan.FromMilliseconds(100));
 
         public void SendOrder(Order order)
         {
             try
             {
-                _rateGateSendOrder.WaitToProceed();
+                _rateGateOrder.WaitToProceed();
 
                 Dictionary<string, dynamic> jsonContent = new Dictionary<string, dynamic>();
 
                 jsonContent.Add("symbol", order.SecurityNameCode);
-                jsonContent.Add("side", order.Side.ToString().ToLower());               
+                jsonContent.Add("side", order.Side == Side.Buy ? "buy" : "sell");
                 jsonContent.Add("orderType", order.TypeOrder.ToString().ToLower());
                 jsonContent.Add("price", order.Price.ToString().Replace(",", "."));
                 jsonContent.Add("size", order.Volume.ToString().Replace(",", "."));
@@ -1587,7 +1665,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
         {
             try
             {
-                _rateGateCancelOrder.WaitToProceed();
+                _rateGateOrder.WaitToProceed();
 
                 Dictionary<string, string> jsonContent = new Dictionary<string, string>();
 
@@ -1609,14 +1687,14 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                     }
                     else
                     {
-                        CreateOrderFail(order);
+                        GetOrderStatus(order);
                         SendLogMessage($"Code: {stateResponse.code}\n"
                             + $"Message: {stateResponse.msg}", LogMessageType.Error);
                     }
                 }
                 else
                 {
-                    CreateOrderFail(order);
+                    GetOrderStatus(order);
                     SendLogMessage($"Http State Code: {response.StatusCode}", LogMessageType.Error);
 
                     if (stateResponse != null && stateResponse.code != null)
@@ -1636,7 +1714,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
         {
             try
             {
-                _rateGateCancelOrder.WaitToProceed();
+                _rateGateOrder.WaitToProceed();
 
                 Dictionary<string, string> jsonContent = new Dictionary<string, string>();
 
@@ -1680,6 +1758,8 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
 
         public void GetOrderStatus(Order order)
         {
+            _rateGateOrder.WaitToProceed();
+
             try
             {
                 IRestResponse responseMessage = CreatePrivateQuery($"/api/v2/spot/trade/orderInfo?clientOid={order.NumberUser}", Method.GET, null, null);
@@ -1728,7 +1808,6 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                         }
                     }
                 }
-                   
             }
             catch (Exception ex)
             {
@@ -1738,6 +1817,8 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
 
         private void FindMyTradesToOrder(Order order)
         {
+            _rateGateOrder.WaitToProceed();
+
             try
             {
                 string path = $"/api/v2/spot/trade/fills?symbol={order.SecurityNameCode}";
@@ -1757,12 +1838,13 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                             {
                                 continue;
                             }
+
                             DataMyTrades item = stateResponse.data[i];
 
                             MyTrade myTrade = new MyTrade();
                             myTrade.Time = TimeManager.GetDateTimeFromTimeStamp(Convert.ToInt64(item.cTime));
                             myTrade.NumberOrderParent = item.orderId.ToString();
-                            myTrade.NumberTrade = item.tradeId;                            
+                            myTrade.NumberTrade = item.tradeId;
                             myTrade.Price = item.priceAvg.ToDecimal();
                             myTrade.SecurityNameCode = item.symbol.ToUpper();
                             myTrade.Side = item.side == "buy" ? Side.Buy : Side.Sell;
@@ -1802,13 +1884,15 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                 SendLogMessage(e.Message, LogMessageType.Error);
             }
         }
-               
+
         public List<Order> GetAllOpenOrders()
-        {            
+        {
+            _rateGateOrder.WaitToProceed();
+
             try
-            {               
+            {
                 IRestResponse responseMessage = CreatePrivateQuery($"/api/v2/spot/trade/unfilled-orders", Method.GET, null, null);
-                
+
                 string json = responseMessage.Content;
 
                 ResponseRestMessage<List<RestMessageOrders>> stateResponse = JsonConvert.DeserializeAnonymousType(json, new ResponseRestMessage<List<RestMessageOrders>>());
@@ -1836,7 +1920,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                     {
                         SendLogMessage($"Code: {stateResponse.code}\n"
                             + $"Message: {stateResponse.msg}", LogMessageType.Error);
-                    }                    
+                    }
                 }
                 return null;
             }
@@ -1926,6 +2010,11 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
 
                 RestClient client = new RestClient(BaseUrl);
 
+                if (_myProxy != null)
+                {
+                    client.Proxy = _myProxy;
+                }
+
                 IRestResponse response = client.Execute(requestRest);
 
                 return response;
@@ -1937,30 +2026,44 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
             }
         }
 
-        private HttpClient _httpClient = new HttpClient();
-
         private HttpResponseMessage CreatePrivateQueryOrders(string path, string method, string queryString, string body)
         {
             try
             {
+                HttpClient httpClient = null;
+
+                if (_myProxy == null)
+                {
+                    httpClient = new HttpClient();
+                }
+                else
+                {
+                    HttpClientHandler httpClientHandler = new HttpClientHandler
+                    {
+                        Proxy = _myProxy
+                    };
+
+                    httpClient = new HttpClient(httpClientHandler);
+                }
+
                 string requestPath = path;
                 string url = $"{BaseUrl}{requestPath}";
                 string timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
                 string signature = GenerateSignature(timestamp, method, requestPath, queryString, body, SeckretKey);
 
-                _httpClient.DefaultRequestHeaders.Add("ACCESS-KEY", PublicKey);
-                _httpClient.DefaultRequestHeaders.Add("ACCESS-SIGN", signature);
-                _httpClient.DefaultRequestHeaders.Add("ACCESS-TIMESTAMP", timestamp);
-                _httpClient.DefaultRequestHeaders.Add("ACCESS-PASSPHRASE", Passphrase);
-                _httpClient.DefaultRequestHeaders.Add("X-CHANNEL-API-CODE", "6yq7w");
+                httpClient.DefaultRequestHeaders.Add("ACCESS-KEY", PublicKey);
+                httpClient.DefaultRequestHeaders.Add("ACCESS-SIGN", signature);
+                httpClient.DefaultRequestHeaders.Add("ACCESS-TIMESTAMP", timestamp);
+                httpClient.DefaultRequestHeaders.Add("ACCESS-PASSPHRASE", Passphrase);
+                httpClient.DefaultRequestHeaders.Add("X-CHANNEL-API-CODE", "6yq7w");
 
                 if (method.Equals("POST"))
                 {
-                    return _httpClient.PostAsync(url, new StringContent(body, Encoding.UTF8, "application/json")).Result;
+                    return httpClient.PostAsync(url, new StringContent(body, Encoding.UTF8, "application/json")).Result;
                 }
                 else
                 {
-                    return _httpClient.GetAsync(url).Result;
+                    return httpClient.GetAsync(url).Result;
                 }
             }
             catch (Exception ex)
@@ -1985,7 +2088,7 @@ namespace OsEngine.Market.Servers.BitGet.BitGetSpot
                 return Convert.ToBase64String(hashBytes);
             }
         }
-       
+
         #endregion
 
         #region 13 Log

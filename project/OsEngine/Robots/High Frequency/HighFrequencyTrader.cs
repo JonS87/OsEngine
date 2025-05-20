@@ -69,7 +69,7 @@ namespace OsEngine.Robots.High_Frequency
         public StrategyParameterDecimal Volume;
 
         /// <summary>
-        /// levels to marketDepth analize
+        /// levels to marketDepth analyze
         /// глубина анализа стакана
         /// </summary>
         public StrategyParameterInt MaxLevelsInMarketDepth;
@@ -251,7 +251,7 @@ namespace OsEngine.Robots.High_Frequency
         /// </summary>
         void _tab_PositionClosingFailEvent(Position position)
         {
-            if (position.CloseActiv)
+            if (position.CloseActive)
             {
                 return;
             }

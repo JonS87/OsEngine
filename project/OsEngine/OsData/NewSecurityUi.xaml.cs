@@ -154,6 +154,10 @@ namespace OsEngine.OsData
             {
                 ComboBoxClass.SelectedItem = "МосБиржа топ";
             }
+            else if (classes.Find(clas => clas == "МосБиржа Акции и ПИФы#16") != null)
+            {
+                ComboBoxClass.SelectedItem = "МосБиржа Акции и ПИФы#16";
+            }
             else
             {
                 ComboBoxClass.SelectedItem = "All";
@@ -285,6 +289,8 @@ namespace OsEngine.OsData
 
             key = key.ToLower();
 
+            int indexFirstSec = int.MaxValue;
+
             for (int i = 0; i < _gridSecurities.Rows.Count; i++)
             {
                 string security = "";
@@ -303,12 +309,23 @@ namespace OsEngine.OsData
                 security = security.ToLower();
                 secSecond = secSecond.ToLower();
 
-                if (security.Contains(key) ||
-                    secSecond.Contains(key))
+                if (security.Contains(key) || secSecond.Contains(key))
                 {
+                    if (security.IndexOf(key) == 0 || secSecond.IndexOf(key) == 0)
+                    {
+                        indexFirstSec = i;
+                    }
+
                     _searchResults.Add(i);
                 }
             }
+			
+            if (_searchResults.Count > 1 && _searchResults.Contains(indexFirstSec) && _searchResults.IndexOf(indexFirstSec) != 0)
+            {
+                int index = _searchResults.IndexOf(indexFirstSec);
+                _searchResults.RemoveAt(index);
+                _searchResults.Insert(0, indexFirstSec);
+            }		
         }
 
         private void UpdateSearchPanel()

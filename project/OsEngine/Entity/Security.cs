@@ -181,9 +181,22 @@ namespace OsEngine.Entity
         public int DecimalsVolume;
 
         /// <summary>
-        /// минимальный объём торгов по активу
+        /// volume step by asset
+        /// шаг объёма для актива
+        /// </summary>
+        public decimal VolumeStep;
+
+        /// <summary>
+        /// minimum order volume by asset
+        /// минимальный объём ордера по активу
         /// </summary>
         public decimal MinTradeAmount = 1;
+
+        /// <summary>
+        /// type field MinTradeAmount. Contracts / Contract currency
+        /// тип поля MinTradeAmount. Контракты / Валюта контракта
+        /// </summary>
+        public MinTradeAmountType MinTradeAmountType;
 
         /// <summary>
         /// Lower price limit for bids. If you place an order with a price lower - the system will reject
@@ -196,8 +209,8 @@ namespace OsEngine.Entity
         /// Верхний лимит цены для заявок. Если выставить ордер с ценой выше - система отвергнет
         /// </summary>
         public decimal PriceLimitHigh;
+
         // For options
-        // для опционов
 
         /// <summary>
         /// option type
@@ -225,6 +238,8 @@ namespace OsEngine.Entity
         /// </summary>
         public void LoadFromString(string save)
         {
+            save = save.Replace("\r", "");
+
             string[] array = save.Split('\n');
 
             Name = array[0];
@@ -245,6 +260,15 @@ namespace OsEngine.Entity
             Expiration = Convert.ToDateTime(array[15]);
             DecimalsVolume = Convert.ToInt32(array[16]);
             MinTradeAmount = array[17].ToDecimal();
+
+            if (array.Length > 18)
+            {
+                VolumeStep = array[18].ToDecimal();
+            }
+            if (array.Length > 19)
+            {
+                Enum.TryParse(array[19], out MinTradeAmountType);
+            }
         }
 
         /// <summary>
@@ -270,10 +294,32 @@ namespace OsEngine.Entity
             result += Strike + "\n";
             result += Expiration + "\n";
             result += DecimalsVolume + "\n";
-            result += MinTradeAmount;
+            result += MinTradeAmount + "\n";
+            result += VolumeStep +"\n";
+            result += MinTradeAmountType;
+
             return result;
         }
 
+        /// <summary>
+        /// Underlying asset (for Options)
+        /// Базовый актив (для опционов)
+        /// </summary>
+        public string UnderlyingAsset;
+
+    }
+
+    public enum MinTradeAmountType
+    {
+        /// <summary>
+        /// The minimum volume is specified in the contracts
+        /// </summary>
+        Contract,
+
+        /// <summary>
+        /// Minimum volume is specified in contract currency (USDT / RUB)
+        /// </summary>
+        C_Currency
     }
 
     /// <summary>

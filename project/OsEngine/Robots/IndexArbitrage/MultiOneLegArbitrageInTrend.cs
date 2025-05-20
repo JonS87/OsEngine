@@ -25,7 +25,7 @@ namespace OsEngine.Robots.IndexArbitrage
 
             TabCreate(BotTabType.Screener);
             _screener = TabsScreener[0];
-            _screener.CreateCandleIndicator(1, "VolatilityAverage", null, "Prime");
+            _screener.CreateCandleIndicator(1, "VolatilityAverage", null, "Area2");
             _screener.CandleFinishedEvent += _screener_CandleFinishedEvent;
 
             Regime = CreateParameter("Regime", "Off", new[] { "Off", "On", "OnlyLong", "OnlyShort" });
@@ -190,13 +190,13 @@ namespace OsEngine.Robots.IndexArbitrage
 
             if (cointegrationIndicator.SideCointegrationValue == CointegrationLineSide.Up
                  && Regime.ValueString != "OnlyLong")
-            { // nead to short security
+            { // need to short security
                 SellSecurity(tab, CointegrationLineSide.Up.ToString());
             }
 
             if (cointegrationIndicator.SideCointegrationValue == CointegrationLineSide.Down
                  && Regime.ValueString != "OnlyShort")
-            { // nead to long security
+            { // need to long security
                 BuySecurity(tab, CointegrationLineSide.Down.ToString());
             }
         }
@@ -283,7 +283,7 @@ namespace OsEngine.Robots.IndexArbitrage
                 return 0;
             }
 
-            decimal moneyOnPosition = portfolioPrimeAsset * (MoneyPercentFromDepoOnPosition.ValueDecimal / 100);
+            decimal moneyOnPosition = portfolioPrimeAsset * (MoneyPercentFromDepoOnPosition.ValueDecimal / 100) / tab.Security.Lot;
 
             decimal qty = moneyOnPosition / tab.PriceBestAsk;
 

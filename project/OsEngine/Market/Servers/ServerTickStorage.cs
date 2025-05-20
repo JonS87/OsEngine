@@ -23,7 +23,7 @@ namespace OsEngine.Market.Servers
         /// constructor
         /// </summary>
         /// <param name="server"> server for saving trades</param>
-        public ServerTickStorage(IServer server)
+        public ServerTickStorage(AServer server)
         {
             _server = server;
 
@@ -32,7 +32,7 @@ namespace OsEngine.Market.Servers
                 Directory.CreateDirectory(@"Data");
             }
 
-            _pathName = @"Data" + @"\" + server.GetType().Name + @"Trades";
+            _pathName = @"Data" + @"\" + server.ServerNameUnique + @"Trades";
 
             Thread saver = new Thread(TickSaverSpaceInOneFile);
             saver.CurrentCulture = new CultureInfo("RU-ru");
@@ -48,7 +48,7 @@ namespace OsEngine.Market.Servers
         /// <summary>
         /// shows whether need to save trades
         /// </summary>
-        public bool NeadToSave;
+        public bool NeedToSave;
 
         /// <summary>
         /// how many days upload from history
@@ -115,7 +115,7 @@ namespace OsEngine.Market.Servers
                         continue;
                     }
 
-                    if (NeadToSave == false)
+                    if (NeedToSave == false)
                     {
                         continue;
                     }
